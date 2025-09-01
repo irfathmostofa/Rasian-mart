@@ -26,11 +26,12 @@ export default function HeroSection() {
           priority
           className="object-cover"
         />
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-black/60"></div>
       </motion.div>
 
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/50 flex flex-col items-center justify-center text-center text-white px-4">
-        {/* Sliding Text */}
+      {/* Text Content */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-4">
         <motion.h1
           className="text-4xl md:text-5xl font-bold"
           initial={{ y: 50, opacity: 0 }}
@@ -49,7 +50,6 @@ export default function HeroSection() {
           Shop smarter, faster, and easier with exclusive deals!
         </motion.p>
 
-        {/* Sliding Button */}
         <motion.div
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
