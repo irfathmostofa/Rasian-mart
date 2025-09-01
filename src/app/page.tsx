@@ -1,37 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart } from "lucide-react";
+import { Flashlight, ShoppingCart } from "lucide-react";
 import ProductCard from "@/components/layout/ProductCard";
 import ProductCardTWO from "@/components/layout/ProductCard2";
 import ProductCardThree from "@/components/layout/ProductCard3";
+import ProductCarousel from "@/components/layout/ProductCarousel";
+import HeroSection from "@/components/layout/HeroSection";
 
 export default function HomePage() {
   return (
     <div className="space-y-12">
       {/* 🎯 Hero Banner */}
-      <section className="relative h-[400px] rounded-2xl overflow-hidden">
-        <Image
-          src="https://picsum.photos/1200/400?random=1"
-          alt="Hero Banner"
-          fill
-          priority
-          className="object-cover"
-        />
-        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-center text-white">
-          <h1 className="text-4xl md:text-5xl font-bold">
-            Welcome to Rasian Mart
-          </h1>
-          <p className="mt-3 text-lg md:text-xl">
-            Shop smarter, faster, and easier with exclusive deals!
-          </p>
-          <Link
-            href="/category/deals"
-            className="mt-6 bg-primary px-6 py-3 rounded-lg text-white text-lg font-semibold hover:bg-primary/90"
-          >
-            Shop Now
-          </Link>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* 🏷️ Categories */}
       <section>
@@ -66,11 +46,16 @@ export default function HomePage() {
       </section>
 
       <section className="mt-16">
+        <h2 className="text-3xl font-bold mb-8 ">🔥 Flash Sales</h2>
+        <ProductCarousel />
+      </section>
+      <section className="mt-16">
         <h2 className="text-3xl font-bold mb-8 ">🛍️ Best Deals</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((id) => (
             <ProductCardThree
               id={1}
+              key={id}
               name={`Product ${id}`}
               category={id % 2 === 0 ? "Electronics" : "Gadgets"}
               price={Math.floor(Math.random() * 100) + 100}
@@ -79,7 +64,7 @@ export default function HomePage() {
               image={`https://picsum.photos/400/400?random=${id + 10}`}
               badge={id % 2 === 0 ? "New" : "Sale"}
               stock={3}
-              rating={4.7}
+              rating={Math.floor(Math.random() * 3) + 2.5}
             />
           ))}
         </div>
