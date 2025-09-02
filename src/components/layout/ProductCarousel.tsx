@@ -80,11 +80,11 @@ function ProductCardCarousel({ product }: any) {
         {/* Price */}
         <div className="flex items-center gap-1 sm:gap-2">
           <p className="font-bold text-base sm:text-lg md:text-xl text-primary">
-            ${price.toFixed(2)}
+            ৳ {price.toFixed(2)}
           </p>
           {oldPrice && (
             <p className="text-[10px] sm:text-sm text-gray-400 line-through">
-              ${oldPrice.toFixed(2)}
+              ৳ {oldPrice.toFixed(2)}
             </p>
           )}
           {discount && (
@@ -156,7 +156,7 @@ export default function ProductCarousel() {
           <CarouselNext />
         </div>
 
-        <CarouselContent className="flex flex-nowrap">
+        <CarouselContent className="flex flex-nowrap ">
           {dummyProducts.map((product) => (
             <CarouselItem
               key={product.id}
