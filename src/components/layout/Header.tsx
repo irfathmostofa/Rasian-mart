@@ -2,8 +2,20 @@
 
 import Link from "next/link";
 import { ShoppingCart, User, Search } from "lucide-react";
+import { useCart } from "@/app/store/useCart"; // ✅ import Zustand store
 
 export default function Header() {
+  const { cart } = useCart();
+
+  // 🧮 total items count
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  // 🧮 total price
+  const totalPrice = cart.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
@@ -26,14 +38,23 @@ export default function Header() {
 
         {/* Icons */}
         <div className="flex items-center gap-4">
-          <Link href="/account/login">
+          {/* Account */}
+          <Link href="/account/login" className="hover:text-primary transition">
             <User className="w-5 h-5" />
           </Link>
-          <Link href="/cart" className="relative">
+
+          {/* Cart */}
+          <Link href="/cart" className="relative flex items-center gap-1">
             <ShoppingCart className="w-5 h-5" />
-            <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1">
-              2
-            </span>
+            {totalItems > 0 && (
+              <>
+                {/* Badge */}
+                <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1">
+                  {totalItems}
+                </span>
+                {/* Amount */}
+              </>
+            )}
           </Link>
         </div>
       </div>
