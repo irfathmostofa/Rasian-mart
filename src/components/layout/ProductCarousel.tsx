@@ -135,7 +135,7 @@ const dummyProducts = Array.from({ length: 8 }).map((_, i) => ({
 // ProductCarousel Component
 export default function ProductCarousel() {
   return (
-    <div className="relative w-full max-w-6xl mx-auto py-6">
+    <div className="relative w-full mx-auto py-6">
       <Carousel
         opts={{
           align: "start",

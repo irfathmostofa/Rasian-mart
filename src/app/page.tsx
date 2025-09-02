@@ -45,14 +45,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mt-16">
-        <h2 className="text-3xl font-bold mb-8 ">🔥 Flash Sales</h2>
+      <section className="mt-10">
+        <h2 className="text-3xl font-bold mb-4">🔥 Flash Sales</h2>
         <ProductCarousel />
       </section>
-      <section className="mt-16">
-        <h2 className="text-3xl font-bold mb-8 ">🛍️ Best Deals</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((id) => (
+      <section className="mt-10">
+        <h2 className="text-3xl font-bold mb-4">🛍️ Best Deals</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((id) => (
             <ProductCardThree
               id={1}
               key={id}
