@@ -16,6 +16,7 @@ interface CartState {
   cart: CartItem[];
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
 }
 
@@ -42,6 +43,15 @@ export const useCart = create<CartState>()(
       removeFromCart: (id) =>
         set({ cart: get().cart.filter((item) => item.id !== id) }),
       clearCart: () => set({ cart: [] }),
+      updateQuantity: (id, quantity) => {
+        const cart = get().cart;
+        const item = cart.find((i) => i.id === id);
+        if (item) {
+          set({
+            cart: cart.map((i) => (i.id === id ? { ...i, quantity } : i)),
+          });
+        }
+      },
     }),
     {
       name: "rasianmart-cart", // key in localStorage
