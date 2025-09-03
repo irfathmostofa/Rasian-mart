@@ -6,13 +6,14 @@ import ProductCardTWO from "@/components/layout/ProductCard2";
 import ProductCardThree from "@/components/layout/ProductCard3";
 import ProductCarousel from "@/components/layout/ProductCarousel";
 import HeroSection from "@/components/layout/HeroSection";
+import HeroCarousel from "@/components/layout/HeroCarousel";
 
 export default function HomePage() {
   return (
     <div className="space-y-12">
       {/* 🎯 Hero Banner */}
-      <HeroSection />
-
+      {/* <HeroSection /> */}
+      <HeroCarousel />
       {/* 🏷️ Categories */}
       <section>
         <h2 className="text-2xl font-bold mb-6">Shop by Category</h2>

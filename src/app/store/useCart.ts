@@ -54,7 +54,7 @@ export const useCart = create<CartState>()(
       },
     }),
     {
-      name: "rasianmart-cart", // key in localStorage
+      name: "rasianmart-cart",
     }
   )
 );
