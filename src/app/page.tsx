@@ -65,7 +65,7 @@ export default function HomePage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="text-3xl font-bold mb-4">🔥 Flash Sales</h2>
+        <h2 className="text-3xl font-bold mb-2">🔥 Flash Sales</h2>
         <ProductCarousel />
       </section>
 

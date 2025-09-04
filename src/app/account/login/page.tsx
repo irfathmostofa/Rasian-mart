@@ -31,7 +31,7 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+    <div className="flex items-center justify-center relative overflow-hidden">
       {/* Background overlay */}
       {/* <div className="absolute inset-0">
         <img
@@ -48,7 +48,7 @@ export default function LoginPage() {
         transition={{ duration: 0.6 }}
         className="relative w-full max-w-md px-4"
       >
-        <Card className="shadow-2xl border-0 rounded-2xl overflow-hidden backdrop-blur-lg py-0">
+        <Card className=" border-0 rounded-2xl overflow-hidden backdrop-blur-lg py-0 mb-2">
           <CardHeader className="bg-primary/90 text-white text-center py-6">
             <CardTitle className="text-2xl font-bold">{greeting}</CardTitle>
             <p className="text-sm text-white/80 mt-2">

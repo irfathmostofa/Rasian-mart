@@ -92,7 +92,7 @@ function ProductCardCarousel({ product }: any) {
               ৳ {price.toFixed(2)}
             </p>
             {oldPrice && (
-              <p className="text-sm sm:text-sm text-gray-400 line-through">
+              <p className="text-[10px] sm:text-sm text-gray-400 line-through">
                 ৳ {oldPrice.toFixed(2)}
               </p>
             )}
@@ -104,21 +104,40 @@ function ProductCardCarousel({ product }: any) {
           </div>
 
           {/* Stock */}
-          <p
-            className={`text-[10px] sm:text-sm font-medium ${
-              stock > 5
-                ? "text-green-600"
+          <div className="flex items-center justify-between">
+            <p
+              className={`text-[10px] sm:text-sm font-medium ${
+                stock > 5
+                  ? "text-green-600"
+                  : stock > 0
+                  ? "text-orange-500"
+                  : "text-red-600"
+              }`}
+            >
+              {stock > 5
+                ? "In Stock"
                 : stock > 0
-                ? "text-orange-500"
-                : "text-red-600"
-            }`}
-          >
-            {stock > 5
-              ? "In Stock"
-              : stock > 0
-              ? `Only ${stock} left!`
-              : "Out of Stock"}
-          </p>
+                ? `Only ${stock} left!`
+                : "Out of Stock"}
+            </p>
+            {/* Mobile-only Add to Cart button */}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                addToCart({
+                  id,
+                  name,
+                  price,
+                  image,
+                  quantity: 1,
+                });
+              }}
+              className="md:hidden p-1 sm:p-2 bg-white rounded shadow hover:bg-primary hover:text-white transition border border-gray-200"
+            >
+              <ShoppingCart className="w-4 h-4 sm:w-4 sm:h-4" />
+            </button>
+          </div>
         </div>
       </Link>
     </div>

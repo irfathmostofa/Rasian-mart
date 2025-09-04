@@ -218,7 +218,7 @@ export default function ProductDetailsPage() {
           </div>
 
           {/* 🛒 Action Buttons */}
-          <div className="flex gap-4 mt-4">
+          <div className="flex sm:flex-row gap-3 sm:gap-4 mt-4">
             <button
               onClick={() =>
                 addToCart({
@@ -230,11 +230,11 @@ export default function ProductDetailsPage() {
                 })
               }
               disabled={productWithImages.stock === 0}
-              className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              className="bg-primary text-white px-3 py-3 md:px-6 md:py-3 rounded-lg hover:bg-primary/90 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <ShoppingCart className="w-5 h-5" /> Add to Cart
             </button>
-            <button className="border px-6 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2">
+            <button className="border px-3 py-3 md:px-6 md:py-3 rounded-lg hover:bg-gray-100 flex items-center justify-center gap-2 w-full sm:w-auto">
               <Heart className="w-5 h-5" /> Add to Wishlist
             </button>
           </div>
@@ -264,7 +264,7 @@ export default function ProductDetailsPage() {
       {related.length > 0 && (
         <div>
           <h2 className="text-xl font-bold mb-6">Related Products</h2>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {related.map((p) => (
               <ProductCardThree
                 id={p.id}
