@@ -1,4 +1,7 @@
 "use client";
+import { useRouter } from "next/navigation";
+
+// Inside your component
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -6,11 +9,20 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Lock, Sun, Moon, Github, Chrome } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  Sun,
+  Moon,
+  Github,
+  Chrome,
+  Facebook,
+  FacebookIcon,
+} from "lucide-react";
 
 export default function LoginPage() {
   const [greeting, setGreeting] = useState("Welcome");
-
+  const router = useRouter();
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good Morning 🌞");
@@ -19,15 +31,15 @@ export default function LoginPage() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-white to-primary/5 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
       {/* Background overlay */}
-      <div className="absolute inset-0">
+      {/* <div className="absolute inset-0">
         <img
           src="https://picsum.photos/1920/1080?blur=10"
           alt="Background"
           className="w-full h-full object-cover opacity-30"
         />
-      </div>
+      </div> */}
 
       {/* Card */}
       <motion.div
@@ -36,7 +48,7 @@ export default function LoginPage() {
         transition={{ duration: 0.6 }}
         className="relative w-full max-w-md px-4"
       >
-        <Card className="shadow-2xl border-0 rounded-2xl overflow-hidden backdrop-blur-lg">
+        <Card className="shadow-2xl border-0 rounded-2xl overflow-hidden backdrop-blur-lg py-0">
           <CardHeader className="bg-primary/90 text-white text-center py-6">
             <CardTitle className="text-2xl font-bold">{greeting}</CardTitle>
             <p className="text-sm text-white/80 mt-2">
@@ -67,9 +79,17 @@ export default function LoginPage() {
             </div>
 
             {/* Login Button */}
-            <Button className="w-full bg-primary hover:bg-primary/90 transition">
+
+            <Button
+              className="w-full bg-primary hover:bg-primary/90 transition"
+              onClick={() => {
+                router.push("/profile");
+              }}
+            >
               Login
             </Button>
+
+            {/* <Button>Login</Button> */}
 
             {/* Social Login */}
             <div className="flex items-center gap-3">
@@ -83,13 +103,13 @@ export default function LoginPage() {
                 variant="outline"
                 className="flex-1 flex items-center gap-2"
               >
-                <Chrome className="w-4 h-4 text-red-500" /> Google
+                Google
               </Button>
               <Button
                 variant="outline"
                 className="flex-1 flex items-center gap-2"
               >
-                <Github className="w-4 h-4" /> GitHub
+                Facebook
               </Button>
             </div>
 

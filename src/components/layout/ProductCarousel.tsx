@@ -12,6 +12,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingCart, Star } from "lucide-react";
 import { useCart } from "@/app/store/useCart";
+import { demoProducts } from "../dummyData/demoProducts";
 
 // Dummy ProductCard
 function ProductCardCarousel({ product }: any) {
@@ -87,11 +88,11 @@ function ProductCardCarousel({ product }: any) {
 
           {/* Price */}
           <div className="flex items-center gap-1 sm:gap-2">
-            <p className="font-bold text-base sm:text-lg md:text-xl text-primary">
+            <p className="font-bold text-base sm:text-sm md:text-sm text-primary">
               ৳ {price.toFixed(2)}
             </p>
             {oldPrice && (
-              <p className="text-[10px] sm:text-sm text-gray-400 line-through">
+              <p className="text-sm sm:text-sm text-gray-400 line-through">
                 ৳ {oldPrice.toFixed(2)}
               </p>
             )}
@@ -125,21 +126,6 @@ function ProductCardCarousel({ product }: any) {
 }
 
 // Dummy products
-const dummyProducts = Array.from({ length: 8 }).map((_, i) => ({
-  id: i + 1,
-  name: `Product ${i + 1}`,
-  category: `Category ${Math.ceil(Math.random() * 5)}`,
-  image: `https://picsum.photos/300/400?random=${i + 1}`,
-  price: parseFloat((Math.random() * 100 + 10).toFixed(2)),
-  oldPrice:
-    Math.random() > 0.5
-      ? parseFloat((Math.random() * 150 + 50).toFixed(2))
-      : undefined,
-  discount: Math.random() > 0.5 ? Math.floor(Math.random() * 50) : undefined,
-  rating: Math.floor(Math.random() * 5) + 1,
-  stock: Math.floor(Math.random() * 20),
-  badge: Math.random() > 0.7 ? "Hot" : undefined,
-}));
 
 // ProductCarousel Component
 export default function ProductCarousel() {
@@ -166,7 +152,7 @@ export default function ProductCarousel() {
         </div>
 
         <CarouselContent className="flex flex-nowrap ">
-          {dummyProducts.map((product) => (
+          {demoProducts.map((product) => (
             <CarouselItem
               key={product.id}
               className="

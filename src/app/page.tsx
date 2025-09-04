@@ -7,6 +7,7 @@ import ProductCardThree from "@/components/layout/ProductCard3";
 import ProductCarousel from "@/components/layout/ProductCarousel";
 import HeroSection from "@/components/layout/HeroSection";
 import HeroCarousel from "@/components/layout/HeroCarousel";
+import { demoProducts } from "@/components/dummyData/demoProducts";
 
 export default function HomePage() {
   return (
@@ -53,19 +54,19 @@ export default function HomePage() {
       <section className="mt-10">
         <h2 className="text-3xl font-bold mb-4">🛍️ Best Deals</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((id) => (
+          {demoProducts.map((product) => (
             <ProductCardThree
-              id={1}
-              key={id}
-              name={`Product ${id}`}
-              category={id % 2 === 0 ? "Electronics" : "Gadgets"}
-              price={Math.floor(Math.random() * 100) + 100}
-              oldPrice={Math.floor(Math.random() * 100) + 150}
-              discount={Math.floor(Math.random() * 30) + 10}
-              image={`https://picsum.photos/400/400?random=${id + 10}`}
-              badge={id % 2 === 0 ? "New" : "Sale"}
-              stock={3}
-              rating={Math.floor(Math.random() * 3) + 2.5}
+              id={product.id}
+              key={product.id}
+              name={product.name}
+              category={product.category}
+              price={product.price}
+              oldPrice={product.oldPrice}
+              discount={product.discount}
+              image={`https://picsum.photos/400/400?random=${product.id + 10}`}
+              badge={product.badge}
+              stock={product.stock}
+              rating={product.rating}
             />
           ))}
         </div>
