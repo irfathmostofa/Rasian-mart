@@ -58,7 +58,7 @@ export default function HeroCarousel() {
                 <motion.div
                   className="absolute inset-0"
                   initial={{ scale: 1 }}
-                  animate={{ scale: 1.05 }}
+                  animate={{ scale: 2 }}
                   transition={{
                     duration: 15,
                     repeat: Infinity,
