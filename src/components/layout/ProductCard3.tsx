@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useCart } from "@/app/store/useCart";
 
 interface ProductCardProps {
-  id: string;
+  id: number;
   name: string;
   category: string;
   price: number;
