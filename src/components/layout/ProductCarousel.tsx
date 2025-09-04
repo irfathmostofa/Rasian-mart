@@ -30,10 +30,10 @@ function ProductCardCarousel({ product }: any) {
   } = product;
   const { addToCart } = useCart();
   return (
-    <div className="group relative rounded-xl overflow-hidden bg-white shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 w-full max-w-xs mx-auto">
+    <div className="group relative rounded-xl overflow-hidden bg-white shadow-md  transition-all duration-300 border border-gray-100 w-full max-w-xs mx-auto">
       {/* Image */}
 
-      <div className="relative w-full h-40 sm:h-48 md:h-48">
+      <div className="relative w-full h-40 sm:h-48 md:h-48 ">
         <Image
           src={image}
           alt={name}
@@ -48,8 +48,8 @@ function ProductCardCarousel({ product }: any) {
         )}
 
         {/* Buttons */}
-        <div className="absolute top-2 right-2 flex flex-col gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <button className="p-1 sm:p-2 bg-white rounded-full shadow hover:bg-red-500 hover:text-white transition">
+        <div className="absolute top-2 right-2 flex flex-col gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ">
+          <button className="p-1 sm:p-2 bg-white rounded-full shadow hover:bg-red-500 hover:text-white transition ">
             <Heart className="w-3 h-3 sm:w-4 sm:h-4" />
           </button>
           <button
@@ -151,7 +151,7 @@ export default function ProductCarousel() {
           <CarouselNext />
         </div>
 
-        <CarouselContent className="flex flex-nowrap ">
+        <CarouselContent className="flex flex-nowrap mb-2">
           {demoProducts.map((product) => (
             <CarouselItem
               key={product.id}

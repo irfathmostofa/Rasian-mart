@@ -1,8 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Flashlight, ShoppingCart } from "lucide-react";
-import ProductCard from "@/components/layout/ProductCard";
-import ProductCardTWO from "@/components/layout/ProductCard2";
+
 import ProductCardThree from "@/components/layout/ProductCard3";
 import ProductCarousel from "@/components/layout/ProductCarousel";
 import HeroSection from "@/components/layout/HeroSection";
@@ -10,11 +11,26 @@ import HeroCarousel from "@/components/layout/HeroCarousel";
 import { demoProducts } from "@/components/dummyData/demoProducts";
 
 export default function HomePage() {
+  const [visibleProducts, setVisibleProducts] = useState(10);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadMoreProducts = () => {
+    setIsLoading(true);
+    // Simulate loading delay
+    setTimeout(() => {
+      setVisibleProducts((prev) => prev + 10);
+      setIsLoading(false);
+    }, 300);
+  };
+
+  const hasMoreProducts = visibleProducts < demoProducts.length;
+
   return (
     <div className="space-y-12">
       {/* 🎯 Hero Banner */}
       {/* <HeroSection /> */}
       <HeroCarousel />
+
       {/* 🏷️ Categories */}
       <section>
         <h2 className="text-2xl font-bold mb-6">Shop by Category</h2>
@@ -38,6 +54,7 @@ export default function HomePage() {
                 width={400}
                 height={300}
                 className="h-32 w-full object-cover group-hover:scale-105 transition"
+                priority={i < 2} // Prioritize loading first 2 images
               />
               <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-lg font-semibold">
                 {cat.name}
@@ -51,10 +68,11 @@ export default function HomePage() {
         <h2 className="text-3xl font-bold mb-4">🔥 Flash Sales</h2>
         <ProductCarousel />
       </section>
+
       <section className="mt-10">
         <h2 className="text-3xl font-bold mb-4">🛍️ Best Deals</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {demoProducts.map((product) => (
+          {demoProducts.slice(0, visibleProducts).map((product) => (
             <ProductCardThree
               id={product.id}
               key={product.id}
@@ -70,6 +88,32 @@ export default function HomePage() {
             />
           ))}
         </div>
+
+        {hasMoreProducts && (
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={loadMoreProducts}
+              disabled={isLoading}
+              className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[120px]"
+              aria-label="Load more products"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  Loading...
+                </>
+              ) : (
+                "Load More"
+              )}
+            </button>
+          </div>
+        )}
+
+        {!hasMoreProducts && demoProducts.length > 0 && (
+          <div className="text-center mt-6 text-gray-500">
+            All products loaded
+          </div>
+        )}
       </section>
 
       {/* 🔥 Deals of the Day */}
@@ -79,16 +123,17 @@ export default function HomePage() {
           <div className="relative rounded-xl overflow-hidden shadow">
             <Image
               src="https://picsum.photos/600/300?random=20"
-              alt="Deal 1"
+              alt="50% Off Electronics Deal"
               width={600}
               height={300}
-              className="object-cover"
+              className="object-cover w-full h-48 md:h-64"
+              priority={false}
             />
             <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4">
               <h3 className="text-2xl font-bold">50% Off Electronics</h3>
               <Link
                 href="/category/electronics"
-                className="mt-3 bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-200"
+                className="mt-3 bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
                 Shop Now
               </Link>
@@ -97,16 +142,17 @@ export default function HomePage() {
           <div className="relative rounded-xl overflow-hidden shadow">
             <Image
               src="https://picsum.photos/600/300?random=21"
-              alt="Deal 2"
+              alt="Buy 1 Get 1 Free Fashion Deal"
               width={600}
               height={300}
-              className="object-cover"
+              className="object-cover w-full h-48 md:h-64"
+              priority={false}
             />
             <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4">
               <h3 className="text-2xl font-bold">Buy 1 Get 1 Free - Fashion</h3>
               <Link
                 href="/category/fashion"
-                className="mt-3 bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-200"
+                className="mt-3 bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
                 Grab Deal
               </Link>
