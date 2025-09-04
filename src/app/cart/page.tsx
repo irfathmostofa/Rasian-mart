@@ -39,7 +39,7 @@ export default function CartPage() {
               height={80}
               className="rounded-lg"
             />
-            <div className="flex-1">
+            <div className="flex-1  ">
               <h3 className="font-semibold">{item.name}</h3>
               <p className="text-sm text-gray-500">৳ {item.price.toFixed(2)}</p>
               <div className="flex items-center gap-2 mt-2">
@@ -60,7 +60,7 @@ export default function CartPage() {
                 </button>
               </div>
             </div>
-            <p className="font-semibold">
+            <p className="font-semibold text-sm flex-shrink-0">
               ৳ {(item.price * item.quantity).toFixed(2)}
             </p>
           </div>

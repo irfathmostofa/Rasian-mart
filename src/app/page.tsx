@@ -26,7 +26,7 @@ export default function HomePage() {
   const hasMoreProducts = visibleProducts < demoProducts.length;
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-10">
       {/* 🎯 Hero Banner */}
       {/* <HeroSection /> */}
       <HeroCarousel />
@@ -64,14 +64,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mt-10">
+      <section className="">
         <h2 className="text-3xl font-bold mb-2">🔥 Flash Sales</h2>
         <ProductCarousel />
       </section>
 
-      <section className="mt-10">
+      <section className="">
         <h2 className="text-3xl font-bold mb-4">🛍️ Best Deals</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
           {demoProducts.slice(0, visibleProducts).map((product) => (
             <ProductCardThree
               id={product.id}

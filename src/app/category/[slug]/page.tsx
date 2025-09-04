@@ -31,8 +31,6 @@ export default function CategoryPage() {
 
     // Simulated fetch (replace with real API call)
     setTimeout(() => {
-     
-
       // Filter by category slug
       const filtered = demoProducts.filter(
         (p) => p.category.toLowerCase() === String(slug).toLowerCase()
@@ -44,7 +42,7 @@ export default function CategoryPage() {
   }, [slug]);
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-1 py-1">
       {/* Page Title */}
       <h1 className="text-2xl sm:text-3xl font-bold capitalize mb-6">
         {slug} Products
@@ -58,7 +56,7 @@ export default function CategoryPage() {
       ) : products.length === 0 ? (
         <p className="text-center text-gray-500">No products found 😔</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
           {products.map((product) => (
             <ProductCardThree
               id={product.id}

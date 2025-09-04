@@ -264,7 +264,7 @@ export default function ProductDetailsPage() {
       {related.length > 0 && (
         <div>
           <h2 className="text-xl font-bold mb-6">Related Products</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
             {related.map((p) => (
               <ProductCardThree
                 id={p.id}
