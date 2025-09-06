@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "@/app/globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import FloatingSettings from "@/components/layout/Settings";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -51,7 +52,7 @@ export default function SiteLayout({
           <Header />
 
           <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
-
+          <FloatingSettings />
           <Footer />
         </div>
       </body>

@@ -1,68 +1,21 @@
+// components/Hero.tsx
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
-import { motion } from "framer-motion";
+import { useSettings } from "@/app/store/useSettings";
+import HeroOne from "./HeroSection/HeroOne";
+import HeroThree from "./HeroSection/HeroThree";
+import HeroTwo from "./HeroSection/HeroTwo";
+import HeroCarousel from "./HeroSection/HeroCarousel";
 
-export default function HeroSection() {
-  return (
-    <section className="relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden">
-      {/* Hero Image */}
-      <motion.div
-        className="absolute inset-0"
-        initial={{ scale: 1 }}
-        animate={{ scale: 1.05 }}
-        transition={{
-          duration: 15,
-          repeat: Infinity,
-          repeatType: "reverse",
-          ease: "linear",
-        }}
-      >
-        <Image
-          src="https://picsum.photos/1200/400?random=1"
-          alt="Hero Banner"
-          fill
-          priority
-          className="object-cover"
-        />
-        {/* Dark Overlay */}
-        <div className="absolute inset-0 bg-black/60"></div>
-      </motion.div>
+export default function Hero() {
+  const { heroStyle } = useSettings();
 
-      {/* Text Content */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-4">
-        <motion.h1
-          className="text-4xl md:text-5xl font-bold"
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 1, ease: "easeOut" }}
-        >
-          Welcome to Rasian Mart
-        </motion.h1>
-
-        <motion.p
-          className="mt-3 text-lg md:text-xl"
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
-        >
-          Shop smarter, faster, and easier with exclusive deals!
-        </motion.p>
-
-        <motion.div
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
-        >
-          <Link
-            href="/category/deals"
-            className="mt-6 bg-primary px-6 py-3 rounded-lg text-white text-lg font-semibold hover:bg-primary/90 hover:scale-105 transition-transform duration-300 inline-block"
-          >
-            Shop Now
-          </Link>
-        </motion.div>
-      </div>
-    </section>
-  );
+  switch (heroStyle) {
+    case 2:
+      return <HeroCarousel />;
+    case 3:
+      return <HeroThree />;
+    default:
+      return <HeroOne />;
+  }
 }

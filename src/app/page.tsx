@@ -7,8 +7,9 @@ import Link from "next/link";
 import ProductCardThree from "@/components/layout/ProductCard3";
 import ProductCarousel from "@/components/layout/ProductCarousel";
 import HeroSection from "@/components/layout/HeroSection";
-import HeroCarousel from "@/components/layout/HeroCarousel";
+import HeroCarousel from "@/components/layout/HeroSection/HeroCarousel";
 import { demoProducts } from "@/components/dummyData/demoProducts";
+import Hero from "@/components/layout/HeroSection";
 
 export default function HomePage() {
   const [visibleProducts, setVisibleProducts] = useState(10);
@@ -28,8 +29,8 @@ export default function HomePage() {
   return (
     <div className="space-y-10">
       {/* 🎯 Hero Banner */}
-      {/* <HeroSection /> */}
-      <HeroCarousel />
+      <Hero />
+      {/* <HeroCarousel /> */}
 
       {/* 🏷️ Categories */}
       <section>
