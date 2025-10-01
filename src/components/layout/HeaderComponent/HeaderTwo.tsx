@@ -172,9 +172,7 @@ export default function HeaderTwo() {
           <Link href="/category/fashion" className="hover:text-primary">
             Fashion
           </Link>
-          <Link href="/category/home" className="hover:text-primary">
-            Home & Living
-          </Link>
+
           <Link href="/category/beauty" className="hover:text-primary">
             Beauty
           </Link>
