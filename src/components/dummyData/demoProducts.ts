@@ -716,3 +716,30 @@ export const demoProducts: Product[] = [
     badge: "Safety",
   },
 ];
+export const reviews = [
+  {
+    id: 1,
+    customerName: "Sabbir Ahmed",
+    rating: 5,
+    title: "Excellent Quality!",
+    comment:
+      "Absolutely loved this product. The fabric feels premium and the color is exactly as shown in the picture.",
+    imageUrls: [
+      "https://picsum.photos/100/100?random=5001",
+      "https://picsum.photos/100/100?random=5002",
+    ],
+    helpful: 12,
+    createdAt: "2 days ago",
+  },
+  {
+    id: 2,
+    customerName: "Nusrat Jahan",
+    rating: 4,
+    title: "Worth the price",
+    comment:
+      "The product arrived on time and matches the description. Could be a bit softer, but overall great value.",
+    imageUrls: [],
+    helpful: 7,
+    createdAt: "5 days ago",
+  },
+];

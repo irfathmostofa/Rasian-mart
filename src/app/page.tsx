@@ -10,6 +10,7 @@ import HeroSection from "@/components/layout/HeroSection";
 import HeroCarousel from "@/components/layout/HeroSection/HeroCarousel";
 import { demoProducts } from "@/components/dummyData/demoProducts";
 import Hero from "@/components/layout/HeroSection";
+import ProductCardFour from "@/components/layout/ProductCard/ProductCardFour";
 
 export default function HomePage() {
   const [visibleProducts, setVisibleProducts] = useState(10);
@@ -72,9 +73,9 @@ export default function HomePage() {
 
       <section className="">
         <h2 className="text-3xl font-bold mb-4">🛍️ Best Deals</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
           {demoProducts.slice(0, visibleProducts).map((product) => (
-            <ProductCardThree
+            <ProductCardFour
               id={product.id}
               key={product.id}
               name={product.name}

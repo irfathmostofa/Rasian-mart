@@ -6,8 +6,10 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Heart, ShoppingCart, Star } from "lucide-react";
-import { demoProducts } from "@/components/dummyData/demoProducts";
+import { demoProducts, reviews } from "@/components/dummyData/demoProducts";
 import ProductCardThree from "@/components/layout/ProductCard3";
+import PreviewImage from "@/components/ui/PreviewImage";
+import ImageMagnifier from "@/components/ui/ImageMagnifier";
 
 export default function ProductDetailsPage() {
   const { id } = useParams();
@@ -18,11 +20,11 @@ export default function ProductDetailsPage() {
     ? {
         ...product,
         images: [
-          "https://picsum.photos/600/600?random=201",
-          "https://picsum.photos/600/600?random=202",
-          "https://picsum.photos/600/600?random=203",
-          "https://picsum.photos/600/600?random=204",
-          "https://picsum.photos/600/600?random=205",
+          "https://res.cloudinary.com/dxefvhcfy/image/upload/v1758792729/l6a5sbfnwfzlm91ej7f4.png",
+          "https://res.cloudinary.com/dxefvhcfy/image/upload/v1758694561/rumckudx3zfgdbzx8rwv.png",
+          "https://res.cloudinary.com/dxefvhcfy/image/upload/v1758690380/iejtviwvgzbk1k5nen5o.png",
+          "https://res.cloudinary.com/dxefvhcfy/image/upload/v1758690282/zs6ydqeawwgolfr1cuvk.png",
+          "https://res.cloudinary.com/dxefvhcfy/image/upload/v1758690519/xg89abvkozu7pjphsr9j.png",
         ],
       }
     : null;
@@ -65,12 +67,12 @@ export default function ProductDetailsPage() {
         <div className="space-y-4">
           {/* Main Image */}
           <div className="relative w-full h-96 rounded-xl overflow-hidden shadow-md">
-            <Image
+            <ImageMagnifier
               src={productWithImages.images[selectedImage]}
               alt={productWithImages.name}
-              fill
-              className="object-cover"
-              priority
+              magnifierHeight={200}
+              magnifierWidth={200}
+              zoomLevel={2.5}
             />
           </div>
 
@@ -258,6 +260,101 @@ export default function ProductDetailsPage() {
           <li>Easy 7 days returns and exchanges</li>
           <li>Free delivery on orders above ৳500</li>
         </ul>
+      </div>
+      {/* ================= Product Reviews ================= */}
+      <div className="mt-10">
+        <h2 className="text-xl font-bold mb-4">Customer Reviews</h2>
+
+        {/* ⭐ Overall Rating Summary */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+          <div className="flex items-center gap-2">
+            <div className="text-3xl font-bold text-primary">
+              {productWithImages.rating.toFixed(1)}
+            </div>
+            <div className="flex items-center text-yellow-500">
+              {Array.from({ length: 5 }, (_, i) => (
+                <Star
+                  key={i}
+                  className={`w-5 h-5 ${
+                    i < Math.floor(productWithImages.rating)
+                      ? "fill-current"
+                      : "stroke-current"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-gray-500 text-sm ml-1">
+              (based on 24 reviews)
+            </span>
+          </div>
+        </div>
+
+        {/* 💬 Reviews List */}
+        <div className="space-y-6 ">
+          {/* Example Review */}
+          {reviews.map((review) => (
+            <div
+              key={review.id}
+              className="border border-gray-100 rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="font-semibold text-gray-800">
+                    {review.customerName}
+                  </p>
+                  <div className="flex items-center text-yellow-500">
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${
+                          i < review.rating ? "fill-current" : "stroke-current"
+                        }`}
+                      />
+                    ))}
+                    <span className="text-xs text-gray-500 ml-1">
+                      {review.rating}/5
+                    </span>
+                  </div>
+                </div>
+                <span className="text-xs text-gray-400">
+                  {review.createdAt}
+                </span>
+              </div>
+
+              {/* Title + Comment */}
+              <h4 className="font-medium text-gray-900 mb-1">{review.title}</h4>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                {review.comment}
+              </p>
+
+              {/* Review Images */}
+              {review.imageUrls.length > 0 && (
+                <div className="flex gap-2 mt-3">
+                  {review.imageUrls.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="w-20 h-20 rounded-md overflow-hidden border"
+                    >
+                      <PreviewImage
+                        src={img}
+                        alt={`review-${review.id}-${idx}`}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Helpful Button */}
+              <div className="mt-3">
+                <button className="text-xs text-gray-500 hover:text-primary transition">
+                  👍 Helpful ({review.helpful})
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ================= Related Products ================= */}
