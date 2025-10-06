@@ -16,7 +16,7 @@ interface ProductCardProps {
   badge?: string;
   stock?: number;
   rating?: number;
-  type?: "card" | "contact"; // 🆕 new prop
+  type?: "card" | "contact";
 }
 
 export default function ProductCardFour({
@@ -146,10 +146,10 @@ export default function ProductCardFour({
                     quantity: 1,
                   })
                 }
-                className="p-2 rounded-full bg-gray-50 text-gray-800 hover:bg-primary hover:text-white shadow-sm transition  cursor-pointer"
+                className="p-2 rounded-full flex items-center gap-1 bg-gray-50 text-gray-800 hover:bg-primary hover:text-white shadow-sm transition  cursor-pointer text-[14px]"
                 aria-label="Add to cart"
               >
-                {/* <ShoppingCart className="w-5 h-4" /> */}
+                <ShoppingCart className="w-5 h-4" />
                 Add to Cart
               </button>
             </>

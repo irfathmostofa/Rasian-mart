@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { Loader } from "lucide-react";
-import ProductCardThree from "@/components/layout/ProductCard3";
 import { demoProducts } from "@/components/dummyData/demoProducts";
+import ProductCardFour from "@/components/layout/ProductCard/ProductCardFour";
 
 interface Product {
   id: number;
@@ -56,9 +56,9 @@ export default function CategoryPage() {
       ) : products.length === 0 ? (
         <p className="text-center text-gray-500">No products found 😔</p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
           {products.map((product) => (
-            <ProductCardThree
+            <ProductCardFour
               id={product.id}
               key={product.id}
               name={product.name}

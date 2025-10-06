@@ -1,13 +1,11 @@
-import type { Metadata } from "next";
+// app/layout.tsx (Server Component)
 import { Inter } from "next/font/google";
 import "@/app/globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
-import FloatingSettings from "@/components/layout/Settings";
+import SiteLayoutClient from "./SiteLayoutClient";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Rasian Mart | All You Need in One Place",
   description:
     "Shop groceries, electronics, fashion, and more with fast delivery from Rasian Mart.",
@@ -40,7 +38,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SiteLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -48,13 +46,8 @@ export default function SiteLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.className} bg-gray-50 text-gray-900`}>
-        <div className="flex min-h-screen flex-col">
-          <Header />
-
-          <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
-          <FloatingSettings />
-          <Footer />
-        </div>
+        {/* Wrap client component here */}
+        <SiteLayoutClient>{children}</SiteLayoutClient>
       </body>
     </html>
   );

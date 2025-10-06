@@ -1,15 +1,16 @@
-// components/headers/HeaderOne.tsx
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart, User, Search, X } from "lucide-react";
+import { ShoppingCart, User, Search, X, LogOut } from "lucide-react";
 import { useCart } from "@/app/store/useCart";
+import { useAppStore } from "@/app/store/useAppStore";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { demoProducts } from "@/components/dummyData/demoProducts";
 
 export default function HeaderOne() {
   const { cart } = useCart();
+  const { user, logout } = useAppStore();
   const router = useRouter();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -31,11 +32,20 @@ export default function HeaderOne() {
     );
   }, [query]);
 
+  const handleLogout = () => {
+    logout();
+    router.push("/account/login");
+    localStorage.removeItem("token");
+  };
+
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <div className="container mx-auto flex items-center justify-between px-4 py-3 relative">
         {/* Logo */}
-        <Link href="/" className="text-xl font-bold text-primary">
+        <Link
+          href="/"
+          className="text-xl font-bold text-primary hover:text-primary/80 transition"
+        >
           RasianMart
         </Link>
 
@@ -48,18 +58,19 @@ export default function HeaderOne() {
             onFocus={() => setFocused(true)}
             onBlur={() => setTimeout(() => setFocused(false), 200)}
             placeholder="Search products..."
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+            className="w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none transition"
           />
-          <button className="ml-2 bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary/90">
+          <button className="ml-2 bg-primary text-white px-3 py-2 rounded-lg hover:bg-primary/90 transition">
             <Search className="w-4 h-4" />
           </button>
+
           {focused && filteredProducts.length > 0 && (
             <div className="absolute top-12 left-0 w-full bg-white border rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
               {filteredProducts.map((product) => (
                 <div
                   key={product.id}
                   onClick={() => router.push(`/product/${product.id}`)}
-                  className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                  className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer transition"
                 >
                   <img
                     src={product.image}
@@ -78,11 +89,11 @@ export default function HeaderOne() {
           )}
         </div>
 
-        {/* Icons */}
+        {/* Right Icons */}
         <div className="flex items-center gap-4">
-          {/* Mobile search */}
+          {/* Mobile search toggle */}
           <button
-            className="md:hidden p-2 rounded hover:bg-gray-100"
+            className="md:hidden p-2 rounded hover:bg-gray-100 transition"
             onClick={() => setMobileSearch(!mobileSearch)}
           >
             {mobileSearch ? (
@@ -92,10 +103,38 @@ export default function HeaderOne() {
             )}
           </button>
 
-          {/* Account */}
-          <Link href="/account/login" className="hover:text-primary">
-            <User className="w-5 h-5" />
-          </Link>
+          {/* User Menu */}
+          {user ? (
+            <div className="relative group">
+              <button className="flex items-center gap-2 rounded hover:bg-gray-100 px-2 py-1 transition">
+                <User className="w-5 h-5 text-primary" />
+                <span className="hidden sm:inline font-medium text-sm">
+                  {user.full_name}
+                </span>
+              </button>
+              <div className="absolute right-0 top-full mt-2 w-40 bg-white border rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50">
+                <Link
+                  href="/profile"
+                  className="block px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <User className="w-4 h-4" /> Profile
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-sm"
+                >
+                  <LogOut className="w-4 h-4" /> Logout
+                </button>
+              </div>
+            </div>
+          ) : (
+            <Link
+              href="/account/login"
+              className="flex items-center gap-1 text-sm hover:text-primary transition"
+            >
+              <User className="w-5 h-5" /> Login
+            </Link>
+          )}
 
           {/* Cart */}
           <Link href="/cart" className="relative">
@@ -117,7 +156,7 @@ export default function HeaderOne() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search products..."
-            className="w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-primary"
+            className="w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none transition"
           />
         </div>
       )}
