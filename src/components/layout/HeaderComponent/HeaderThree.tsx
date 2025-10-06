@@ -1,9 +1,7 @@
-// components/headers/HeaderThree.tsx
-"use client";
-
-import Link from "next/link";
-import { ShoppingCart, User, Search } from "lucide-react";
 import { useCart } from "@/app/store/useCart";
+import { Search, ShoppingCart, User } from "lucide-react";
+import Link from "next/link";
+import CategoryNav from "./navigation/CategoryNav";
 
 export default function HeaderThree() {
   const { cart } = useCart();
@@ -11,8 +9,8 @@ export default function HeaderThree() {
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b">
-      {/* Top bar */}
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
+        {/* Logo */}
         <Link href="/" className="text-2xl font-bold text-primary">
           RasianMart
         </Link>
@@ -45,27 +43,8 @@ export default function HeaderThree() {
         </div>
       </div>
 
-      {/* Category Nav */}
-      <div className="bg-gray-50 border-t">
-        <div className="container mx-auto px-4 py-2 flex gap-6 text-sm font-medium">
-          <Link href="/category/groceries" className="hover:text-primary">
-            Groceries
-          </Link>
-          <Link href="/category/electronics" className="hover:text-primary">
-            Electronics
-          </Link>
-          <Link href="/category/fashion" className="hover:text-primary">
-            Fashion
-          </Link>
-        
-          <Link href="/category/beauty" className="hover:text-primary">
-            Beauty
-          </Link>
-          <Link href="/category/sports" className="hover:text-primary">
-            Sports
-          </Link>
-        </div>
-      </div>
+      {/* Category Navigation */}
+      <CategoryNav />
     </header>
   );
 }
