@@ -18,7 +18,7 @@ interface Props {
 }
 
 export default function CategoryNav({ mobile = false }: Props) {
-  const { categories, fetchCategories, hydrated } = useCategoryStore();
+  const { categories, fetchCategories, loading, hydrated } = useCategoryStore();
   if (mobile) {
     // Mobile: collapsible <details> menu
     return (
@@ -76,6 +76,8 @@ export default function CategoryNav({ mobile = false }: Props) {
     if (!hydrated) return; // wait until hydration
     fetchCategories();
   }, [hydrated, fetchCategories]);
+
+  if (loading) return <p>Loading categories...</p>;
 
   // Desktop: hover dropdown menu
   return (
