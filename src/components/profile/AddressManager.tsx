@@ -44,7 +44,7 @@ export default function AddressManager() {
     const fetchAddresses = async () => {
       try {
         const res = await api.get(`/customers/${user?.id}/addresses`);
-        setAddresses(res?.data || []);
+        setAddresses(res?.data.data || []);
       } catch (err) {
         console.error("Failed to fetch addresses:", err);
       } finally {

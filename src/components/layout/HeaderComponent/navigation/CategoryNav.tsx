@@ -5,38 +5,20 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton"; // ⚡ Radix Skeleton
+import { useCategoryStore } from "@/app/store/useCatrgoryStore";
 
 interface Props {
   mobile?: boolean;
 }
 
-interface Category {
-  id: number;
-  name: string;
-  slug: string;
-  parent_id?: number | null;
-  children?: Category[];
-}
-
 export default function CategoryNav({ mobile = false }: Props) {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { categories, fetchCategories, loading, hydrated } = useCategoryStore();
 
+  // Fetch categories only after hydration
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get("/product/get-product-cat");
-        setCategories(response.data.data || []);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    if (!hydrated) return;
     fetchCategories();
-  }, []);
+  }, [hydrated, fetchCategories]);
 
   // 🧱 Loading Skeleton
   if (loading) {
