@@ -35,13 +35,13 @@ export default function HeaderTwo() {
         <div className="container mx-auto flex justify-between items-center px-4 py-2">
           <span>📦 Free delivery on orders over $50</span>
           <nav className="hidden sm:flex gap-4">
-            <Link href="/help" className="hover:underline">
+            <Link href="/" className="hover:underline">
               Help
             </Link>
-            <Link href="/track-order" className="hover:underline">
+            <Link href="/" className="hover:underline">
               Track Order
             </Link>
-            <Link href="/offers" className="hover:underline">
+            <Link href="/" className="hover:underline">
               Offers
             </Link>
           </nav>
@@ -113,7 +113,7 @@ export default function HeaderTwo() {
           >
             <Search className="w-5 h-5" />
           </button>
-          <Link href="/wishlist" className="hover:text-primary relative">
+          <Link href="/" className="hover:text-primary relative">
             <Heart className="w-5 h-5" />
           </Link>
           <Link href="/account/login" className="hover:text-primary">

@@ -47,7 +47,7 @@ export default function HomePage() {
           ].map((cat, i) => (
             <Link
               key={cat.slug}
-              href={`/category/1/${cat.slug}`}
+              href={`/category/${i + 1}/${cat.slug}`}
               className="group relative block rounded-xl overflow-hidden shadow hover:shadow-lg transition"
             >
               <Image
