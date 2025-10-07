@@ -25,7 +25,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "app-storage",
-      storage: createJSONStorage(() => localStorage), // ✅ correct & type-safe
+      storage: createJSONStorage(() => localStorage), //  correct & type-safe
     }
   )
 );

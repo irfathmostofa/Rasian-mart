@@ -138,7 +138,7 @@ export default function SignUpPage() {
         alert(response.data?.message || "Failed to send OTP");
       }
     } catch (err: any) {
-      console.error("Signup error:", err);
+  
       alert(err.response?.data?.message || "Something went wrong");
     } finally {
       setIsSubmitting(false);

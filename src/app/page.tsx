@@ -29,7 +29,7 @@ export default function HomePage() {
 
   return (
     <div className="space-y-10">
-      {/* 🎯 Hero Banner */}
+      {/* Hero Banner */}
       <Hero />
       {/* <HeroCarousel /> */}
 
