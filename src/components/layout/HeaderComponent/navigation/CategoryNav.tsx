@@ -2,28 +2,68 @@
 
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useEffect } from "react";
-import { useCategoryStore } from "@/app/store/useCatrgoryStore";
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
+import { Skeleton } from "@/components/ui/skeleton"; // ⚡ Radix Skeleton
 
 interface Props {
   mobile?: boolean;
 }
 
-export default function CategoryNav({ mobile = false }: Props) {
-  const { categories, fetchCategories, loading, hydrated } = useCategoryStore();
-  console.log(categories);
-  // Fetch categories only after hydration
-  useEffect(() => {
-    if (!hydrated) return;
-    fetchCategories();
-  }, [hydrated, fetchCategories]);
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  parent_id?: number | null;
+  children?: Category[];
+}
 
-  if (!hydrated || loading) {
-    return <p className="p-4 text-center">Loading categories...</p>;
+export default function CategoryNav({ mobile = false }: Props) {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get("/product/get-product-cat");
+        setCategories(response.data.data || []);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // 🧱 Loading Skeleton
+  if (loading) {
+    return (
+      <nav className="bg-gray-50 border-t">
+        <div className="container mx-auto px-4 py-2 flex justify-between items-center">
+          <div className="hidden md:flex gap-6 text-sm font-medium relative">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-6 w-20 rounded-md" />
+            ))}
+          </div>
+
+          {/* Mobile skeleton */}
+          {mobile && (
+            <div className="space-y-2 w-full">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-8 w-full rounded-md" />
+              ))}
+            </div>
+          )}
+        </div>
+      </nav>
+    );
   }
 
   if (mobile) {
-    // Mobile: collapsible <details> menu
+    // 📱 Mobile: collapsible menu
     return (
       <div className="space-y-1">
         {categories?.map((cat) => (
@@ -38,9 +78,9 @@ export default function CategoryNav({ mobile = false }: Props) {
               ) : null}
             </summary>
 
-            {cat?.children?.length ? (
+            {cat.children?.length ? (
               <div className="pl-4 pb-2 space-y-1">
-                {cat?.children?.map((sub) => (
+                {cat.children.map((sub) => (
                   <details key={sub.id} className="group">
                     <summary className="flex justify-between items-center px-2 py-2 cursor-pointer hover:bg-gray-50 transition-colors">
                       {sub.name}
@@ -54,7 +94,7 @@ export default function CategoryNav({ mobile = false }: Props) {
 
                     {sub.children?.length ? (
                       <div className="pl-4 pb-2 space-y-1">
-                        {sub?.children?.map((child) => (
+                        {sub.children.map((child) => (
                           <Link
                             key={child.id}
                             href={`/category/${child.id}/${child.slug}`}
@@ -75,7 +115,7 @@ export default function CategoryNav({ mobile = false }: Props) {
     );
   }
 
-  // Desktop: hover dropdown menu
+  // 💻 Desktop: hover dropdown menu
   return (
     <nav className="bg-gray-50 border-t">
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">

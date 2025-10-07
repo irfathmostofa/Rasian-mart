@@ -37,8 +37,9 @@ function ProductCardCarousel({ product }: any) {
         <Image
           src={image}
           alt={name}
-          fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          height={400}
+          width={300}
+          className="object-cover w-full h-full transform transition-transform duration-500 group-hover:scale-105"
         />
         {/* Badge */}
         {badge && (
