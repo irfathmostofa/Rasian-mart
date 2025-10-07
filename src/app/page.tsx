@@ -34,37 +34,6 @@ export default function HomePage() {
       {/* <HeroCarousel /> */}
 
       {/* 🏷️ Categories */}
-      <section>
-        <h2 className="text-2xl font-bold mb-6">Shop by Category</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-          {[
-            { name: "Groceries", slug: "groceries" },
-            { name: "Electronics", slug: "electronics" },
-            { name: "Fashion", slug: "fashion" },
-            { name: "Home & Living", slug: "home" },
-            { name: "Beauty", slug: "beauty" },
-            { name: "Sports", slug: "sports" },
-          ].map((cat, i) => (
-            <Link
-              key={cat.slug}
-              href={`/category/${i + 1}/${cat.slug}`}
-              className="group relative block rounded-xl overflow-hidden shadow hover:shadow-lg transition"
-            >
-              <Image
-                src={`https://picsum.photos/400/300?random=${i + 2}`}
-                alt={cat.name}
-                width={400}
-                height={300}
-                className="h-32 w-full object-cover group-hover:scale-105 transition"
-                priority={i < 2} // Prioritize loading first 2 images
-              />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-lg font-semibold">
-                {cat.name}
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
 
       <section className="">
         <h2 className="text-3xl font-bold mb-2">🔥 Flash Sales</h2>
