@@ -9,13 +9,13 @@ export default function Footer() {
           <h3 className="text-white font-semibold mb-2">Shop</h3>
           <ul className="space-y-1 text-sm">
             <li>
-              <Link href="/category/groceries">Groceries</Link>
+              <Link href="/">Groceries</Link>
             </li>
             <li>
-              <Link href="/category/electronics">Electronics</Link>
+              <Link href="/">Electronics</Link>
             </li>
             <li>
-              <Link href="/category/fashion">Fashion</Link>
+              <Link href="/">Fashion</Link>
             </li>
           </ul>
         </div>
@@ -25,13 +25,13 @@ export default function Footer() {
           <h3 className="text-white font-semibold mb-2">Support</h3>
           <ul className="space-y-1 text-sm">
             <li>
-              <Link href="/contact">Contact Us</Link>
+              <Link href="/">Contact Us</Link>
             </li>
             <li>
-              <Link href="/faq">FAQs</Link>
+              <Link href="/">FAQs</Link>
             </li>
             <li>
-              <Link href="/returns">Returns</Link>
+              <Link href="/">Returns</Link>
             </li>
           </ul>
         </div>
@@ -41,13 +41,13 @@ export default function Footer() {
           <h3 className="text-white font-semibold mb-2">Company</h3>
           <ul className="space-y-1 text-sm">
             <li>
-              <Link href="/about">About Us</Link>
+              <Link href="/">About Us</Link>
             </li>
             <li>
-              <Link href="/careers">Careers</Link>
+              <Link href="/">Careers</Link>
             </li>
             <li>
-              <Link href="/privacy">Privacy Policy</Link>
+              <Link href="/">Privacy Policy</Link>
             </li>
           </ul>
         </div>
