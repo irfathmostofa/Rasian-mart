@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
-import { Skeleton } from "@/components/ui/skeleton"; // ⚡ Radix Skeleton
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCategoryStore } from "@/app/store/useCatrgoryStore";
 
 interface Props {
@@ -13,15 +12,20 @@ interface Props {
 
 export default function CategoryNav({ mobile = false }: Props) {
   const { categories, fetchCategories, loading, hydrated } = useCategoryStore();
+  const [mounted, setMounted] = useState(false); // 🧩 local mount check
 
-  // Fetch categories only after hydration
+  // Prevent SSR mismatch flicker
   useEffect(() => {
-    if (!hydrated) return;
-    fetchCategories();
+    setMounted(true);
+  }, []);
+
+  // Fetch categories after hydration
+  useEffect(() => {
+    if (hydrated) fetchCategories();
   }, [hydrated, fetchCategories]);
 
-  // 🧱 Loading Skeleton
-  if (loading) {
+  // Wait until client hydration
+  if (!mounted || !hydrated) {
     return (
       <nav className="bg-gray-50 border-t">
         <div className="container mx-auto px-4 py-2 flex justify-between items-center">
@@ -31,7 +35,6 @@ export default function CategoryNav({ mobile = false }: Props) {
             ))}
           </div>
 
-          {/* Mobile skeleton */}
           {mobile && (
             <div className="space-y-2 w-full">
               {[...Array(5)].map((_, i) => (
@@ -44,8 +47,8 @@ export default function CategoryNav({ mobile = false }: Props) {
     );
   }
 
+  // 📱 Mobile View
   if (mobile) {
-    // 📱 Mobile: collapsible menu
     return (
       <div className="space-y-1">
         {categories?.map((cat) => (
@@ -97,7 +100,7 @@ export default function CategoryNav({ mobile = false }: Props) {
     );
   }
 
-  // 💻 Desktop: hover dropdown menu
+  // 💻 Desktop View
   return (
     <nav className="bg-gray-50 border-t">
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">
@@ -106,7 +109,6 @@ export default function CategoryNav({ mobile = false }: Props) {
             <div key={cat.id} className="relative group">
               <span className="flex items-center gap-1 hover:text-primary cursor-pointer transition-colors">
                 <Link href={`/category/${cat.id}/${cat.slug}`}>{cat.name}</Link>
-
                 {cat.children?.length ? (
                   <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
                 ) : null}
@@ -122,23 +124,21 @@ export default function CategoryNav({ mobile = false }: Props) {
                       >
                         {sub.name}
                       </Link>
-
                       {sub.children?.length ? (
-                        <ChevronRight className="w-4 h-4 absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 group-hover/sub:text-primary" />
-                      ) : null}
-
-                      {sub.children?.length ? (
-                        <div className="absolute left-full top-0 bg-white shadow-lg border rounded-md min-w-[200px] hidden group-hover/sub:block">
-                          {sub.children.map((child) => (
-                            <Link
-                              key={child.id}
-                              href={`/category/${child.id}/${child.slug}`}
-                              className="block px-4 py-2 hover:bg-gray-100 transition-colors"
-                            >
-                              {child.name}
-                            </Link>
-                          ))}
-                        </div>
+                        <>
+                          <ChevronRight className="w-4 h-4 absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 group-hover/sub:text-primary" />
+                          <div className="absolute left-full top-0 bg-white shadow-lg border rounded-md min-w-[200px] hidden group-hover/sub:block">
+                            {sub.children.map((child) => (
+                              <Link
+                                key={child.id}
+                                href={`/category/${child.id}/${child.slug}`}
+                                className="block px-4 py-2 hover:bg-gray-100 transition-colors"
+                              >
+                                {child.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </>
                       ) : null}
                     </div>
                   ))}
