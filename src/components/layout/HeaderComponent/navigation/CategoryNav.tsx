@@ -11,7 +11,7 @@ interface Props {
 
 export default function CategoryNav({ mobile = false }: Props) {
   const { categories, fetchCategories, loading, hydrated } = useCategoryStore();
-
+  console.log(categories);
   // Fetch categories only after hydration
   useEffect(() => {
     if (!hydrated) return;

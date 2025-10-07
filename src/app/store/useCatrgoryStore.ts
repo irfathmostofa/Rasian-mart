@@ -36,7 +36,8 @@ export const useCategoryStore = create<CategoryState>()(
           const response = await api.get("/product/get-product-cat");
           set({ categories: response.data.data, loading: false });
         } catch (error) {
-          console.error("Error fetching categories:", error);
+          set({ loading: false });
+        } finally {
           set({ loading: false });
         }
       },
