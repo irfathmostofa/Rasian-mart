@@ -19,7 +19,7 @@ const heroSlides = [
     title: "Welcome to Rasian Mart",
     subtitle: "Shop smarter, faster, and easier with exclusive deals!",
     image: "https://picsum.photos/1200/500?random=11",
-    link: "/category/deals",
+    link: "/",
   },
   {
     id: 2,
@@ -27,14 +27,14 @@ const heroSlides = [
     subtitle:
       "From groceries to essentials – everything you need in one place.",
     image: "https://picsum.photos/1200/500?random=12",
-    link: "/category/fresh",
+    link: "/",
   },
   {
     id: 3,
     title: "Exclusive Discounts",
     subtitle: "Save big with our daily offers & seasonal sales.",
     image: "https://picsum.photos/1200/500?random=13",
-    link: "/category/discounts",
+    link: "/",
   },
 ];
 

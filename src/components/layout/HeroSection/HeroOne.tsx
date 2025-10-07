@@ -19,13 +19,13 @@ export default function HeroOne() {
           </p>
           <div className="mt-6 flex gap-4 justify-center md:justify-start">
             <Link
-              href="/category/groceries"
+              href="/"
               className="bg-yellow-400 text-black px-6 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition"
             >
               Shop Now
             </Link>
             <Link
-              href="/deals"
+              href="/"
               className="bg-white text-primary px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
             >
               View Deals

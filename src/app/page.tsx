@@ -103,7 +103,7 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4">
               <h3 className="text-2xl font-bold">50% Off Electronics</h3>
               <Link
-                href="/category/electronics"
+                href="/category/3/electronics"
                 className="mt-3 bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
                 Shop Now
@@ -122,7 +122,7 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4">
               <h3 className="text-2xl font-bold">Buy 1 Get 1 Free - Fashion</h3>
               <Link
-                href="/category/fashion"
+                href="/category/1/fashion"
                 className="mt-3 bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >
                 Grab Deal

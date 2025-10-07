@@ -16,7 +16,7 @@ export default function HeroTwo() {
           on limited-time offers!
         </p>
         <Link
-          href="/deals"
+          href="/"
           className="mt-6 inline-block bg-primary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary/90"
         >
           Explore Deals

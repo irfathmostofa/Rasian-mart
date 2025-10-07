@@ -17,21 +17,21 @@ const slides = [
     title: "Mega Electronics Sale",
     desc: "Up to 50% off on top brands!",
     image: "https://picsum.photos/1200/500?random=31",
-    link: "/category/electronics",
+    link: "/",
   },
   {
     id: 2,
     title: "Fresh Groceries Everyday",
     desc: "Delivered to your door in 24h",
     image: "https://picsum.photos/1200/500?random=32",
-    link: "/category/groceries",
+    link: "/",
   },
   {
     id: 3,
     title: "Style Up Your Wardrobe",
     desc: "Fashion trends at unbeatable prices",
     image: "https://picsum.photos/1200/500?random=33",
-    link: "/category/fashion",
+    link: "/",
   },
 ];
 
