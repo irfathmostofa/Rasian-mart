@@ -2,16 +2,8 @@
 
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import { useEffect } from "react";
 import { useCategoryStore } from "@/app/store/useCatrgoryStore";
-
-interface Category {
-  id: number;
-  name: string;
-  slug: string;
-  children?: Category[];
-}
 
 interface Props {
   mobile?: boolean;
@@ -19,11 +11,22 @@ interface Props {
 
 export default function CategoryNav({ mobile = false }: Props) {
   const { categories, fetchCategories, loading, hydrated } = useCategoryStore();
+
+  // Fetch categories only after hydration
+  useEffect(() => {
+    if (!hydrated) return;
+    fetchCategories();
+  }, [hydrated, fetchCategories]);
+
+  if (!hydrated || loading) {
+    return <p className="p-4 text-center">Loading categories...</p>;
+  }
+
   if (mobile) {
     // Mobile: collapsible <details> menu
     return (
       <div className="space-y-1">
-        {categories.map((cat) => (
+        {categories?.map((cat) => (
           <details key={cat.id} className="group border-b">
             <summary className="flex justify-between items-center px-2 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
               {cat.name}
@@ -35,9 +38,9 @@ export default function CategoryNav({ mobile = false }: Props) {
               ) : null}
             </summary>
 
-            {cat.children?.length ? (
+            {cat?.children?.length ? (
               <div className="pl-4 pb-2 space-y-1">
-                {cat.children.map((sub) => (
+                {cat?.children?.map((sub) => (
                   <details key={sub.id} className="group">
                     <summary className="flex justify-between items-center px-2 py-2 cursor-pointer hover:bg-gray-50 transition-colors">
                       {sub.name}
@@ -51,10 +54,10 @@ export default function CategoryNav({ mobile = false }: Props) {
 
                     {sub.children?.length ? (
                       <div className="pl-4 pb-2 space-y-1">
-                        {sub.children.map((child) => (
+                        {sub?.children?.map((child) => (
                           <Link
                             key={child.id}
-                            href={`/category/${child.slug}`}
+                            href={`/category/${child.id}/${child.slug}`}
                             className="block px-2 py-2 hover:bg-gray-100 transition-colors"
                           >
                             {child.name}
@@ -72,24 +75,15 @@ export default function CategoryNav({ mobile = false }: Props) {
     );
   }
 
-  useEffect(() => {
-    if (!hydrated) return; // wait until hydration
-    fetchCategories();
-  }, [hydrated, fetchCategories]);
-
-  if (loading) return <p>Loading categories...</p>;
-
   // Desktop: hover dropdown menu
   return (
     <nav className="bg-gray-50 border-t">
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">
         <div className="hidden md:flex gap-6 text-sm font-medium relative">
-          {categories.map((cat) => (
+          {categories?.map((cat) => (
             <div key={cat.id} className="relative group">
               <span className="flex items-center gap-1 hover:text-primary cursor-pointer transition-colors">
-                <Link href={`/category/${cat.id}/${cat.slug}`} className="">
-                  {cat.name}
-                </Link>
+                <Link href={`/category/${cat.id}/${cat.slug}`}>{cat.name}</Link>
 
                 {cat.children?.length ? (
                   <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
