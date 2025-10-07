@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import { log } from "console";
+import { useCategoryStore } from "@/app/store/useCatrgoryStore";
 
 interface Category {
   id: number;
@@ -18,7 +18,7 @@ interface Props {
 }
 
 export default function CategoryNav({ mobile = false }: Props) {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { categories, fetchCategories, hydrated } = useCategoryStore();
   if (mobile) {
     // Mobile: collapsible <details> menu
     return (
@@ -72,18 +72,10 @@ export default function CategoryNav({ mobile = false }: Props) {
     );
   }
 
-  const fetchCategories = async () => {
-    try {
-      const response = await api.get("/product/get-product-cat");
-
-      setCategories(response.data.data);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    }
-  };
   useEffect(() => {
+    if (!hydrated) return; // wait until hydration
     fetchCategories();
-  }, []);
+  }, [hydrated, fetchCategories]);
 
   // Desktop: hover dropdown menu
   return (

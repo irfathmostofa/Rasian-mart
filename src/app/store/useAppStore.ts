@@ -2,12 +2,14 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 interface AppState {
-  user: any | null;
+  user: Record<string, any> | null;
   cart: any[];
-  setUser: (user: any) => void;
+  setUser: (user: Record<string, any>) => void;
   addToCart: (item: any) => void;
   clearCart: () => void;
   logout: () => void;
+  hydrated: boolean;
+  setHydrated: (state: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -15,6 +17,7 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       user: null,
       cart: [],
+      hydrated: false, // fix: initial value
       setUser: (user) => set({ user }),
       addToCart: (item) =>
         set((state) => ({
@@ -22,10 +25,11 @@ export const useAppStore = create<AppState>()(
         })),
       clearCart: () => set({ cart: [] }),
       logout: () => set({ user: null, cart: [] }),
+      setHydrated: (state) => set({ hydrated: state }),
     }),
     {
       name: "app-storage",
-      storage: createJSONStorage(() => localStorage), //  correct & type-safe
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );
