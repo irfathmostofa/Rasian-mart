@@ -121,8 +121,7 @@ export default function ProductCardFour({
         </Link>
 
         {/* ⭐ Rating */}
-        {safeRating > 0 && (
-          <div className="flex items-center gap-1 text-yellow-500">
+        <div className="flex items-center gap-1 text-yellow-500">
             {Array.from({ length: 5 }, (_, i) => (
               <Star
                 key={i}
@@ -135,7 +134,6 @@ export default function ProductCardFour({
               ({safeRating.toFixed(1)})
             </span>
           </div>
-        )}
 
         {/* 💲 Price */}
         <div className="flex items-center gap-2">
