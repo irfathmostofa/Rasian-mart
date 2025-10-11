@@ -27,6 +27,7 @@ interface Product {
   categories: Array<{
     id: number;
     name: string;
+    slug?: string;
     code: string;
     image: string | null;
     is_primary: boolean;

@@ -11,6 +11,7 @@ interface ProductCardProps {
   categories?: {
     id: number;
     name: string;
+    slug?: string;
     code: string;
     image: string | null;
     is_primary: boolean;

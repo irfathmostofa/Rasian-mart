@@ -3,36 +3,40 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader } from "lucide-react";
-import { demoProducts } from "@/components/dummyData/demoProducts";
 import ProductCardFour from "@/components/layout/ProductCard/ProductCardFour";
-
-interface Product {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  oldPrice?: number;
-  discount?: number;
-  stock: number;
-  rating: number;
-  image: string;
-  badge?: string;
-}
+import { useProductStore } from "@/app/store/useProductStore";
 
 export default function CategoryPage() {
-  const { id, slug } = useParams(); // dynamic category
-  const [products, setProducts] = useState<Product[]>([]);
+  const { slug } = useParams(); // dynamic category slug
+  const {
+    products: allProducts,
+    loading: storeLoading,
+    fetchProducts,
+  } = useProductStore();
+  const [products, setProducts] = useState<typeof allProducts>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<string>("new");
 
-  const sortProducts = (products: Product[], sortBy: string) => {
+  // Filter by category
+  const filterByCategory = (products: typeof allProducts, slug: string) => {
+    return products.filter((p) =>
+      p.categories?.some((c) => c.name.toLowerCase() === slug.toLowerCase())
+    );
+  };
+
+  // Sort products
+  const sortProducts = (products: typeof allProducts, sortBy: string) => {
     const sorted = [...products];
     switch (sortBy) {
       case "price-asc":
-        sorted.sort((a, b) => a.price - b.price);
+        sorted.sort(
+          (a, b) => Number(a.selling_price) - Number(b.selling_price)
+        );
         break;
       case "price-desc":
-        sorted.sort((a, b) => b.price - a.price);
+        sorted.sort(
+          (a, b) => Number(b.selling_price) - Number(a.selling_price)
+        );
         break;
       case "new":
         sorted.sort((a, b) => b.id - a.id);
@@ -40,26 +44,24 @@ export default function CategoryPage() {
       case "old":
         sorted.sort((a, b) => a.id - b.id);
         break;
-      default:
-        break;
     }
     return sorted;
   };
 
   useEffect(() => {
-    setLoading(true);
+    const load = async () => {
+      setLoading(true);
+      if (allProducts.length === 0) await fetchProducts();
 
-    setTimeout(() => {
-      let filtered = demoProducts.filter(
-        (p) => p.category.toLowerCase() === String(slug).toLowerCase()
-      );
+      const filtered = filterByCategory(allProducts, String(slug));
+      const sorted = sortProducts(filtered, sortBy);
 
-      filtered = sortProducts(filtered, sortBy);
-
-      setProducts(filtered);
+      setProducts(sorted);
       setLoading(false);
-    }, 800);
-  }, [slug, sortBy]);
+    };
+
+    load();
+  }, [slug, sortBy, allProducts, fetchProducts]);
 
   return (
     <div className="container mx-auto px-1 py-1">
@@ -79,7 +81,7 @@ export default function CategoryPage() {
         </select>
       </div>
 
-      {loading ? (
+      {loading || storeLoading ? (
         <div className="flex justify-center items-center py-20">
           <Loader className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -89,16 +91,15 @@ export default function CategoryPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
           {products.map((product) => (
             <ProductCardFour
-              id={product.id}
               key={product.id}
+              id={product.id}
               name={product.name}
-              category={product.category}
-              price={product.price}
-              oldPrice={product.oldPrice}
-              discount={product.discount}
-              image={product.image}
+              categories={product.categories}
+              selling_price={product.selling_price}
+              cost_price={product.cost_price}
+              images={product.images}
               badge={product.badge}
-              stock={product.stock}
+              total_stock={product.total_stock}
               rating={product.rating}
             />
           ))}

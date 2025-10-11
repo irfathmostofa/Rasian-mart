@@ -28,7 +28,7 @@ export default function HomePage() {
   };
 
   const hasMoreProducts = visibleProducts < products.length;
-  console.log(products);
+
   return (
     <div className="space-y-10">
       {/* 🏠 Hero Section */}
