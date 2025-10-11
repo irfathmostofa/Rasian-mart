@@ -1,60 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-import ProductCardThree from "@/components/layout/ProductCard3";
 import ProductCarousel from "@/components/layout/ProductCarousel";
-import HeroSection from "@/components/layout/HeroSection";
-import HeroCarousel from "@/components/layout/HeroSection/HeroCarousel";
-import { demoProducts } from "@/components/dummyData/demoProducts";
 import Hero from "@/components/layout/HeroSection";
 import ProductCardFour from "@/components/layout/ProductCard/ProductCardFour";
+import { useProductStore } from "@/app/store/useProductStore";
 
 export default function HomePage() {
   const [visibleProducts, setVisibleProducts] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
+  const { products, loading, error, fetchProducts } = useProductStore();
+
+  // ✅ Fetch once on mount
+  useEffect(() => {
+    if (products.length === 0) fetchProducts();
+  }, [fetchProducts, products.length]);
 
   const loadMoreProducts = () => {
     setIsLoading(true);
-    // Simulate loading delay
     setTimeout(() => {
       setVisibleProducts((prev) => prev + 10);
       setIsLoading(false);
     }, 300);
   };
 
-  const hasMoreProducts = visibleProducts < demoProducts.length;
-
+  const hasMoreProducts = visibleProducts < products.length;
+  console.log(products);
   return (
     <div className="space-y-10">
-      {/* Hero Banner */}
+      {/* 🏠 Hero Section */}
       <Hero />
-      {/* <HeroCarousel /> */}
 
-      {/* 🏷️ Categories */}
-
-      <section className="">
+      {/* 🔥 Flash Sales */}
+      <section>
         <h2 className="text-3xl font-bold mb-2">🔥 Flash Sales</h2>
         <ProductCarousel />
       </section>
 
+      {/* 🛍️ Product Grid */}
       <section className="">
         <h2 className="text-3xl font-bold mb-4">🛍️ Best Deals</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
-          {demoProducts.slice(0, visibleProducts).map((product) => (
+          {products.slice(0, visibleProducts).map((product) => (
             <ProductCardFour
-              id={product.id}
               key={product.id}
+              id={product.id}
               name={product.name}
-              category={product.category}
-              price={product.price}
-              oldPrice={product.oldPrice}
-              discount={product.discount}
-              image={`https://picsum.photos/400/400?random=${product.id + 10}`}
+              categories={product.categories}
+              selling_price={product.selling_price}
+              cost_price={product.cost_price}
+              images={product.images}
               badge={product.badge}
-              stock={product.stock}
+              total_stock={product.total_stock}
               rating={product.rating}
             />
           ))}
@@ -77,12 +77,6 @@ export default function HomePage() {
                 "Load More"
               )}
             </button>
-          </div>
-        )}
-
-        {!hasMoreProducts && demoProducts.length > 0 && (
-          <div className="text-center mt-6 text-gray-500">
-            All products loaded
           </div>
         )}
       </section>
