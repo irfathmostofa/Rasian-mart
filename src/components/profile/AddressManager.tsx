@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, MapPin, Home, Loader2 } from "lucide-react";
 import api from "@/lib/api";
-import { useAppStore } from "@/app/store/useAppStore";
+import { useUserStore } from "@/app/store/useUserStore";
 
 interface Address {
   id?: number;
@@ -34,25 +34,29 @@ export default function AddressManager() {
     city: "",
     area: "",
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
-  const { user } = useAppStore();
-
+  const { user } = useUserStore();
+  const fetchAddresses = async () => {
+    if (!user?.id) {
+      setAddresses([]);
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await api.get(`/users/get-customer-address/${user.id}`);
+      setAddresses(res?.data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch addresses:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
   // 🔹 Fetch Addresses
   useEffect(() => {
-    const fetchAddresses = async () => {
-      try {
-        const res = await api.get(`/customers/${user?.id}/addresses`);
-        setAddresses(res?.data.data || []);
-      } catch (err) {
-        console.error("Failed to fetch addresses:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (user?.id) fetchAddresses();
-  }, [user?.id]);
+    fetchAddresses();
+  }, [user]);
 
   // 🔹 Add New Address
   const handleAddAddress = async () => {

@@ -5,13 +5,14 @@ import { useAppStore } from "@/app/store/useAppStore";
 import { useRouter } from "next/navigation";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
+import { useUserStore } from "@/app/store/useUserStore";
 
 export default function ProfileSidebar() {
   const router = useRouter();
-  const { user, logout } = useAppStore();
+  const { user, clearSession } = useUserStore();
 
   const handleLogout = () => {
-    logout();
+    clearSession();
     router.push("/account/login");
   };
 

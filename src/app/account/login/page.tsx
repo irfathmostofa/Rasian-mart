@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { useUserStore } from "@/app/store/useUserStore";
 
 interface FormData {
   email: string;
@@ -69,25 +70,25 @@ export default function LoginPage() {
     setErrors((prev) => ({ ...prev, [name]: "", general: "" }));
   };
 
+  const { setToken, fetchUser } = useUserStore();
+
   const handleLogin = async () => {
     if (!validateForm()) return;
     setIsSubmitting(true);
     setErrors({});
 
     try {
-      // ✅ API call to your Fastify backend
       const response = await api.post("/auth/login-customer", formData);
 
       if (response.data?.token) {
         const { token } = response.data;
-        // Save JWT token
-        localStorage.setItem("token", token);
 
-        // Remember email if checked
+        setToken(token); // saves token & keeps store updated
+        await fetchUser(); // fetch profile after login
+
         if (rememberMe) localStorage.setItem("rememberedEmail", formData.email);
         else localStorage.removeItem("rememberedEmail");
 
-        // Redirect
         router.push("/profile");
       } else {
         setErrors({ general: "Invalid response from server." });

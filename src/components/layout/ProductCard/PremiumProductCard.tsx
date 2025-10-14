@@ -6,6 +6,7 @@ import { formatPrice, getCategoryName, getImageUrl } from "@/components/helper";
 import Link from "next/link";
 import { useCart } from "@/app/store/useCart";
 import { useState } from "react";
+import { useWishlist } from "@/app/store/useWishlist";
 
 export function PremiumProductCard({
   id,
@@ -19,7 +20,8 @@ export function PremiumProductCard({
   images,
   type = "card",
 }: ProductCardProps) {
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const { toggleWishlist, isInWishlist } = useWishlist();
+  const isWishlisted = isInWishlist(id);
   const imageUrl = getImageUrl(images);
   const categoryName = getCategoryName(categories);
   const price = formatPrice(selling_price);
@@ -62,12 +64,21 @@ export function PremiumProductCard({
         {/* Hover buttons */}
         <div className="absolute top-2 right-2 flex gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <button
-            onClick={() => setIsWishlisted(!isWishlisted)}
-            className="p-1 sm:p-2 bg-white rounded-full shadow hover:bg-red-500 hover:text-white transition"
+            onClick={() =>
+              toggleWishlist({
+                id: id,
+                name: name,
+                price: Number(selling_price || 0),
+                image: imageUrl,
+              })
+            }
+            className={`p-1 sm:p-2 ${
+              isWishlisted ? "bg-red-500 text-white" : "bg-white text-red-500 "
+            }  rounded-full shadow  hover:text-white transition`}
           >
             <Heart
               className={`w-3 h-3 sm:w-4 sm:h-4 ${
-                isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"
+                isWishlisted ? "fill-red-500 text-white" : " text-red-500"
               }`}
             />
           </button>
@@ -118,7 +129,7 @@ export function PremiumProductCard({
 
         {/* Price */}
         <div className="flex items-center gap-2 mb-3">
-          <p className="text-lg sm:text-xl font-bold text-blue-600">
+          <p className="text-lg sm:text-xl font-bold text-gray-800">
             ৳ {price}
           </p>
           {oldPrice && (

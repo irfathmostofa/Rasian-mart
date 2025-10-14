@@ -19,8 +19,8 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
   const { products, loading, error, fetchProducts } = useProductStore();
   const { Template, fetchTemplate } = useTemplateStore();
-  console.log(products);
-  // ✅ Fetch once on mount
+
+  //  Fetch once on mount
   useEffect(() => {
     if (products.length === 0) fetchProducts();
     fetchTemplate();
@@ -38,7 +38,7 @@ export default function HomePage() {
 
   return (
     <div className="space-y-10">
-      {/* 🏠 Hero Section */}
+      {/*  Hero Section */}
       <Hero />
 
       {/* 🔥 Flash Sales */}
@@ -47,7 +47,7 @@ export default function HomePage() {
         <ProductCarousel />
       </section>
 
-      {/* 🛍️ Product Grid */}
+      {/* Product Grid */}
       <section className="">
         <h2 className="text-3xl font-bold mb-4">🛍️ Best Deals</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
@@ -88,7 +88,7 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* 🔥 Deals of the Day */}
+      {/* Deals of the Day */}
       <section>
         <h2 className="text-2xl font-bold mb-6">🔥 Deals of the Day</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

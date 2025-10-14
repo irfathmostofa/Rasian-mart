@@ -8,9 +8,14 @@ import { useRouter } from "next/navigation";
 import { demoProducts } from "@/components/dummyData/demoProducts";
 import CategoryNav from "./navigation/CategoryNav";
 import { motion, AnimatePresence } from "framer-motion";
+import LiveNewsTicker from "./LiveNewsTicker";
+
+import { useUserStore } from "@/app/store/useUserStore";
 
 export default function HeaderTwo() {
   const { cart } = useCart();
+  const { user } = useUserStore();
+
   const router = useRouter();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -31,19 +36,24 @@ export default function HeaderTwo() {
   return (
     <header className="sticky top-0 z-50 bg-white shadow">
       {/* Topbar */}
-      <div className="bg-primary text-white text-xs md:text-sm">
+      <div className="bg-primary text-white text-xs md:text-sm overflow-hidden">
         <div className="container mx-auto flex justify-between items-center px-4 py-2">
-          <span>📦 Free delivery on orders over $50</span>
-          <nav className="hidden sm:flex gap-4">
-            <Link href="/" className="hover:underline">
-              Help
-            </Link>
-            <Link href="/" className="hover:underline">
-              Track Order
-            </Link>
-            <Link href="/" className="hover:underline">
-              Offers
-            </Link>
+          {/* Bouncing News Carousel */}
+          <div>
+            <LiveNewsTicker />
+          </div>
+
+          {/* Right-side Links */}
+          <nav className="hidden sm:flex gap-4 whitespace-nowrap ml-4">
+            <Link href="/track-order">Track Order</Link>
+            {user ? (
+              <Link href="/profile">{user.full_name}</Link>
+            ) : (
+              <>
+                <Link href="/account/login">Login</Link>
+                <Link href="/account/signup">Signup</Link>
+              </>
+            )}
           </nav>
         </div>
       </div>
@@ -113,12 +123,12 @@ export default function HeaderTwo() {
           >
             <Search className="w-5 h-5" />
           </button>
-          <Link href="/" className="hover:text-primary relative">
+          <Link href="/wishlist" className="hover:text-primary relative">
             <Heart className="w-5 h-5" />
           </Link>
-          <Link href="/account/login" className="hover:text-primary">
+          {/* <Link href="/account/login" className="hover:text-primary">
             <User className="w-5 h-5" />
-          </Link>
+          </Link> */}
           <Link href="/cart" className="relative hover:text-primary">
             <ShoppingCart className="w-5 h-5" />
             {totalItems > 0 && (

@@ -56,7 +56,7 @@ export function BasicProductCard({
         <h3 className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 mb-2 truncate">
           {name}
         </h3>
-        <p className="text-lg sm:text-xl font-bold text-blue-600 mb-3">
+        <p className="text-lg sm:text-xl font-bold text-gray-800 mb-3">
           ৳ {price}
         </p>
         {type === "card" ? (
@@ -70,7 +70,7 @@ export function BasicProductCard({
                 quantity: 1,
               })
             }
-            className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-blue-700 transition"
+            className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800  transition"
           >
             Add to Cart
           </button>

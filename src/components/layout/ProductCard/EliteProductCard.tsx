@@ -112,7 +112,7 @@ export function EliteProductCard({
       <div className="p-3 sm:p-4">
         <p className="text-xs sm:text-sm text-gray-500 mb-1">{categoryName}</p>
         <Link href={`/product/${id}`}>
-          <h3 className="truncate text-sm trancet sm:text-base font-bold text-gray-900 line-clamp-2 mb-2 hover:text-blue-600 transition">
+          <h3 className="truncate text-sm trancet sm:text-base font-bold text-gray-900 line-clamp-2 mb-2 hover:text-gray-800 transition">
             {name}
           </h3>
         </Link>
@@ -142,7 +142,7 @@ export function EliteProductCard({
         {/* Price */}
         <div className="bg-gray-50 rounded-lg p-2.5 mb-3">
           <div className="flex items-baseline gap-2 mb-1">
-            <p className="text-lg sm:text-xl font-bold text-blue-600">
+            <p className="text-lg sm:text-xl font-bold text-gray-800">
               ৳ {price}
             </p>
             {oldPrice && (

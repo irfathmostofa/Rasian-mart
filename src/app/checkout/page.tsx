@@ -148,11 +148,15 @@ export default function CheckoutPage() {
           {cart.map((item) => (
             <div key={item.id} className="flex items-center gap-3">
               <Image
-                src={item.image}
-                alt={item.name}
+                src={item.image || "https://placehold.co/400"}
+                alt={item.name || "Product image"}
                 width={60}
                 height={60}
-                className="rounded-lg"
+                className="rounded-lg object-content"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "https://placehold.co/400";
+                }}
               />
               <div className="flex-1">
                 <h3 className="font-medium">{item.name}</h3>

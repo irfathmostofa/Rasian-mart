@@ -122,18 +122,18 @@ export default function ProductCardFour({
 
         {/* ⭐ Rating */}
         <div className="flex items-center gap-1 text-yellow-500">
-            {Array.from({ length: 5 }, (_, i) => (
-              <Star
-                key={i}
-                className={`w-3 h-3 sm:w-4 sm:h-4 ${
-                  i < Math.floor(safeRating) ? "fill-current" : "stroke-current"
-                }`}
-              />
-            ))}
-            <span className="text-[10px] sm:text-xs text-gray-500 ml-1">
-              ({safeRating.toFixed(1)})
-            </span>
-          </div>
+          {Array.from({ length: 5 }, (_, i) => (
+            <Star
+              key={i}
+              className={`w-3 h-3 sm:w-4 sm:h-4 ${
+                i < Math.floor(safeRating) ? "fill-current" : "stroke-current"
+              }`}
+            />
+          ))}
+          <span className="text-[10px] sm:text-xs text-gray-500 ml-1">
+            ({safeRating.toFixed(1)})
+          </span>
+        </div>
 
         {/* 💲 Price */}
         <div className="flex items-center gap-2">

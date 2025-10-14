@@ -102,7 +102,7 @@ export function MediumProductCard({
 
         {/* Price */}
         <div className="flex items-center gap-2 mb-3">
-          <p className="text-lg sm:text-xl font-bold text-blue-600">
+          <p className="text-lg sm:text-xl font-bold text-gray-800">
             ৳ {price}
           </p>
           {oldPrice && (

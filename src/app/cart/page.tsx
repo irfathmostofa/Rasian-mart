@@ -33,12 +33,17 @@ export default function CartPage() {
             className="flex items-center gap-4 bg-white p-4 rounded-lg shadow"
           >
             <Image
-              src={item.image}
-              alt={item.name}
+              src={item.image || "https://placehold.co/400"}
+              alt={item.name || "Product image"}
               width={80}
               height={80}
-              className="rounded-lg"
+              className="rounded-lg object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = "https://placehold.co/400";
+              }}
             />
+
             <div className="flex-1  ">
               <h3 className="font-semibold">{item.name}</h3>
               <p className="text-sm text-gray-500">৳ {item.price.toFixed(2)}</p>

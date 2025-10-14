@@ -6,6 +6,7 @@ import { useAppStore } from "./useAppStore";
 import { useCategoryStore } from "./useCatrgoryStore";
 import { useProductStore } from "./useProductStore";
 import { useTemplateStore } from "./useTamplate";
+import { useUserStore } from "./useUserStore";
 
 export const useHydrationReady = () => {
   const [hydrated, setHydrated] = useState(false);
