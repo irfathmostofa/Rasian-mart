@@ -14,22 +14,14 @@ interface ImageMagnifierProps {
 export default function ImageMagnifier({
   src,
   alt,
-  magnifierHeight = 150,
-  magnifierWidth = 150,
-  zoomLevel = 2.5,
+  magnifierHeight = 120,
+  magnifierWidth = 120,
+  zoomLevel = 2,
 }: ImageMagnifierProps) {
   const [showMagnifier, setShowMagnifier] = useState(false);
-  const [magnifierPosition, setMagnifierPosition] = useState({ x: 0, y: 0 });
-  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  const [magnifierPos, setMagnifierPos] = useState({ x: 0, y: 0 });
+  const [imgPos, setImgPos] = useState({ x: 0, y: 0 });
   const imgRef = useRef<HTMLDivElement>(null);
-
-  const handleMouseEnter = () => {
-    setShowMagnifier(true);
-  };
-
-  const handleMouseLeave = () => {
-    setShowMagnifier(false);
-  };
 
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     if (!imgRef.current) return;
@@ -37,55 +29,59 @@ export default function ImageMagnifier({
     const elem = imgRef.current;
     const { top, left, width, height } = elem.getBoundingClientRect();
 
-    // Calculate cursor position relative to the image
     const x = e.clientX - left;
     const y = e.clientY - top;
 
-    // Calculate magnifier position (centered on cursor)
-    const magnifierX = e.clientX - magnifierWidth / 2;
-    const magnifierY = e.clientY - magnifierHeight / 2;
+    // Keep magnifier within bounds
+    const offsetX = Math.max(
+      0,
+      Math.min(x - magnifierWidth / 2, width - magnifierWidth)
+    );
+    const offsetY = Math.max(
+      0,
+      Math.min(y - magnifierHeight / 2, height - magnifierHeight)
+    );
 
-    // Calculate the background position for the zoomed image
-    const bgPosX = (x / width) * 100;
-    const bgPosY = (y / height) * 100;
+    setMagnifierPos({ x: offsetX, y: offsetY });
 
-    setCursorPosition({ x: bgPosX, y: bgPosY });
-    setMagnifierPosition({ x: magnifierX, y: magnifierY });
+    // Calculate image position for zoom
+    const bgX = (x / width) * 100;
+    const bgY = (y / height) * 100;
+    setImgPos({ x: bgX, y: bgY });
   };
 
   return (
-    <>
-      <div
-        ref={imgRef}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onMouseMove={handleMouseMove}
-        className="relative w-full h-96 rounded-xl overflow-hidden shadow-md cursor-crosshair"
-      >
-        <Image src={src} alt={alt} fill className="object-cover" priority />
-      </div>
+    <div
+      ref={imgRef}
+      onMouseEnter={() => setShowMagnifier(true)}
+      onMouseLeave={() => setShowMagnifier(false)}
+      onMouseMove={handleMouseMove}
+      className="relative w-full h-96 bg-gray-100 rounded-lg overflow-hidden cursor-zoom-in"
+    >
+      <Image src={src} alt={alt} fill className="object-contain" priority />
 
       {/* Magnifier Lens */}
       {showMagnifier && (
         <div
           style={{
-            position: "fixed",
-            left: `${magnifierPosition.x}px`,
-            top: `${magnifierPosition.y}px`,
+            position: "absolute",
+            left: `${magnifierPos.x}px`,
+            top: `${magnifierPos.y}px`,
             width: `${magnifierWidth}px`,
             height: `${magnifierHeight}px`,
-            border: "3px solid #fff",
-            borderRadius: "50%",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+            border: "2px solid #999",
+            backgroundColor: "rgba(0, 0, 0, 0.1)",
+            borderRadius: "4px",
             pointerEvents: "none",
-            zIndex: 1000,
             backgroundImage: `url('${src}')`,
             backgroundRepeat: "no-repeat",
-            backgroundSize: `${zoomLevel * 200}%`,
-            backgroundPosition: `${cursorPosition.x}% ${cursorPosition.y}%`,
+            backgroundSize: `calc(100% * ${zoomLevel}) calc(100% * ${zoomLevel})`,
+            backgroundPosition: `calc(${imgPos.x}% - ${
+              magnifierWidth / 2
+            }px) calc(${imgPos.y}% - ${magnifierHeight / 2}px)`,
           }}
         />
       )}
-    </>
+    </div>
   );
 }

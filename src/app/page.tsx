@@ -8,15 +8,22 @@ import ProductCarousel from "@/components/layout/ProductCarousel";
 import Hero from "@/components/layout/HeroSection";
 import ProductCardFour from "@/components/layout/ProductCard/ProductCardFour";
 import { useProductStore } from "@/app/store/useProductStore";
+import { useTemplateStore } from "./store/useTamplate";
+import { BasicProductCard } from "@/components/layout/ProductCard/BasicProductCard";
+import { MediumProductCard } from "@/components/layout/ProductCard/MediumProductCard";
+import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
+import { EliteProductCard } from "@/components/layout/ProductCard/EliteProductCard";
 
 export default function HomePage() {
   const [visibleProducts, setVisibleProducts] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
   const { products, loading, error, fetchProducts } = useProductStore();
-
+  const { Template, fetchTemplate } = useTemplateStore();
+  console.log(products);
   // ✅ Fetch once on mount
   useEffect(() => {
     if (products.length === 0) fetchProducts();
+    fetchTemplate();
   }, [fetchProducts, products.length]);
 
   const loadMoreProducts = () => {
@@ -45,7 +52,7 @@ export default function HomePage() {
         <h2 className="text-3xl font-bold mb-4">🛍️ Best Deals</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
           {products.slice(0, visibleProducts).map((product) => (
-            <ProductCardFour
+            <PremiumProductCard
               key={product.id}
               id={product.id}
               name={product.name}
@@ -126,5 +133,6 @@ export default function HomePage() {
         </div>
       </section>
     </div>
+    // <TemplateRenderer />
   );
 }

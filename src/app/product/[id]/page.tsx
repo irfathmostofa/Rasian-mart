@@ -5,12 +5,12 @@ import { useCart } from "@/app/store/useCart";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Heart, ShoppingCart, Star } from "lucide-react";
-import ProductCardThree from "@/components/layout/ProductCard3";
+
 import PreviewImage from "@/components/ui/PreviewImage";
 import ImageMagnifier from "@/components/ui/ImageMagnifier";
 import api from "@/lib/api";
 import { useProductStore } from "@/app/store/useProductStore";
-import ProductCardFour from "@/components/layout/ProductCard/ProductCardFour";
+import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
 
 interface Review {
   id: number;
@@ -47,7 +47,7 @@ export default function ProductDetailsPage() {
   const [relatedProducts, setRelatedProducts] = useState<typeof allProducts>(
     []
   );
-  console.log(relatedProducts);
+  const [isWishlisted, setIsWishlisted] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
@@ -211,8 +211,16 @@ export default function ProductDetailsPage() {
             >
               <ShoppingCart className="w-5 h-5" /> Add to Cart
             </button>
-            <button className="border px-6 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2">
-              <Heart className="w-5 h-5" /> Add to Wishlist
+            <button
+              onClick={() => setIsWishlisted(!isWishlisted)}
+              className="border px-6 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2"
+            >
+              <Heart
+                className={`w-5 h-5 sm:w-4 sm:h-4 ${
+                  isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"
+                }`}
+              />{" "}
+              Add to Wishlist
             </button>
           </div>
         </div>
@@ -308,7 +316,7 @@ export default function ProductDetailsPage() {
           <h2 className="text-xl font-bold mb-6">Related Products</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4">
             {relatedProducts.map((product) => (
-              <ProductCardFour
+              <PremiumProductCard
                 key={product.id}
                 id={product.id}
                 name={product.name}
