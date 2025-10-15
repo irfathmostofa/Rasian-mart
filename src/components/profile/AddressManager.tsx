@@ -37,6 +37,7 @@ export default function AddressManager() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
+  const [update, setUpdate] = useState(0);
   const { user } = useUserStore();
   const fetchAddresses = async () => {
     if (!user?.id) {
@@ -56,18 +57,18 @@ export default function AddressManager() {
   // 🔹 Fetch Addresses
   useEffect(() => {
     fetchAddresses();
-  }, [user]);
+  }, [user, update]);
 
   // 🔹 Add New Address
   const handleAddAddress = async () => {
     if (!newAddress.label || !newAddress.address_line) return;
     setSaving(true);
     try {
-      const res = await api.post("/customer_address", {
+      await api.post("/users/create-customer-address", {
         ...newAddress,
         customer_id: user?.id,
       });
-      setAddresses((prev) => [...prev, res.data]);
+      setUpdate(update + 1);
       setNewAddress({
         label: "",
         address_line: "",
@@ -87,8 +88,10 @@ export default function AddressManager() {
   const handleDelete = async (id?: number) => {
     if (!id) return;
     try {
-      await api.delete(`/customer_address/${id}`);
-      setAddresses((prev) => prev.filter((a) => a.id !== id));
+      await api.post(`/users/delete-customer-address`, {
+        data: { id: id },
+      });
+      setUpdate(update + 1);
     } catch (err) {
       console.error("Failed to delete address:", err);
     }
@@ -198,9 +201,9 @@ export default function AddressManager() {
             </p>
           ) : (
             <div className="space-y-3">
-              {addresses.map((addr) => (
+              {addresses.map((addr, index) => (
                 <motion.div
-                  key={addr.id}
+                  key={index}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="flex justify-between items-start p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition"

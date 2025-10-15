@@ -1,5 +1,5 @@
 "use client";
-import { User, LogOut } from "lucide-react";
+import { User, LogOut, Camera } from "lucide-react";
 
 import { useAppStore } from "@/app/store/useAppStore";
 import { useRouter } from "next/navigation";
@@ -19,14 +19,14 @@ export default function ProfileSidebar() {
   return (
     <div className="flex flex-col gap-4 md:w-1/4">
       <Card className="p-4 flex flex-col items-center text-center">
-        <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-primary mb-3">
-          <img
-            src="https://picsum.photos/100"
-            alt="User Avatar"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute bottom-0 right-0 bg-primary rounded-full p-1 cursor-pointer">
-            <User className="w-4 h-4 text-white" />
+        <div className="relative group w-24 h-24 ">
+          <div className="w-full h-full rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold uppercase shadow-md transition-all duration-300 group-hover:scale-105">
+            {user?.full_name
+              ? user.full_name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+              : "?"}
           </div>
         </div>
         <h2 className="font-bold text-lg">{user?.full_name}</h2>
