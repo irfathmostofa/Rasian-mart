@@ -32,6 +32,7 @@ export interface Product {
   rating: number | null;
   review_count: number | null;
   total_sales: number;
+  primary_variant_id: number;
 }
 
 interface ProductStore {

@@ -94,10 +94,10 @@ export default function CheckoutPage() {
         discount: 0,
       })),
     };
-
+    
     try {
       setLoading(true);
-      const res = await api.post("/order/create-order ", orderData, {
+      const res = await api.post("/order/create-order", orderData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       console.log("Order created:", res);
