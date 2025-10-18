@@ -1,5 +1,6 @@
 export interface ProductCardProps {
   id: number;
+  primary_variant_id: number;
   name: string;
   categories?: {
     id: number;

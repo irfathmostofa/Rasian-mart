@@ -10,6 +10,7 @@ import { useWishlist } from "@/app/store/useWishlist";
 
 export function PremiumProductCard({
   id,
+  primary_variant_id,
   name,
   categories,
   selling_price,
@@ -86,6 +87,7 @@ export function PremiumProductCard({
             onClick={() =>
               addToCart({
                 id: id,
+                primary_variant_id: primary_variant_id,
                 name: name,
                 price: Number(selling_price) || 0,
                 image: imageUrl,
@@ -165,6 +167,7 @@ export function PremiumProductCard({
             onClick={() =>
               addToCart({
                 id: id,
+                primary_variant_id: primary_variant_id,
                 name: name,
                 price: Number(selling_price) || 0,
                 image: imageUrl,

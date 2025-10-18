@@ -54,7 +54,8 @@ export default function HomePage() {
           {products.slice(0, visibleProducts).map((product) => (
             <PremiumProductCard
               key={product.id}
-              id={product.primary_variant_id}
+              id={product.id}
+              primary_variant_id={product.primary_variant_id}
               name={product.name}
               categories={product.categories}
               selling_price={product.selling_price}

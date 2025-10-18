@@ -88,13 +88,13 @@ export default function CheckoutPage() {
       is_cod:
         paymentMethods.find((p) => p.id === selectedPayment)?.type === "COD",
       items: cart.map((item) => ({
-        product_variant_id: item.id,
+        product_variant_id: item.primary_variant_id,
         quantity: item.quantity,
         unit_price: item.price,
         discount: 0,
       })),
     };
-    
+
     try {
       setLoading(true);
       const res = await api.post("/order/create-order", orderData, {
