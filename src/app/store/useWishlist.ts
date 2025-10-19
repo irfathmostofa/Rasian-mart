@@ -5,9 +5,11 @@ import { persist } from "zustand/middleware";
 
 interface WishlistItem {
   id: number;
+  primary_variant_id: number;
   name: string;
   price: number;
   image: string;
+  stock: number;
 }
 
 interface WishlistState {

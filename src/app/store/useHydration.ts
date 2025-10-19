@@ -12,15 +12,15 @@ export const useHydrationReady = () => {
   const [hydrated, setHydrated] = useState(false);
 
   const settingsReady = useSettings((state) => state.hydrated);
-  const productReady = useProductStore((state) => state.hydrated);
+  // const productReady = useProductStore((state) => state.hydrated);
   const catReady = useCategoryStore((state) => state.hydrated);
   const templateReady = useTemplateStore((state) => state.hydrated);
 
   useEffect(() => {
-    if (settingsReady && catReady && productReady && templateReady) {
+    if (settingsReady && catReady && templateReady) {
       setHydrated(true);
     }
-  }, [settingsReady, catReady, productReady, templateReady]);
+  }, [settingsReady, catReady, templateReady]);
 
   return hydrated;
 };

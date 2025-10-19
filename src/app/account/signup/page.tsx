@@ -127,7 +127,7 @@ export default function SignUpPage() {
         email: formData.email,
         type: "signup",
       });
-  
+
       if (response.data?.success) {
         router.push(
           `/account/verify-otp?email=${encodeURIComponent(
@@ -138,7 +138,6 @@ export default function SignUpPage() {
         alert(response.data?.message || "Failed to send OTP");
       }
     } catch (err: any) {
-  
       alert(err.response?.data?.message || "Something went wrong");
     } finally {
       setIsSubmitting(false);

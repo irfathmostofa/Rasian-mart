@@ -2,7 +2,6 @@
 
 import api from "@/lib/api";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 export interface Product {
   id: number;
@@ -11,6 +10,7 @@ export interface Product {
   description: string;
   cost_price: number;
   selling_price: number;
+  regular_price: number;
   status: string;
   uom_name: string;
   categories: Array<{
@@ -39,56 +39,45 @@ interface ProductStore {
   products: Product[];
   loading: boolean;
   error: string | null;
-  hydrated: boolean; // ✅ hydration flag
+  hydrated: boolean;
   fetchProducts: (page?: number, limit?: number) => Promise<void>;
   clearProducts: () => void;
   setHydrated: (value: boolean) => void;
 }
 
-export const useProductStore = create<ProductStore>()(
-  persist(
-    (set) => ({
-      products: [],
-      loading: false,
-      error: null,
-      hydrated: false,
+export const useProductStore = create<ProductStore>((set) => ({
+  products: [],
+  loading: false,
+  error: null,
+  hydrated: false,
 
-      setHydrated: (value) => set({ hydrated: value }),
+  setHydrated: (value) => set({ hydrated: value }),
 
-      fetchProducts: async (page = 1, limit = 10) => {
-        try {
-          set({ loading: true, error: null });
+  fetchProducts: async (page = 1, limit = 10) => {
+    try {
+      set({ loading: true, error: null });
 
-          const response = await api.post("/product/get-all-products", {
-            data: { page, limit },
-            tokenType: "jwt",
-          });
+      const response = await api.post("/product/get-all-products", {
+        data: { page, limit },
+        tokenType: "jwt",
+      });
 
-          if (response?.data?.success && response?.data?.data) {
-            set({
-              products: response.data.data.data || [],
-              error: null,
-            });
-          } else {
-            set({ error: "Failed to fetch products" });
-          }
-        } catch (err) {
-          console.error("Error fetching products:", err);
-          set({ error: "Error loading products" });
-        } finally {
-          set({ loading: false });
-        }
-      },
-
-      clearProducts: () => set({ products: [] }),
-    }),
-    {
-      name: "product-store", // localStorage key
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.setHydrated(true);
-        }
-      },
+      if (response?.data?.success && response?.data?.data) {
+        set({
+          products: response.data.data.data || [],
+          error: null,
+          hydrated: true, // ✅ mark store as ready
+        });
+      } else {
+        set({ error: "Failed to fetch products", hydrated: true });
+      }
+    } catch (err) {
+      console.error("Error fetching products:", err);
+      set({ error: "Error loading products", hydrated: true });
+    } finally {
+      set({ loading: false });
     }
-  )
-);
+  },
+
+  clearProducts: () => set({ products: [] }),
+}));

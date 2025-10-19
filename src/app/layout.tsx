@@ -2,6 +2,7 @@
 import { Inter } from "next/font/google";
 import "@/app/globals.css";
 import SiteLayoutClient from "./SiteLayoutClient";
+import ToastContainer from "@/components/ui/ToastContainer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -47,7 +48,10 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className={`${inter.className} bg-gray-50 text-gray-900`}>
         {/* Wrap client component here */}
-        <SiteLayoutClient>{children}</SiteLayoutClient>
+        <SiteLayoutClient>
+          {children}
+          <ToastContainer />
+        </SiteLayoutClient>
       </body>
     </html>
   );

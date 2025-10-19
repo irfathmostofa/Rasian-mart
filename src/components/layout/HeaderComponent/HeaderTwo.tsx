@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingCart, User, Search, Heart, X, Menu } from "lucide-react";
+import { ShoppingCart, Search, Heart, X, Menu } from "lucide-react";
 import { useCart } from "@/app/store/useCart";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,6 @@ import { demoProducts } from "@/components/dummyData/demoProducts";
 import CategoryNav from "./navigation/CategoryNav";
 import { motion, AnimatePresence } from "framer-motion";
 import LiveNewsTicker from "./LiveNewsTicker";
-
 import { useUserStore } from "@/app/store/useUserStore";
 
 export default function HeaderTwo() {
@@ -35,15 +34,15 @@ export default function HeaderTwo() {
 
   return (
     <header className="sticky top-0 z-50 bg-white shadow">
-      {/* Topbar */}
+      {/* 🔹 Topbar */}
       <div className="bg-primary text-white text-xs md:text-sm overflow-hidden">
         <div className="container mx-auto flex justify-between items-center px-4 py-2">
-          {/* Bouncing News Carousel */}
+          {/* Live Ticker */}
           <div>
             <LiveNewsTicker />
           </div>
 
-          {/* Right-side Links */}
+          {/* Desktop Links */}
           <nav className="hidden sm:flex gap-4 whitespace-nowrap ml-4">
             <Link href="/track-order">Track Order</Link>
             {user ? (
@@ -58,9 +57,9 @@ export default function HeaderTwo() {
         </div>
       </div>
 
-      {/* Main Row */}
+      {/* 🔹 Main Header Row */}
       <div className="container mx-auto flex items-center justify-between px-4 py-4 relative">
-        {/* Mobile Hamburger */}
+        {/* Mobile Hamburger + Logo */}
         <div className="flex items-center gap-4">
           <button
             className="md:hidden p-2 rounded hover:bg-gray-100"
@@ -90,7 +89,7 @@ export default function HeaderTwo() {
             <Search className="w-4 h-4" />
           </button>
 
-          {/* Search Results */}
+          {/* Search Results Dropdown */}
           {focused && filteredProducts.length > 0 && (
             <div className="absolute top-12 left-0 w-full bg-white border rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
               {filteredProducts.map((product) => (
@@ -114,7 +113,7 @@ export default function HeaderTwo() {
           )}
         </div>
 
-        {/* Icons */}
+        {/* 🔹 Icons */}
         <div className="flex items-center gap-4">
           {/* Mobile Search Toggle */}
           <button
@@ -123,12 +122,13 @@ export default function HeaderTwo() {
           >
             <Search className="w-5 h-5" />
           </button>
+
+          {/* Wishlist */}
           <Link href="/wishlist" className="hover:text-primary relative">
             <Heart className="w-5 h-5" />
           </Link>
-          {/* <Link href="/account/login" className="hover:text-primary">
-            <User className="w-5 h-5" />
-          </Link> */}
+
+          {/* Cart */}
           <Link href="/cart" className="relative hover:text-primary">
             <ShoppingCart className="w-5 h-5" />
             {totalItems > 0 && (
@@ -140,7 +140,7 @@ export default function HeaderTwo() {
         </div>
       </div>
 
-      {/* Mobile Search Overlay */}
+      {/* 🔹 Mobile Search Overlay */}
       <AnimatePresence>
         {mobileSearch && (
           <motion.div
@@ -161,6 +161,7 @@ export default function HeaderTwo() {
                 className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
               />
             </div>
+
             {filteredProducts.length > 0 && (
               <div className="overflow-y-auto max-h-[60vh]">
                 {filteredProducts.map((product) => (
@@ -189,7 +190,7 @@ export default function HeaderTwo() {
         )}
       </AnimatePresence>
 
-      {/* Mobile Categories Sheet */}
+      {/* 🔹 Mobile Drawer Menu (with user/auth links + categories) */}
       <AnimatePresence>
         {mobileMenu && (
           <>
@@ -200,6 +201,7 @@ export default function HeaderTwo() {
               className="fixed inset-0 bg-black z-40"
               onClick={() => setMobileMenu(false)}
             />
+
             <motion.div
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
@@ -208,20 +210,64 @@ export default function HeaderTwo() {
               className="fixed top-0 right-0 w-80 max-w-full h-full bg-white z-50 shadow-lg overflow-y-auto"
             >
               <div className="flex justify-between items-center px-4 py-4 border-b">
-                <span className="text-lg font-semibold">Categories</span>
+                <span className="text-lg font-semibold">
+                  {user ? "Welcome" : "Menu"}
+                </span>
                 <button onClick={() => setMobileMenu(false)}>
                   <X className="w-6 h-6" />
                 </button>
               </div>
-              <div className="p-4">
-                <CategoryNav mobile />
+
+              <div className="p-4 space-y-6">
+                {/* User Links */}
+
+                {/* Categories */}
+                <div className="">
+                  <CategoryNav mobile />
+                </div>
+                <div className="flex flex-col gap-3">
+                  <Link
+                    href="/track-order"
+                    onClick={() => setMobileMenu(false)}
+                    className="text-gray-700 hover:text-primary"
+                  >
+                    Track Order
+                  </Link>
+
+                  {user ? (
+                    <Link
+                      href="/profile"
+                      onClick={() => setMobileMenu(false)}
+                      className="text-gray-700 hover:text-primary"
+                    >
+                      {user.full_name}
+                    </Link>
+                  ) : (
+                    <>
+                      <Link
+                        href="/account/login"
+                        onClick={() => setMobileMenu(false)}
+                        className="text-gray-700 hover:text-primary"
+                      >
+                        Login
+                      </Link>
+                      <Link
+                        href="/account/signup"
+                        onClick={() => setMobileMenu(false)}
+                        className="text-gray-700 hover:text-primary"
+                      >
+                        Signup
+                      </Link>
+                    </>
+                  )}
+                </div>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Desktop Categories */}
+      {/* 🔹 Desktop Category Navigation */}
       <div className="hidden md:block">
         <CategoryNav />
       </div>

@@ -96,6 +96,9 @@ export default function ProductCarousel() {
             >
               <BasicProductCard
                 id={product.id}
+                regular_price={product.regular_price}
+                primary_variant_id={product.primary_variant_id}
+                total_stock={product.total_stock}
                 name={product.name}
                 categories={product.categories}
                 selling_price={product.selling_price}

@@ -1,12 +1,13 @@
 "use client";
+
 import Image from "next/image";
 import { ShoppingCart, Heart, Star, ImageOff } from "lucide-react";
 import { ProductCardProps } from "@/types/ProductCard";
 import { formatPrice, getCategoryName, getImageUrl } from "@/components/helper";
 import Link from "next/link";
 import { useCart } from "@/app/store/useCart";
-import { useState } from "react";
 import { useWishlist } from "@/app/store/useWishlist";
+import { useToastStore } from "@/app/store/useToastStore";
 
 export function PremiumProductCard({
   id,
@@ -14,6 +15,7 @@ export function PremiumProductCard({
   name,
   categories,
   selling_price,
+  regular_price,
   cost_price,
   badge,
   total_stock,
@@ -31,11 +33,11 @@ export function PremiumProductCard({
   const safeStock =
     typeof total_stock === "string" ? parseInt(total_stock) : total_stock || 0;
   const { addToCart } = useCart();
+  const { showToast } = useToastStore();
 
   return (
     <div className="group flex flex-col justify-between rounded-2xl overflow-hidden bg-white shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100 w-full max-w-xs mx-auto">
       {/* Image */}
-
       <div className="relative w-full h-48 sm:h-56 md:h-64 overflow-hidden flex items-center justify-center bg-gray-50">
         <Link href={`/product/${id}`}>
           {imageUrl ? (
@@ -56,48 +58,54 @@ export function PremiumProductCard({
             </div>
           )}
         </Link>
+
         {badge && (
           <span className="absolute top-3 left-3 bg-black text-white text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-full shadow-md">
             {badge}
           </span>
         )}
-
-        {/* Hover buttons */}
         <div className="absolute top-2 right-2 flex gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          {/* Hover buttons (only if stock > 0) */}
           <button
-            onClick={() =>
+            onClick={() => {
               toggleWishlist({
-                id: id,
-                name: name,
-                price: Number(selling_price || 0),
-                image: imageUrl,
-              })
-            }
-            className={`p-1 sm:p-2 ${
-              isWishlisted ? "bg-red-500 text-white" : "bg-white text-red-500 "
-            }  rounded-full shadow  hover:text-white transition`}
-          >
-            <Heart
-              className={`w-3 h-3 sm:w-4 sm:h-4 ${
-                isWishlisted ? "fill-red-500 text-white" : " text-red-500"
-              }`}
-            />
-          </button>
-          <button
-            onClick={() =>
-              addToCart({
                 id: id,
                 primary_variant_id: primary_variant_id,
                 name: name,
-                price: Number(selling_price) || 0,
+                price: Number(selling_price || 0),
                 image: imageUrl,
-                quantity: 1,
-              })
-            }
-            className="p-1 sm:p-2 bg-white rounded-full shadow hover:bg-blue-500  transition"
+                stock: safeStock,
+              });
+              showToast("Added to wishlist ❤️", "success");
+            }}
+            className={`p-1 sm:p-2 ${
+              isWishlisted ? "bg-red-500 text-white" : "bg-white text-red-500"
+            } rounded-full shadow hover:text-white transition`}
           >
-            <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
+            <Heart
+              className={`w-3 h-3 sm:w-4 sm:h-4 ${
+                isWishlisted ? "fill-red-500 text-white" : "text-red-500"
+              }`}
+            />
           </button>
+          {safeStock > 0 && (
+            <button
+              onClick={() => {
+                addToCart({
+                  id: id,
+                  primary_variant_id: primary_variant_id,
+                  name: name,
+                  price: Number(selling_price) || 0,
+                  image: imageUrl,
+                  quantity: 1,
+                });
+                showToast("Added to cart 🛒", "success");
+              }}
+              className="p-1 sm:p-2 bg-white rounded-full shadow hover:bg-blue-500 transition"
+            >
+              <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -131,12 +139,12 @@ export function PremiumProductCard({
 
         {/* Price */}
         <div className="flex items-center gap-2 mb-3">
-          <p className="text-lg sm:text-xl font-bold text-gray-800">
+          <p className="text-xs sm:text-xl font-bold text-gray-800">
             ৳ {price}
           </p>
-          {oldPrice && (
+          {regular_price && (
             <p className="text-xs sm:text-sm text-gray-400 line-through">
-              ৳ {oldPrice}
+              ৳ {regular_price}
             </p>
           )}
         </div>
@@ -162,26 +170,38 @@ export function PremiumProductCard({
           </div>
         )}
 
-        {type === "card" ? (
-          <button
-            onClick={() =>
-              addToCart({
-                id: id,
-                primary_variant_id: primary_variant_id,
-                name: name,
-                price: Number(selling_price) || 0,
-                image: imageUrl,
-                quantity: 1,
-              })
-            }
-            className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition"
-          >
-            Add to Cart
-          </button>
+        {/* Action Buttons */}
+        {safeStock > 0 ? (
+          type === "card" ? (
+            <button
+              onClick={() => {
+                addToCart({
+                  id: id,
+                  primary_variant_id: primary_variant_id,
+                  name: name,
+                  price: Number(selling_price) || 0,
+                  image: imageUrl,
+                  quantity: 1,
+                });
+                showToast("Added to cart 🛒", "success");
+              }}
+              className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition"
+            >
+              Add to Cart
+            </button>
+          ) : (
+            <button className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition">
+              Contact Now
+            </button>
+          )
         ) : (
-          <button className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition">
-            Contact Now
-          </button>
+          // Only show "View Details" if out of stock
+          <Link
+            href={`/product/${id}`}
+            className="w-full block text-center bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition"
+          >
+            View Details
+          </Link>
         )}
       </div>
     </div>

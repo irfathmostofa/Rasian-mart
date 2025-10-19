@@ -5,11 +5,12 @@ import Link from "next/link";
 import { Trash2, ShoppingCart, ArrowLeft, ImageOff } from "lucide-react";
 import { useCart } from "@/app/store/useCart";
 import { useWishlist } from "../store/useWishlist";
+import { useToastStore } from "../store/useToastStore";
 
 export default function WishlistPage() {
   const { items, removeFromWishlist, clearWishlist } = useWishlist();
   const { addToCart } = useCart();
-
+  const { showToast } = useToastStore();
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -93,21 +94,31 @@ export default function WishlistPage() {
                 {item.name}
               </h3>
               <p className="text-primary font-bold text-xl">৳ {item.price}</p>
-
-              <button
-                onClick={() =>
-                  addToCart({
-                    id: item.id,
-                    name: item.name,
-                    price: item.price,
-                    image: item.image,
-                    quantity: 1,
-                  })
-                }
-                className="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90 flex items-center justify-center gap-2 mt-3"
-              >
-                <ShoppingCart className="w-4 h-4" /> Add to Cart
-              </button>
+              {item.stock > 0 ? (
+                <button
+                  onClick={() => {
+                    addToCart({
+                      id: item.id,
+                      primary_variant_id: item.primary_variant_id,
+                      name: item.name,
+                      price: Number(item.price) || 0,
+                      image: item.image,
+                      quantity: 1,
+                    });
+                    showToast("Added to cart 🛒", "success");
+                  }}
+                  className="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90 flex items-center justify-center gap-2 mt-3"
+                >
+                  <ShoppingCart className="w-4 h-4" /> Add to Cart
+                </button>
+              ) : (
+                <Link
+                  href={`/product/${item.id}`}
+                  className="w-full block text-center bg-gray-700 text-white py-2 rounded font-medium text-sm hover:bg-gray-600 transition"
+                >
+                  View Details
+                </Link>
+              )}
             </div>
           </div>
         ))}

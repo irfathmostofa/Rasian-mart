@@ -5,20 +5,26 @@ import { ProductCardProps } from "@/types/ProductCard";
 import { formatPrice, getCategoryName, getImageUrl } from "@/components/helper";
 import { useCart } from "@/app/store/useCart";
 import Link from "next/link";
+import { useToastStore } from "@/app/store/useToastStore";
 export function BasicProductCard({
   id,
   name,
   categories,
   selling_price,
+  regular_price,
   badge,
+  primary_variant_id,
+  total_stock,
   images,
   type = "card",
 }: ProductCardProps) {
   const imageUrl = getImageUrl(images);
   const categoryName = getCategoryName(categories);
   const price = formatPrice(selling_price);
+  const safeStock =
+    typeof total_stock === "string" ? parseInt(total_stock) : total_stock || 0;
   const { addToCart } = useCart();
-
+  const { showToast } = useToastStore();
   return (
     <div className="bg-white rounded-lg shadow hover:shadow-md transition-shadow overflow-hidden">
       {/* Image */}
@@ -59,25 +65,37 @@ export function BasicProductCard({
         <p className="text-lg sm:text-xl font-bold text-gray-800 mb-3">
           ৳ {price}
         </p>
-        {type === "card" ? (
-          <button
-            onClick={() =>
-              addToCart({
-                id,
-                name,
-                price: Number(selling_price),
-                image: imageUrl ?? "",
-                quantity: 1,
-              })
-            }
-            className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800  transition"
-          >
-            Add to Cart
-          </button>
+        {safeStock > 0 ? (
+          type === "card" ? (
+            <button
+              onClick={() => {
+                addToCart({
+                  id: id,
+                  primary_variant_id: primary_variant_id,
+                  name: name,
+                  price: Number(selling_price) || 0,
+                  image: imageUrl,
+                  quantity: 1,
+                });
+                showToast("Added to cart 🛒", "success");
+              }}
+              className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition"
+            >
+              Add to Cart
+            </button>
+          ) : (
+            <button className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition">
+              Contact Now
+            </button>
+          )
         ) : (
-          <button className="w-full bg-green-600 text-white py-2 rounded font-medium text-sm hover:bg-green-700 transition">
-            Contact Now
-          </button>
+          // Only show "View Details" if out of stock
+          <Link
+            href={`/product/${id}`}
+            className="w-full block text-center bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition"
+          >
+            View Details
+          </Link>
         )}
       </div>
     </div>

@@ -6,13 +6,9 @@ import Link from "next/link";
 
 import ProductCarousel from "@/components/layout/ProductCarousel";
 import Hero from "@/components/layout/HeroSection";
-import ProductCardFour from "@/components/layout/ProductCard/ProductCardFour";
 import { useProductStore } from "@/app/store/useProductStore";
 import { useTemplateStore } from "./store/useTamplate";
-import { BasicProductCard } from "@/components/layout/ProductCard/BasicProductCard";
-import { MediumProductCard } from "@/components/layout/ProductCard/MediumProductCard";
 import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
-import { EliteProductCard } from "@/components/layout/ProductCard/EliteProductCard";
 
 export default function HomePage() {
   const [visibleProducts, setVisibleProducts] = useState(10);
@@ -59,6 +55,7 @@ export default function HomePage() {
               name={product.name}
               categories={product.categories}
               selling_price={product.selling_price}
+              regular_price={product.regular_price}
               cost_price={product.cost_price}
               images={product.images}
               badge={product.badge}

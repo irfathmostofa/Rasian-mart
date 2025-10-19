@@ -11,6 +11,7 @@ export interface ProductCardProps {
     is_primary: boolean;
   }[];
   selling_price: string | number;
+  regular_price: string | number;
   cost_price?: string | number;
   badge?: string | null;
   total_stock?: string | number;
