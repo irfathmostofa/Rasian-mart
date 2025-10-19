@@ -115,7 +115,7 @@ export default function HeaderOne() {
               <div className="absolute right-0 top-full mt-2 w-40 bg-white border rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50">
                 <Link
                   href="/profile"
-                  className="block px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
+                  className=" px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2"
                 >
                   <User className="w-4 h-4" /> Profile
                 </Link>

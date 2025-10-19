@@ -5,15 +5,16 @@ import { ShoppingCart, Search, Heart, X, Menu } from "lucide-react";
 import { useCart } from "@/app/store/useCart";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { demoProducts } from "@/components/dummyData/demoProducts";
 import CategoryNav from "./navigation/CategoryNav";
 import { motion, AnimatePresence } from "framer-motion";
 import LiveNewsTicker from "./LiveNewsTicker";
 import { useUserStore } from "@/app/store/useUserStore";
+import { useProductStore } from "@/app/store/useProductStore";
 
 export default function HeaderTwo() {
   const { cart } = useCart();
   const { user } = useUserStore();
+  const { products } = useProductStore();
 
   const router = useRouter();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -25,10 +26,8 @@ export default function HeaderTwo() {
 
   const filteredProducts = useMemo(() => {
     if (query.length < 3) return [];
-    return demoProducts.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase())
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(query.toLowerCase())
     );
   }, [query]);
 
@@ -98,14 +97,11 @@ export default function HeaderTwo() {
                   onClick={() => router.push(`/product/${product.id}`)}
                   className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
                 >
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-10 h-10 rounded object-cover"
-                  />
                   <div>
                     <p className="text-sm font-medium">{product.name}</p>
-                    <p className="text-xs text-gray-500">৳ {product.price}</p>
+                    <p className="text-xs text-gray-500">
+                      ৳ {product.selling_price}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -173,14 +169,11 @@ export default function HeaderTwo() {
                     }}
                     className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
                   >
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="w-10 h-10 rounded object-cover"
-                    />
                     <div>
                       <p className="text-sm font-medium">{product.name}</p>
-                      <p className="text-xs text-gray-500">৳ {product.price}</p>
+                      <p className="text-xs text-gray-500">
+                        ৳ {product.selling_price}
+                      </p>
                     </div>
                   </div>
                 ))}

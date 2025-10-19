@@ -12,7 +12,7 @@ interface Props {
 
 export default function CategoryNav({ mobile = false }: Props) {
   const { categories, fetchCategories, loading, hydrated } = useCategoryStore();
-  const [mounted, setMounted] = useState(false); // 🧩 local mount check
+  const [mounted, setMounted] = useState(false);
 
   // Prevent SSR mismatch flicker
   useEffect(() => {
@@ -54,30 +54,37 @@ export default function CategoryNav({ mobile = false }: Props) {
         {categories?.map((cat) => (
           <details key={cat.id} className="group border-b">
             <summary className="flex justify-between items-center px-2 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
-              {cat.name}
-              {cat.children?.length ? (
+              <Link href={`/category/${cat.id}/${cat.slug}`} className="flex-1">
+                {cat.name}
+              </Link>
+              {cat.children && cat.children.length > 0 && (
                 <ChevronDown
                   className="transition-transform group-open:rotate-180"
                   size={16}
                 />
-              ) : null}
+              )}
             </summary>
 
-            {cat.children?.length ? (
+            {cat.children && cat.children.length > 0 && (
               <div className="pl-4 pb-2 space-y-1">
                 {cat.children.map((sub) => (
-                  <details key={sub.id} className="group">
+                  <details key={sub.id} className="group/sub-detail">
                     <summary className="flex justify-between items-center px-2 py-2 cursor-pointer hover:bg-gray-50 transition-colors">
-                      {sub.name}
-                      {sub.children?.length ? (
+                      <Link
+                        href={`/category/${sub.id}/${sub.slug}`}
+                        className="flex-1"
+                      >
+                        {sub.name}
+                      </Link>
+                      {sub.children && sub.children.length > 0 && (
                         <ChevronDown
-                          className="transition-transform group-open:rotate-180"
+                          className="transition-transform group-open/sub-detail:rotate-180"
                           size={14}
                         />
-                      ) : null}
+                      )}
                     </summary>
 
-                    {sub.children?.length ? (
+                    {sub.children && sub.children.length > 0 && (
                       <div className="pl-4 pb-2 space-y-1">
                         {sub.children.map((child) => (
                           <Link
@@ -89,11 +96,11 @@ export default function CategoryNav({ mobile = false }: Props) {
                           </Link>
                         ))}
                       </div>
-                    ) : null}
+                    )}
                   </details>
                 ))}
               </div>
-            ) : null}
+            )}
           </details>
         ))}
       </div>
@@ -109,12 +116,12 @@ export default function CategoryNav({ mobile = false }: Props) {
             <div key={cat.id} className="relative group">
               <span className="flex items-center gap-1 hover:text-primary cursor-pointer transition-colors">
                 <Link href={`/category/${cat.id}/${cat.slug}`}>{cat.name}</Link>
-                {cat.children?.length ? (
+                {cat.children && cat.children.length > 0 && (
                   <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
-                ) : null}
+                )}
               </span>
 
-              {cat.children?.length ? (
+              {cat.children && cat.children.length > 0 && (
                 <div className="absolute left-0 top-full bg-white shadow-lg border rounded-md mt-2 min-w-[200px] z-50 opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all duration-200">
                   {cat.children.map((sub) => (
                     <div key={sub.id} className="relative group/sub">
@@ -124,7 +131,7 @@ export default function CategoryNav({ mobile = false }: Props) {
                       >
                         {sub.name}
                       </Link>
-                      {sub.children?.length ? (
+                      {sub.children && sub.children.length > 0 && (
                         <>
                           <ChevronRight className="w-4 h-4 absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 group-hover/sub:text-primary" />
                           <div className="absolute left-full top-0 bg-white shadow-lg border rounded-md min-w-[200px] hidden group-hover/sub:block">
@@ -139,11 +146,11 @@ export default function CategoryNav({ mobile = false }: Props) {
                             ))}
                           </div>
                         </>
-                      ) : null}
+                      )}
                     </div>
                   ))}
                 </div>
-              ) : null}
+              )}
             </div>
           ))}
         </div>
