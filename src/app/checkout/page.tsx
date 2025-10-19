@@ -94,7 +94,7 @@ export default function CheckoutPage() {
         discount: 0,
       })),
     };
-
+ 
     try {
       setLoading(true);
       const res = await api.post("/order/create-order", orderData, {
