@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
-import ProductCard from "@/components/layout/ProductCard"; // or your ProductCard3 etc.
+
 import { useProductStore } from "@/app/store/useProductStore";
-import ProductCardFour from "../layout/ProductCard/ProductCardFour";
+import { PremiumProductCard } from "../layout/ProductCard/PremiumProductCard";
 
 interface CategoryProductsSectionProps {
   config?: {
@@ -42,12 +42,14 @@ export default function CategoryProductsSection({
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
         {products.map((product) => (
-          <ProductCardFour
+          <PremiumProductCard
             key={product.id}
             id={product.id}
+            primary_variant_id={product.primary_variant_id}
             name={product.name}
             categories={product.categories}
             selling_price={product.selling_price}
+            regular_price={product.regular_price}
             cost_price={product.cost_price}
             images={product.images}
             badge={product.badge}

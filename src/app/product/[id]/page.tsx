@@ -28,6 +28,8 @@ interface Product {
   name: string;
   description: string;
   selling_price: string;
+  regular_price: string;
+  primary_variant_id: number;
   categories: { id: number; name: string }[];
   images: { url: string; is_primary: boolean }[];
   variants: any[];
@@ -201,6 +203,7 @@ export default function ProductDetailsPage() {
               onClick={() =>
                 addToCart({
                   id: product.id,
+                  primary_variant_id: product.primary_variant_id,
                   name: product.name,
                   price: parseFloat(product.selling_price),
                   image: mainImage,
@@ -319,9 +322,11 @@ export default function ProductDetailsPage() {
               <PremiumProductCard
                 key={product.id}
                 id={product.id}
+                primary_variant_id={product.primary_variant_id}
                 name={product.name}
                 categories={product.categories}
                 selling_price={product.selling_price}
+                regular_price={product.regular_price}
                 cost_price={product.cost_price}
                 images={product.images}
                 badge={product.badge}

@@ -8,6 +8,7 @@ import { useCart } from "@/app/store/useCart";
 
 export function MediumProductCard({
   id,
+  primary_variant_id,
   name,
   categories,
   selling_price,
@@ -60,6 +61,7 @@ export function MediumProductCard({
               onClick={() =>
                 addToCart({
                   id: id,
+                  primary_variant_id: primary_variant_id,
                   name: name,
                   price: Number(selling_price) || 0,
                   image: imageUrl,
@@ -113,7 +115,19 @@ export function MediumProductCard({
         </div>
 
         {type === "card" ? (
-          <button className="w-full bg-black text-white py-2 rounded font-medium text-sm transition">
+          <button
+            onClick={() =>
+              addToCart({
+                id: id,
+                primary_variant_id: primary_variant_id,
+                name: name,
+                price: Number(selling_price) || 0,
+                image: imageUrl,
+                quantity: 1,
+              })
+            }
+            className="w-full bg-black text-white py-2 rounded font-medium text-sm transition"
+          >
             Add to Cart
           </button>
         ) : (

@@ -9,6 +9,7 @@ import { formatPrice, getCategoryName, getImageUrl } from "@/components/helper";
 
 export function EliteProductCard({
   id,
+  primary_variant_id,
   name,
   categories,
   selling_price,
@@ -91,6 +92,7 @@ export function EliteProductCard({
               onClick={() =>
                 addToCart({
                   id: id,
+                  primary_variant_id: primary_variant_id,
                   name: name,
                   price: Number(selling_price) || 0,
                   image: imageUrl,
@@ -189,6 +191,7 @@ export function EliteProductCard({
             onClick={() =>
               addToCart({
                 id: id,
+                primary_variant_id: primary_variant_id,
                 name: name,
                 price: Number(selling_price) || 0,
                 image: imageUrl,

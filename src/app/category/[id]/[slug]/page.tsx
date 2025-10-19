@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader } from "lucide-react";
-import ProductCardFour from "@/components/layout/ProductCard/ProductCardFour";
 import { useProductStore } from "@/app/store/useProductStore";
+import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
 
 export default function CategoryPage() {
   const { slug } = useParams(); // dynamic category slug
@@ -90,12 +90,14 @@ export default function CategoryPage() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
           {products.map((product) => (
-            <ProductCardFour
+            <PremiumProductCard
               key={product.id}
               id={product.id}
+              primary_variant_id={product.primary_variant_id}
               name={product.name}
               categories={product.categories}
               selling_price={product.selling_price}
+              regular_price={product.regular_price}
               cost_price={product.cost_price}
               images={product.images}
               badge={product.badge}

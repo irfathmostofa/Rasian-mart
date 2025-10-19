@@ -1,9 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import axios from "axios";
-import Image from "next/image";
 import { useProductStore } from "@/app/store/useProductStore";
-import ProductCardFour from "../layout/ProductCard/ProductCardFour";
+import { PremiumProductCard } from "../layout/ProductCard/PremiumProductCard";
 
 export default function ProductSlider({ config }: { config: any }) {
   const { products, loading, error, fetchProducts } = useProductStore();
@@ -17,12 +15,14 @@ export default function ProductSlider({ config }: { config: any }) {
       <h2 className="text-3xl font-bold mb-4">🛍️ {config.title}</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
         {products.map((product) => (
-          <ProductCardFour
+          <PremiumProductCard
             key={product.id}
             id={product.id}
+            primary_variant_id={product.primary_variant_id}
             name={product.name}
             categories={product.categories}
             selling_price={product.selling_price}
+            regular_price={product.regular_price}
             cost_price={product.cost_price}
             images={product.images}
             badge={product.badge}
