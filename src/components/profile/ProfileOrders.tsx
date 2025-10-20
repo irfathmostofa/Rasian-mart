@@ -24,6 +24,7 @@ interface OrderItem {
 
 interface Order {
   id: number;
+  code: string;
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -162,7 +163,7 @@ export default function ProfileOrders() {
           {/* Header */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-3 border-b border-gray-100 pb-2">
             <div className="text-gray-700 font-medium flex gap-2">
-              Order #{order.id}{" "}
+              Order #{order.code}{" "}
               <span
                 className={`px-2 py-1 text-xs font-semibold rounded ${getStatusColor(
                   order.order_status
