@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ShoppingCart, Search, Heart, X, Menu } from "lucide-react";
 import { useCart } from "@/app/store/useCart";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CategoryNav from "./navigation/CategoryNav";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,7 +14,7 @@ import { useProductStore } from "@/app/store/useProductStore";
 export default function HeaderTwo() {
   const { cart } = useCart();
   const { user, clearSession } = useUserStore();
-  const { products } = useProductStore();
+  const { products, fetchProducts } = useProductStore();
 
   const router = useRouter();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -23,6 +23,9 @@ export default function HeaderTwo() {
   const [focused, setFocused] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const filteredProducts = useMemo(() => {
     if (query.length < 3) return [];
@@ -43,6 +46,7 @@ export default function HeaderTwo() {
 
           {/* Desktop Links */}
           <nav className="hidden sm:flex gap-4 whitespace-nowrap ml-4">
+            <Link href="/">Help</Link>
             <Link href="/track-order">Track Order</Link>
             {user ? (
               <Link href="/profile">{user.full_name}</Link>
@@ -69,7 +73,8 @@ export default function HeaderTwo() {
 
           {/* Logo */}
           <Link href="/" className="text-2xl font-bold text-primary">
-            RasianMart
+            {/* RasianMart */}
+            BizzHut
           </Link>
         </div>
 
@@ -89,22 +94,40 @@ export default function HeaderTwo() {
           </button>
 
           {/* Search Results Dropdown */}
-          {focused && filteredProducts.length > 0 && (
+          {focused && query.length >= 3 && (
             <div className="absolute top-12 left-0 w-full bg-white border rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
-              {filteredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  onClick={() => router.push(`/product/${product.id}`)}
-                  className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{product.name}</p>
-                    <p className="text-xs text-gray-500">
-                      ৳ {product.selling_price}
-                    </p>
-                  </div>
+              {filteredProducts.length === 0 ? (
+                <div className="flex items-center justify-center gap-3 p-4">
+                  <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <span className="text-sm text-gray-600">Searching...</span>
                 </div>
-              ))}
+              ) : (
+                filteredProducts.map((product) => {
+                  const imgSrc = product.images?.[0]?.url || "/placeholder.png";
+                  return (
+                    <div
+                      key={product.id}
+                      onMouseDown={(e) => e.preventDefault()} // prevent input blur before click
+                      onClick={() => {
+                        router.push(`/product/${product.id}`);
+                        setFocused(false);
+                      }}
+                      className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                    >
+                      <img
+                        src={imgSrc}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {product.name}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
         </div>
@@ -219,6 +242,13 @@ export default function HeaderTwo() {
                   <CategoryNav mobile />
                 </div>
                 <div className="flex flex-col gap-3">
+                  <Link
+                    href="/"
+                    onClick={() => setMobileMenu(false)}
+                    className="text-gray-700 hover:text-primary"
+                  >
+                    Help
+                  </Link>
                   <Link
                     href="/track-order"
                     onClick={() => setMobileMenu(false)}
