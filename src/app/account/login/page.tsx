@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { useUserStore } from "@/app/store/useUserStore";
+import { useLogedAuth } from "@/lib/logedUser";
 
 interface FormData {
   email: string;
@@ -23,8 +24,8 @@ interface FormErrors {
 }
 
 export default function LoginPage() {
+  useLogedAuth();
   const router = useRouter();
-
   const [greeting, setGreeting] = useState("Welcome");
   const [formData, setFormData] = useState<FormData>({
     email: "",

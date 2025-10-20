@@ -13,7 +13,7 @@ import { useProductStore } from "@/app/store/useProductStore";
 
 export default function HeaderTwo() {
   const { cart } = useCart();
-  const { user } = useUserStore();
+  const { user, clearSession } = useUserStore();
   const { products } = useProductStore();
 
   const router = useRouter();
@@ -228,13 +228,21 @@ export default function HeaderTwo() {
                   </Link>
 
                   {user ? (
-                    <Link
-                      href="/profile"
-                      onClick={() => setMobileMenu(false)}
-                      className="text-gray-700 hover:text-primary"
-                    >
-                      {user.full_name}
-                    </Link>
+                    <>
+                      <Link
+                        href="/profile"
+                        onClick={() => setMobileMenu(false)}
+                        className="text-gray-700 hover:text-primary"
+                      >
+                        {user.full_name}
+                      </Link>
+                      <p
+                        className="text-gray-700 hover:text-primary cursor-pointer"
+                        onClick={() => clearSession()}
+                      >
+                        Logout
+                      </p>
+                    </>
                   ) : (
                     <>
                       <Link

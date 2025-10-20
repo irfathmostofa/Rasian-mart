@@ -1,15 +1,52 @@
 "use client";
-import { User, LogOut, Camera } from "lucide-react";
-
-import { useAppStore } from "@/app/store/useAppStore";
+import { User, LogOut, Settings, Heart, Package, MapPin } from "lucide-react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { useUserStore } from "@/app/store/useUserStore";
 
-export default function ProfileSidebar() {
+type TabType = "profile" | "orders" | "wishlist" | "settings" | "addresses";
+
+interface Tab {
+  id: TabType;
+  label: string;
+  icon: React.ReactNode;
+}
+
+interface ProfileSidebarProps {
+  onTabChange?: (tab: TabType) => void;
+  activeTab?: TabType;
+}
+
+export default function ProfileSidebar({
+  activeTab = "profile",
+  onTabChange,
+}: ProfileSidebarProps) {
   const router = useRouter();
   const { user, clearSession } = useUserStore();
+  const [currentTab, setCurrentTab] = useState<TabType>(activeTab);
+
+  const tabs: Tab[] = [
+    { id: "profile", label: "Profile", icon: <User className="w-5 h-5" /> },
+    { id: "orders", label: "Orders", icon: <Package className="w-5 h-5" /> },
+    { id: "wishlist", label: "Wishlist", icon: <Heart className="w-5 h-5" /> },
+    {
+      id: "addresses",
+      label: "Addresses",
+      icon: <MapPin className="w-5 h-5" />,
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: <Settings className="w-5 h-5" />,
+    },
+  ];
+
+  const handleTabClick = (tab: TabType) => {
+    setCurrentTab(tab);
+    onTabChange?.(tab);
+  };
 
   const handleLogout = () => {
     clearSession();
@@ -18,28 +55,34 @@ export default function ProfileSidebar() {
 
   return (
     <div className="flex flex-col gap-4 md:w-1/4">
-      <Card className="p-4 flex flex-col items-center text-center">
-        <div className="relative group w-24 h-24 ">
-          <div className="w-full h-full rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-3xl font-bold uppercase shadow-md transition-all duration-300 group-hover:scale-105">
-            {user?.full_name
-              ? user.full_name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-              : "?"}
-          </div>
+      {/* Tabs Menu */}
+      <Card className="p-0 overflow-hidden rounded-xl shadow-sm border border-gray-100">
+        <div className="flex flex-col">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabClick(tab.id)}
+              className={`flex items-center gap-3 px-4 py-3 text-left transition-all duration-200 border-l-4 ${
+                currentTab === tab.id
+                  ? "bg-indigo-50 border-l-gray-500 text-gray-600 font-medium"
+                  : "bg-white border-l-transparent text-gray-700 hover:bg-gray-50 hover:text-gray-600"
+              }`}
+            >
+              {tab.icon}
+              <span className="text-sm">{tab.label}</span>
+            </button>
+          ))}
         </div>
-        <h2 className="font-bold text-lg">{user?.full_name}</h2>
-        <p className="text-sm text-gray-500">{user?.email}</p>
       </Card>
 
-      <Card className="p-4 flex flex-col gap-2">
+      {/* Logout Button */}
+      <Card className="p-4 flex flex-col rounded-xl shadow-sm border border-gray-100">
         <Button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2"
+          className="w-full flex items-center justify-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
           variant="outline"
         >
-          <LogOut className="w-4 h-4" /> Logout
+          <LogOut className="w-5 h-5" /> Logout
         </Button>
       </Card>
     </div>
