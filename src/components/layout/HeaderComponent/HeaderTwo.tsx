@@ -183,23 +183,30 @@ export default function HeaderTwo() {
 
             {filteredProducts.length > 0 && (
               <div className="overflow-y-auto max-h-[60vh]">
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product.id}
-                    onClick={() => {
-                      router.push(`/product/${product.id}`);
-                      setMobileSearch(false);
-                    }}
-                    className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{product.name}</p>
-                      <p className="text-xs text-gray-500">
-                        ৳ {product.selling_price}
-                      </p>
+                {filteredProducts.map((product) => {
+                  const imgSrc = product.images?.[0]?.url || "/placeholder.png";
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => {
+                        router.push(`/product/${product.id}`);
+                        setMobileSearch(false);
+                      }}
+                      className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                    >
+                      <img
+                        src={imgSrc}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {product.name}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </motion.div>

@@ -7,7 +7,7 @@ import { useProductStore } from "@/app/store/useProductStore";
 import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
 
 export default function CategoryPage() {
-  const { slug } = useParams(); // dynamic category slug
+  const { id, slug } = useParams(); // dynamic category slug
   const {
     products: allProducts,
     loading: storeLoading,
@@ -20,7 +20,7 @@ export default function CategoryPage() {
   // Filter by category
   const filterByCategory = (products: typeof allProducts, slug: string) => {
     return products.filter((p) =>
-      p.categories?.some((c) => c.name.toLowerCase() === slug.toLowerCase())
+      p.categories?.some((c) => c.slug === slug.toLowerCase())
     );
   };
 

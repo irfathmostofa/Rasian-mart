@@ -5,7 +5,6 @@ import { useCart } from "@/app/store/useCart";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Heart, ShoppingCart, Star } from "lucide-react";
-import PreviewImage from "@/components/ui/PreviewImage";
 import ImageMagnifier from "@/components/ui/ImageMagnifier";
 import api from "@/lib/api";
 import { useProductStore } from "@/app/store/useProductStore";
@@ -20,7 +19,7 @@ export default function ProductDetailsPage() {
 
   const [product, setProduct] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
-  const [selectedImage, setSelectedImage] = useState(0);
+  const [mainImage, setMainImage] = useState<string>("/no-image.png");
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<typeof allProducts>(
@@ -28,7 +27,7 @@ export default function ProductDetailsPage() {
   );
   const [loading, setLoading] = useState(true);
 
-  // 🟢 Fetch product
+  // Fetch product
   const fetchProduct = async () => {
     try {
       setLoading(true);
@@ -36,8 +35,21 @@ export default function ProductDetailsPage() {
       if (response.data.success) {
         const data = response.data.data;
         setProduct(data);
+
         if (data.variants && data.variants.length > 0) {
           setSelectedVariant(data.variants[0]);
+          const firstImage =
+            data.variants[0].images?.find((img: any) => img.is_primary)?.url ||
+            data.variants[0].images?.[0]?.url ||
+            "/no-image.png";
+          setMainImage(firstImage);
+        } else {
+          // If no variants, show product image
+          const productImage =
+            data.images?.find((img: any) => img.is_primary)?.url ||
+            data.images?.[0]?.url ||
+            "/no-image.png";
+          setMainImage(productImage);
         }
       }
     } catch (err) {
@@ -51,7 +63,7 @@ export default function ProductDetailsPage() {
     fetchProduct();
   }, [id]);
 
-  // 🟢 Load related products
+  // Load related products
   useEffect(() => {
     if (!product || allProducts.length === 0) return;
     const mainCategoryId = product.categories?.[0]?.id;
@@ -80,21 +92,30 @@ export default function ProductDetailsPage() {
     );
 
   const avgRating = product.review_summary?.average_rating || 0;
-  const mainImage =
-    product.images?.find((img: any) => img.is_primary)?.url ||
-    product.images?.[0]?.url ||
-    "/no-image.png";
+
+  // Gather all images from all variants for thumbnail gallery
+  const allImages =
+    product.variants
+      ?.flatMap((v: any) => v.images || [])
+      .filter(
+        (img: any, idx: any, arr: any) =>
+          arr.findIndex((i: any) => i.url === img.url) === idx
+      ) || [];
+
+  const galleryImages =
+    allImages.length > 0 ? allImages : [{ url: "/no-image.png" }];
+
   const variantStock = selectedVariant?.stock ?? 0;
+
   return (
     <div className="container mx-auto py-10 space-y-16">
       {/* ================= Main Product ================= */}
       <div className="grid md:grid-cols-2 gap-10">
-        {/* 🖼️ Product Image Gallery */}
+        {/* Product Image Gallery */}
         <div className="space-y-4">
-          {/* Main Image */}
           <div className="relative w-full h-96 rounded-xl overflow-hidden shadow-md">
             <ImageMagnifier
-              src={product.images[selectedImage]?.url || mainImage}
+              src={mainImage}
               alt={product.name}
               magnifierHeight={200}
               magnifierWidth={200}
@@ -104,14 +125,14 @@ export default function ProductDetailsPage() {
 
           {/* Thumbnail Gallery */}
           <div className="grid grid-cols-5 gap-2">
-            {product.images.map((img: any, index: number) => (
+            {galleryImages.map((img: any, index: number) => (
               <button
                 key={index}
-                onClick={() => setSelectedImage(index)}
-                className={`relative h-20 rounded-md overflow-hidden border-2 ${
-                  selectedImage === index
+                onClick={() => setMainImage(img.url)}
+                className={`relative h-20 rounded-md overflow-hidden border-2 transition ${
+                  mainImage === img.url
                     ? "border-primary"
-                    : "border-transparent"
+                    : "border-gray-200 hover:border-primary"
                 }`}
               >
                 <Image
@@ -125,15 +146,15 @@ export default function ProductDetailsPage() {
           </div>
         </div>
 
-        {/* 📦 Product Info */}
-        <div className="space-y-3">
+        {/* Product Info */}
+        <div className="space-y-4">
           <p className="text-sm text-gray-500 uppercase">
-            {product.categories.map((c: any) => c.name).join(", ")}
+            {product.categories?.map((c: any) => c.name).join(", ")}
           </p>
-          <h1 className="text-3xl font-bold mt-2">{product.name}</h1>
+          <h1 className="text-3xl font-bold">{product.name}</h1>
 
-          {/* ⭐ Rating */}
-          <div className="flex items-center gap-1 mt-2 text-yellow-500">
+          {/* Rating */}
+          <div className="flex items-center gap-2 text-yellow-500">
             {Array.from({ length: 5 }, (_, i) => (
               <Star
                 key={i}
@@ -148,29 +169,34 @@ export default function ProductDetailsPage() {
             </span>
           </div>
 
-          {/* 💲 Price */}
-          <div className="flex items-center gap-3">
-            <p className="text-2xl font-bold text-primary">
-              ৳{" "}
-              {selectedVariant
-                ? (
-                    parseFloat(product.selling_price) +
-                    parseFloat(selectedVariant.additional_price || 0)
-                  ).toFixed(2)
-                : product.selling_price}
-            </p>
+          {/* Price */}
+          <div className="text-2xl font-bold text-primary">
+            ৳{" "}
+            {selectedVariant
+              ? (
+                  parseFloat(product.selling_price) +
+                  parseFloat(selectedVariant.additional_price || 0)
+                ).toFixed(2)
+              : product.selling_price}
           </div>
 
-          {/* 🟢 Variant Selection */}
-          {product.variants && product.variants.length > 0 && (
+          {/* Variant Selection */}
+          {product.variants?.length > 0 && (
             <div>
               <h3 className="font-medium mb-2">Choose Variant</h3>
               <div className="flex flex-wrap gap-2">
                 {product.variants.map((v: any) => (
                   <button
                     key={v.id}
-                    onClick={() => setSelectedVariant(v)}
-                    className={`px-4 py-2 border rounded-lg text-sm ${
+                    onClick={() => {
+                      setSelectedVariant(v);
+                      const firstVariantImage =
+                        v.images?.find((img: any) => img.is_primary)?.url ||
+                        v.images?.[0]?.url ||
+                        mainImage;
+                      setMainImage(firstVariantImage);
+                    }}
+                    className={`px-4 py-2 border rounded-lg text-sm transition ${
                       selectedVariant?.id === v.id
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-gray-300 text-gray-700 hover:border-primary"
@@ -182,61 +208,58 @@ export default function ProductDetailsPage() {
               </div>
             </div>
           )}
+
+          {/* Stock Status */}
           <p
-            className={`mt-2 text-sm font-medium ${
+            className={`text-sm font-medium ${
               variantStock > 0 ? "text-green-600" : "text-red-500"
             }`}
           >
             {variantStock > 0 ? `In stock: ${variantStock}` : "Out of stock"}
           </p>
-          {/* Quantity */}
-          <div>
-            <h3 className="font-medium mb-2">Quantity</h3>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="px-3 py-1 border rounded-lg hover:bg-gray-100"
-              >
-                -
-              </button>
-              <span className="font-medium">{quantity}</span>
-              <button
-                onClick={() => setQuantity((q) => q + 1)}
-                className="px-3 py-1 border rounded-lg hover:bg-gray-100"
-              >
-                +
-              </button>
-            </div>
+
+          {/* Quantity Selector */}
+          <div className="flex items-center gap-3 mt-2">
+            <button
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+              className="px-3 py-1 border rounded-lg hover:bg-gray-100"
+            >
+              -
+            </button>
+            <span className="font-medium">{quantity}</span>
+            <button
+              onClick={() => setQuantity((q) => q + 1)}
+              className="px-3 py-1 border rounded-lg hover:bg-gray-100"
+            >
+              +
+            </button>
           </div>
 
-          {/* 🛒 Action Buttons */}
+          {/* Action Buttons */}
           <div className="flex gap-3 mt-4 flex-wrap">
             {variantStock > 0 && (
-              <>
-                {" "}
-                <button
-                  onClick={() => {
-                    if (!selectedVariant) {
-                      showToast("Please select a variant first", "error");
-                      return;
-                    }
-                    addToCart({
-                      id: product.id,
-                      primary_variant_id: selectedVariant.id,
-                      name: `${product.name} - ${selectedVariant.name || ""}`,
-                      price:
-                        parseFloat(product.selling_price) +
-                        parseFloat(selectedVariant.additional_price || 0),
-                      image: mainImage,
-                      quantity,
-                    });
-                    showToast("Added to cart 🛒", "success");
-                  }}
-                  className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 flex items-center gap-2"
-                >
-                  <ShoppingCart className="w-5 h-5" /> Add to Cart
-                </button>
-              </>
+              <button
+                onClick={() => {
+                  if (!selectedVariant) {
+                    showToast("Please select a variant first", "error");
+                    return;
+                  }
+                  addToCart({
+                    id: product.id,
+                    primary_variant_id: selectedVariant.id,
+                    name: `${product.name} - ${selectedVariant.name || ""}`,
+                    price:
+                      parseFloat(product.selling_price) +
+                      parseFloat(selectedVariant.additional_price || 0),
+                    image: mainImage,
+                    quantity,
+                  });
+                  showToast("Added to cart 🛒", "success");
+                }}
+                className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 flex items-center gap-2"
+              >
+                <ShoppingCart className="w-5 h-5" /> Add to Cart
+              </button>
             )}
 
             <button
@@ -244,7 +267,7 @@ export default function ProductDetailsPage() {
               className="border px-6 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2"
             >
               <Heart
-                className={`w-5 h-5 sm:w-4 sm:h-4 ${
+                className={`w-5 h-5 ${
                   isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"
                 }`}
               />
@@ -254,7 +277,7 @@ export default function ProductDetailsPage() {
         </div>
       </div>
 
-      {/* 📖 Description */}
+      {/* Description */}
       <div>
         <h3 className="font-semibold text-lg mb-2">Description</h3>
         <p className="text-gray-600 leading-relaxed">
@@ -262,11 +285,10 @@ export default function ProductDetailsPage() {
         </p>
       </div>
 
-      {/* ================= Customer Reviews ================= */}
+      {/* Customer Reviews */}
       <div className="space-y-6">
         <h2 className="text-xl font-bold mb-4">Customer Reviews</h2>
-
-        {product.reviews.length === 0 ? (
+        {product.reviews?.length === 0 ? (
           <p className="text-gray-500">No reviews yet.</p>
         ) : (
           <div className="space-y-4">
@@ -275,7 +297,6 @@ export default function ProductDetailsPage() {
                 key={review.id}
                 className="border rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition"
               >
-                {/* Header */}
                 <div className="flex justify-between items-center mb-2">
                   <div>
                     <p className="font-semibold text-gray-800">
@@ -298,7 +319,6 @@ export default function ProductDetailsPage() {
                     {review.created_at}
                   </span>
                 </div>
-
                 <h4 className="font-medium text-gray-900 mb-1">
                   {review.title}
                 </h4>
@@ -311,7 +331,7 @@ export default function ProductDetailsPage() {
         )}
       </div>
 
-      {/* ================= Related Products ================= */}
+      {/* Related Products */}
       {relatedProducts.length > 0 && (
         <div>
           <h2 className="text-xl font-bold mb-6">Related Products</h2>
