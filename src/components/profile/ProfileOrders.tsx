@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 
 interface OrderItem {
   id: number;
@@ -103,9 +104,32 @@ export default function ProfileOrders() {
     );
   }
 
-  if (!orders.length)
-    return <p className="text-gray-500">No orders found yet.</p>;
-
+  if (!orders.length) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        {/* <Image
+          src="/empty-wishlist.svg"
+          alt="empty wishlist"
+          width={250}
+          height={250}
+          className="mb-6 opacity-80"
+        /> */}
+        <h2 className="text-2xl font-semibold text-gray-700">
+          No orders found yet. 💔
+        </h2>
+        <p className="text-gray-500 mt-2">
+          You haven't placed any orders yet — browse products and place your
+          first order.
+        </p>
+        <Link
+          href="/"
+          className="mt-6 bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition"
+        >
+          Browse Products
+        </Link>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-4">
       {/* Filters */}

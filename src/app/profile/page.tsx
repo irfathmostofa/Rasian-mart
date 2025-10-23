@@ -5,6 +5,7 @@ import AddressManager from "@/components/profile/AddressManager";
 import { useRequireAuth } from "@/lib/useRequireAuth";
 import { useState, useMemo } from "react";
 import ProfileOrders from "@/components/profile/ProfileOrders";
+import Wishlist from "@/components/profile/WishList";
 
 type TabType = "profile" | "orders" | "wishlist" | "settings" | "addresses";
 
@@ -13,7 +14,6 @@ export default function UserProfile() {
   const [activeTab, setActiveTab] = useState<TabType>("profile");
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
-  
   };
 
   const greeting = useMemo(() => {
@@ -34,6 +34,7 @@ export default function UserProfile() {
         <div className="flex-1 flex flex-col gap-6">
           {activeTab === "profile" && <ProfileInfo />}
           {activeTab === "addresses" && <AddressManager />}
+          {activeTab === "wishlist" && <Wishlist />}
           {activeTab === "orders" && <ProfileOrders />}
           {/* Add future tabs here */}
         </div>
