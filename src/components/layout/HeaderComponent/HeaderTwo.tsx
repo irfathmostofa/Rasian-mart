@@ -10,9 +10,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import LiveNewsTicker from "./LiveNewsTicker";
 import { useUserStore } from "@/app/store/useUserStore";
 import { useProductStore } from "@/app/store/useProductStore";
+import { useWishlist } from "@/app/store/useWishlist";
 
 export default function HeaderTwo() {
   const { cart } = useCart();
+  const { items } = useWishlist();
   const { user, clearSession } = useUserStore();
   const { products, fetchProducts } = useProductStore();
 
@@ -143,8 +145,13 @@ export default function HeaderTwo() {
           </button>
 
           {/* Wishlist */}
-          <Link href="/wishlist" className="hover:text-primary relative">
+          <Link href="/wishlist" className="relative hover:text-primary">
             <Heart className="w-5 h-5" />
+            {items.length > 0 && (
+              <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1">
+                {items.length}
+              </span>
+            )}
           </Link>
 
           {/* Cart */}

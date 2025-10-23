@@ -90,10 +90,14 @@ export default function WishlistPage() {
               </button>
             </div>
             <div className="p-4 space-y-2">
-              <h3 className="font-semibold text-lg line-clamp-1">
-                {item.name}
-              </h3>
+              <Link href={`/product/${item.id}`}>
+                <h3 className="font-semibold text-lg line-clamp-1">
+                  {item.name}
+                </h3>
+              </Link>
+
               <p className="text-primary font-bold text-xl">৳ {item.price}</p>
+
               {item.stock > 0 ? (
                 <button
                   onClick={() => {

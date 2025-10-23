@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-
 import ProductCarousel from "@/components/layout/ProductCarousel";
 import Hero from "@/components/layout/HeroSection";
 import { useProductStore } from "@/app/store/useProductStore";
@@ -11,78 +10,87 @@ import { useTemplateStore } from "./store/useTamplate";
 import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
 
 export default function HomePage() {
-  const [visibleProducts, setVisibleProducts] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
-  const { products, loading, error, fetchProducts } = useProductStore();
-  const { Template, fetchTemplate } = useTemplateStore();
+  const {
+    products,
+    loading,
+    error,
+    hasNextPage,
+    fetchProducts,
+    loadMore,
+    currentPage,
+  } = useProductStore();
 
-  //  Fetch once on mount
+  const { fetchTemplate } = useTemplateStore();
+
+  // ✅ Fetch data on mount
   useEffect(() => {
-    if (products.length === 0) fetchProducts();
+    if (products.length === 0) {
+      fetchProducts(1, 12);
+    }
     fetchTemplate();
-  }, [fetchProducts, products.length]);
-
-  const loadMoreProducts = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setVisibleProducts((prev) => prev + 10);
-      setIsLoading(false);
-    }, 300);
-  };
-
-  const hasMoreProducts = visibleProducts < products.length;
+  }, [products.length]);
 
   return (
     <div className="space-y-10">
-      {/*  Hero Section */}
+      {/* Hero Section */}
       <Hero />
 
-      {/* 🔥 Flash Sales */}
+      {/* Flash Sales */}
       <section>
         <h2 className="text-3xl font-bold mb-2">🔥 Flash Sales</h2>
         <ProductCarousel />
       </section>
 
       {/* Product Grid */}
-      <section className="">
-        <h2 className="text-3xl font-bold mb-4">🛍️ Best Deals</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
-          {products.slice(0, visibleProducts).map((product) => (
-            <PremiumProductCard
-              key={product.id}
-              id={product.id}
-              primary_variant_id={product.primary_variant_id}
-              name={product.name}
-              categories={product.categories}
-              selling_price={product.selling_price}
-              regular_price={product.regular_price}
-              cost_price={product.cost_price}
-              images={product.images}
-              badge={product.badge}
-              total_stock={product.total_stock}
-              rating={product.rating}
-            />
-          ))}
+      <section>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-3xl font-bold">🛍️ Best Deals</h2>
+
+          {/* Optional future pagination info */}
+          {currentPage > 1 && (
+            <span className="text-gray-500 text-sm">Page {currentPage}</span>
+          )}
         </div>
 
-        {hasMoreProducts && (
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={loadMoreProducts}
-              disabled={isLoading}
-              className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[120px]"
-              aria-label="Load more products"
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  Loading...
-                </>
-              ) : (
-                "Load More"
-              )}
-            </button>
+        {/* Loading State */}
+        {loading && products.length === 0 ? (
+          <div className="flex justify-center items-center py-10">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
           </div>
+        ) : error ? (
+          <div className="text-center text-red-500 py-10">{error}</div>
+        ) : products.length === 0 ? (
+          <div className="text-center text-gray-500 py-10">
+            No products available
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
+              {products.map((product) => (
+                <PremiumProductCard key={product.id} {...product} />
+              ))}
+            </div>
+
+            {/* Load More Button */}
+            {hasNextPage && (
+              <div className="flex justify-center mt-8">
+                <button
+                  onClick={loadMore}
+                  disabled={loading}
+                  className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[120px]"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      Loading...
+                    </>
+                  ) : (
+                    "Load More"
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
 
@@ -97,7 +105,6 @@ export default function HomePage() {
               width={600}
               height={300}
               className="object-cover w-full h-48 md:h-64"
-              priority={false}
             />
             <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4">
               <h3 className="text-2xl font-bold">50% Off Electronics</h3>
@@ -116,7 +123,6 @@ export default function HomePage() {
               width={600}
               height={300}
               className="object-cover w-full h-48 md:h-64"
-              priority={false}
             />
             <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-4">
               <h3 className="text-2xl font-bold">Buy 1 Get 1 Free - Fashion</h3>
@@ -131,6 +137,5 @@ export default function HomePage() {
         </div>
       </section>
     </div>
-    // <TemplateRenderer />
   );
 }

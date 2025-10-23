@@ -1,7 +1,7 @@
 "use client";
 
-import api from "@/lib/api";
 import { create } from "zustand";
+import api from "@/lib/api";
 
 export interface Product {
   id: number;
@@ -37,47 +37,73 @@ export interface Product {
 
 interface ProductStore {
   products: Product[];
+  currentPage: number;
+  totalPages: number;
+  limit: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
   loading: boolean;
   error: string | null;
-  hydrated: boolean;
-  fetchProducts: (page?: number, limit?: number) => Promise<void>;
+
+  fetchProducts: (
+    page?: number,
+    limit?: number,
+    append?: boolean
+  ) => Promise<void>;
+  loadMore: () => Promise<void>;
   clearProducts: () => void;
-  setHydrated: (value: boolean) => void;
 }
 
-export const useProductStore = create<ProductStore>((set) => ({
+export const useProductStore = create<ProductStore>((set, get) => ({
   products: [],
+  currentPage: 1,
+  totalPages: 1,
+  limit: 12,
+  hasNextPage: true,
+  hasPrevPage: false,
   loading: false,
   error: null,
-  hydrated: false,
 
-  setHydrated: (value) => set({ hydrated: value }),
-
-  fetchProducts: async (page = 1, limit = 10) => {
+  fetchProducts: async (page = 1, limit = 12, append = false) => {
     try {
       set({ loading: true, error: null });
 
       const response = await api.post("/product/get-all-products", {
-        data: { page, limit },
-        tokenType: "jwt",
+        page,
+        limit,
       });
 
-      if (response?.data?.success && response?.data?.data) {
-        set({
-          products: response.data.data.data || [],
-          error: null,
-          hydrated: true, // ✅ mark store as ready
-        });
-      } else {
-        set({ error: "Failed to fetch products", hydrated: true });
-      }
+      const payload = response?.data?.data || {};
+      const fetched = payload.data || [];
+      const pagination = payload.pagination || {};
+
+      set((state) => ({
+        products: append ? [...state.products, ...fetched] : fetched,
+        currentPage: pagination.currentPage || page,
+        totalPages: pagination.totalPages || 1,
+        hasNextPage: pagination.hasNextPage ?? false,
+        hasPrevPage: pagination.hasPrevPage ?? false,
+      }));
     } catch (err) {
       console.error("Error fetching products:", err);
-      set({ error: "Error loading products", hydrated: true });
+      set({ error: "Failed to load products" });
     } finally {
       set({ loading: false });
     }
   },
 
-  clearProducts: () => set({ products: [] }),
+  loadMore: async () => {
+    const {
+      currentPage,
+      totalPages,
+      hasNextPage,
+      loading,
+      fetchProducts,
+      limit,
+    } = get();
+    if (loading || !hasNextPage) return;
+    await fetchProducts(currentPage + 1, limit, true);
+  },
+
+  clearProducts: () => set({ products: [], currentPage: 1, hasNextPage: true }),
 }));

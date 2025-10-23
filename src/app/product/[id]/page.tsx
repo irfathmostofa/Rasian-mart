@@ -10,13 +10,14 @@ import api from "@/lib/api";
 import { useProductStore } from "@/app/store/useProductStore";
 import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
 import { useToastStore } from "@/app/store/useToastStore";
+import { useWishlist } from "@/app/store/useWishlist";
 
 export default function ProductDetailsPage() {
   const { id } = useParams();
   const { addToCart } = useCart();
   const { showToast } = useToastStore();
   const { products: allProducts } = useProductStore();
-
+  const { toggleWishlist, isInWishlist } = useWishlist();
   const [product, setProduct] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [mainImage, setMainImage] = useState<string>("/no-image.png");
@@ -263,7 +264,19 @@ export default function ProductDetailsPage() {
             )}
 
             <button
-              onClick={() => setIsWishlisted(!isWishlisted)}
+              onClick={() => {
+                toggleWishlist({
+                  id: product.id,
+                  primary_variant_id: selectedVariant.id,
+                  name: `${product.name} - ${selectedVariant.name || ""}`,
+                  price:
+                    parseFloat(product.selling_price) +
+                    parseFloat(selectedVariant.additional_price || 0),
+                  image: mainImage,
+                  stock: 0,
+                });
+                showToast("Added to wishlist ❤️", "success");
+              }}
               className="border px-6 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2"
             >
               <Heart
