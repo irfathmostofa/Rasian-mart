@@ -76,7 +76,10 @@ export function PremiumProductCard({
                 image: imageUrl,
                 stock: safeStock,
               });
-              showToast("Added to wishlist ❤️", "success");
+              showToast(
+                `${isWishlisted ? "Removed" : "Added"} to wishlist ❤️`,
+                "success"
+              );
             }}
             className={`p-1 sm:p-2 ${
               isWishlisted ? "bg-red-500 text-white" : "bg-white text-red-500"
@@ -173,22 +176,41 @@ export function PremiumProductCard({
         {/* Action Buttons */}
         {safeStock > 0 ? (
           type === "card" ? (
-            <button
-              onClick={() => {
-                addToCart({
-                  id: id,
-                  primary_variant_id: primary_variant_id,
-                  name: name,
-                  price: Number(selling_price) || 0,
-                  image: imageUrl,
-                  quantity: 1,
-                });
-                showToast("Added to cart 🛒", "success");
-              }}
-              className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition"
-            >
-              Add to Cart
-            </button>
+            <div className="flex gap-2 justify-between">
+              {" "}
+              <button
+                onClick={() => {
+                  addToCart({
+                    id: id,
+                    primary_variant_id: primary_variant_id,
+                    name: name,
+                    price: Number(selling_price) || 0,
+                    image: imageUrl,
+                    quantity: 1,
+                  });
+                  showToast("Added to cart 🛒", "success");
+                }}
+                className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition"
+              >
+                Buy Now
+              </button>
+              <button
+                onClick={() => {
+                  addToCart({
+                    id: id,
+                    primary_variant_id: primary_variant_id,
+                    name: name,
+                    price: Number(selling_price) || 0,
+                    image: imageUrl,
+                    quantity: 1,
+                  });
+                  showToast("Added to cart 🛒", "success");
+                }}
+                className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition"
+              >
+                Add to Cart
+              </button>
+            </div>
           ) : (
             <button className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition">
               Contact Now

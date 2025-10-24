@@ -265,17 +265,24 @@ export default function ProductDetailsPage() {
 
             <button
               onClick={() => {
+                const willBeWishlisted = !isWishlisted;
+
                 toggleWishlist({
                   id: product.id,
-                  primary_variant_id: selectedVariant.id,
-                  name: `${product.name} - ${selectedVariant.name || ""}`,
+                  primary_variant_id: selectedVariant?.id,
+                  name: `${product.name} - ${selectedVariant?.name || ""}`,
                   price:
                     parseFloat(product.selling_price) +
-                    parseFloat(selectedVariant.additional_price || 0),
+                    parseFloat(selectedVariant?.additional_price || 0),
                   image: mainImage,
                   stock: 0,
                 });
-                showToast("Added to wishlist ❤️", "success");
+
+                setIsWishlisted(willBeWishlisted);
+                showToast(
+                  `${willBeWishlisted ? "Added" : "Removed"} to wishlist ❤️`,
+                  "success"
+                );
               }}
               className="border px-6 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2"
             >
