@@ -147,7 +147,7 @@ export function PremiumProductCard({
           </p>
           {regular_price && (
             <p className="text-xs sm:text-sm text-gray-400 line-through">
-              ৳ {regular_price}
+              ৳ {formatPrice(regular_price)}
             </p>
           )}
         </div>
