@@ -103,20 +103,25 @@ export default function CategoryPage() {
           page: pageNum,
           limit: 20,
           status: "A",
-          category_id: parseInt(String(id)), // Use the id from URL params
+          category_id: parseInt(String(id)),
         };
 
-        // Add price filters
+        // Add price filters - IMPORTANT: Use undefined, not 0, for no filter
         if (priceRange[0] > 0) {
           requestBody.price_min = priceRange[0];
         }
-        if (priceRange[1] < 50000) {
+        // Don't send price_max if it's the maximum (50000) unless min is also set
+        if (priceRange[1] < 50000 || priceRange[0] > 0) {
           requestBody.price_max = priceRange[1];
         }
 
-        // Add sort if not default
-        if (sortBy !== "newest") {
-          requestBody.sort = sortBy;
+        // Add availability filter to API call instead of client-side
+        if (availability === "in-stock") {
+          // You'll need to add a stock filter parameter to your backend
+          // For now, we'll handle it client-side
+        } else if (availability === "out-of-stock") {
+          // You'll need to add a stock filter parameter to your backend
+          // For now, we'll handle it client-side
         }
 
         // Call API with POST
@@ -129,7 +134,7 @@ export default function CategoryPage() {
           const fetchedProducts = response.data.data.data || [];
           const pagination = response.data.data.pagination;
 
-          // Apply availability filter client-side
+          // Apply availability filter client-side (temporary)
           let filteredProducts = fetchedProducts;
           if (availability === "in-stock") {
             filteredProducts = fetchedProducts.filter(
@@ -141,10 +146,18 @@ export default function CategoryPage() {
             );
           }
 
+          // For reset, replace products
           if (reset) {
             setProducts(filteredProducts);
           } else {
-            setProducts((prev) => [...prev, ...filteredProducts]);
+            // For pagination, append unique products
+            setProducts((prev) => {
+              const existingIds = new Set(prev.map((p) => p.id));
+              const newProducts = filteredProducts.filter(
+                (p) => !existingIds.has(p.id)
+              );
+              return [...prev, ...newProducts];
+            });
           }
 
           setHasMore(pagination.currentPage < pagination.totalPages);
@@ -172,77 +185,90 @@ export default function CategoryPage() {
     [loading, id, priceRange, sortBy, availability]
   );
 
-  // Initial load when component mounts or id changes
+  // Reset everything when category changes
   useEffect(() => {
     if (id) {
       setProducts([]);
       setPage(1);
       setHasMore(true);
+      setPriceRange([0, 50000]);
+      setPriceInputs([0, 50000]);
+      setSortBy("newest");
+      setAvailability("all");
       fetchProducts(1, true);
     }
   }, [id]);
 
-  // Load more when in view
-  useEffect(() => {
-    if (inView && hasMore && !loading && products.length > 0) {
-      const timer = setTimeout(() => {
-        fetchProducts(page + 1);
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [inView, hasMore, loading, page, fetchProducts, products.length]);
-
   // Apply filters manually (for button clicks)
   const applyFilters = () => {
+    if (priceInputs[0] > priceInputs[1]) {
+      setError("Minimum price cannot be greater than maximum price");
+      return;
+    }
+
     setPriceRange(priceInputs);
     setShowFilters(false);
+    // Reset and fetch with new filters
+    setProducts([]);
+    setPage(1);
+    setHasMore(true);
+    fetchProducts(1, true);
   };
 
-  // Reset filters
+  // Reset all filters
   const resetFilters = () => {
-    setPriceRange([0, 50000]);
-    setPriceInputs([0, 50000]);
+    const newPriceRange: [number, number] = [0, 50000];
+    setPriceRange(newPriceRange);
+    setPriceInputs(newPriceRange);
     setSortBy("newest");
     setAvailability("all");
+
+    // Only fetch if not already at default values
+    if (
+      id &&
+      (priceRange[0] !== 0 ||
+        priceRange[1] !== 50000 ||
+        sortBy !== "newest" ||
+        availability !== "all")
+    ) {
+      setProducts([]);
+      setPage(1);
+      setHasMore(true);
+      fetchProducts(1, true);
+    }
   };
 
   // Handle price input changes
   const handleMinPriceChange = (value: number) => {
-    const newMin = Math.max(0, Math.min(value, priceInputs[1]));
+    const newMin = Math.max(0, Math.min(value, 50000));
     setPriceInputs([newMin, priceInputs[1]]);
   };
 
   const handleMaxPriceChange = (value: number) => {
-    const newMax = Math.min(50000, Math.max(value, priceInputs[0]));
+    const newMax = Math.min(50000, Math.max(value, 0));
     setPriceInputs([priceInputs[0], newMax]);
   };
 
-  // Handle price slider changes
-  const handlePriceSliderChange = (index: number, value: number) => {
-    if (index === 0) {
-      const newMin = Math.min(value, priceInputs[1]);
-      setPriceInputs([newMin, priceInputs[1]]);
-    } else {
-      const newMax = Math.max(value, priceInputs[0]);
-      setPriceInputs([priceInputs[0], newMax]);
-    }
+  // Handle sort change
+  const handleSortChange = (value: string) => {
+    setSortBy(value);
+    setShowSort(false);
+    // Reset and fetch with new sort
+    setProducts([]);
+    setPage(1);
+    setHasMore(true);
+    fetchProducts(1, true);
   };
 
-  // Sort options
-  const sortOptions = [
-    { value: "newest", label: "Newest Arrivals" },
-    { value: "price-low", label: "Price: Low to High" },
-    { value: "price-high", label: "Price: High to Low" },
-    { value: "popular", label: "Most Popular" },
-    { value: "rating", label: "Top Rated" },
-  ];
-
-  // Availability options
-  const availabilityOptions = [
-    { value: "all", label: "All Products" },
-    { value: "in-stock", label: "In Stock Only" },
-    { value: "out-of-stock", label: "Out of Stock" },
-  ];
+  // Handle availability change
+  const handleAvailabilityChange = (value: string) => {
+    setAvailability(value);
+    // Reset and fetch with new availability filter
+    setProducts([]);
+    setPage(1);
+    setHasMore(true);
+    fetchProducts(1, true);
+  };
 
   // Format price
   const formatPrice = (price: number) => {
@@ -254,6 +280,7 @@ export default function CategoryPage() {
 
   // Format category name
   const formatCategoryName = (slug: string) => {
+    if (!slug) return "";
     return String(slug)
       .split("-")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -317,9 +344,11 @@ export default function CategoryPage() {
             >
               <Filter className="w-4 h-4" />
               Filters
-              {(priceRange[1] < 50000 || availability !== "all") && (
+              {(priceRange[0] > 0 ||
+                priceRange[1] < 50000 ||
+                availability !== "all") && (
                 <span className="bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {(priceRange[1] < 50000 ? 1 : 0) +
+                  {(priceRange[0] > 0 || priceRange[1] < 50000 ? 1 : 0) +
                     (availability !== "all" ? 1 : 0)}
                 </span>
               )}
@@ -357,10 +386,7 @@ export default function CategoryPage() {
                       {sortOptions.map((option) => (
                         <button
                           key={option.value}
-                          onClick={() => {
-                            setSortBy(option.value);
-                            setShowSort(false);
-                          }}
+                          onClick={() => handleSortChange(option.value)}
                           className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
                             sortBy === option.value
                               ? "bg-primary/5 text-primary font-medium border-l-2 border-primary"
@@ -391,7 +417,9 @@ export default function CategoryPage() {
             <div className="bg-white border border-gray-200 rounded-lg p-5 sticky top-24">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-                {(priceRange[1] < 50000 || availability !== "all") && (
+                {(priceRange[0] > 0 ||
+                  priceRange[1] < 50000 ||
+                  availability !== "all") && (
                   <button
                     onClick={resetFilters}
                     className="text-sm text-primary hover:text-primary/80 transition-colors"
@@ -415,7 +443,7 @@ export default function CategoryPage() {
                         type="radio"
                         name="availability"
                         checked={availability === option.value}
-                        onChange={() => setAvailability(option.value)}
+                        onChange={() => handleAvailabilityChange(option.value)}
                         className="w-4 h-4 text-primary border-gray-300 focus:ring-primary cursor-pointer"
                         disabled={loading}
                       />
@@ -427,7 +455,7 @@ export default function CategoryPage() {
                 </div>
               </div>
 
-              {/* Price Range with Two Controllers */}
+              {/* Price Range */}
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-medium text-gray-900">Price Range</h4>
@@ -456,6 +484,10 @@ export default function CategoryPage() {
                         onChange={(e) =>
                           handleMinPriceChange(parseInt(e.target.value) || 0)
                         }
+                        onBlur={applyFilters}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") applyFilters();
+                        }}
                         className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:ring-primary focus:border-primary outline-none"
                         disabled={loading}
                       />
@@ -476,8 +508,14 @@ export default function CategoryPage() {
                         step="100"
                         value={priceInputs[1]}
                         onChange={(e) =>
-                          handleMaxPriceChange(parseInt(e.target.value) || 0)
+                          handleMaxPriceChange(
+                            parseInt(e.target.value) || 50000
+                          )
                         }
+                        onBlur={applyFilters}
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter") applyFilters();
+                        }}
                         className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:ring-primary focus:border-primary outline-none"
                         disabled={loading}
                       />
@@ -485,83 +523,21 @@ export default function CategoryPage() {
                   </div>
                 </div>
 
-                {/* Dual Slider */}
-                <div className="relative h-8">
-                  {/* Track */}
-                  <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-gray-200 rounded-full transform -translate-y-1/2"></div>
-
-                  {/* Active Range */}
-                  <div
-                    className="absolute top-1/2 h-1.5 bg-primary rounded-full transform -translate-y-1/2"
-                    style={{
-                      left: `${(priceInputs[0] / 50000) * 100}%`,
-                      right: `${100 - (priceInputs[1] / 50000) * 100}%`,
-                    }}
-                  ></div>
-
-                  {/* Slider Thumbs */}
-                  <div
-                    className="absolute top-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow transform -translate-y-1/2 -translate-x-1/2 z-20"
-                    style={{
-                      left: `${(priceInputs[0] / 50000) * 100}%`,
-                    }}
-                  ></div>
-                  <div
-                    className="absolute top-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow transform -translate-y-1/2 -translate-x-1/2 z-20"
-                    style={{
-                      left: `${(priceInputs[1] / 50000) * 100}%`,
-                    }}
-                  ></div>
-
-                  {/* Hidden Range Inputs */}
-                  <input
-                    type="range"
-                    min="0"
-                    max="50000"
-                    step="100"
-                    value={priceInputs[0]}
-                    onChange={(e) =>
-                      handlePriceSliderChange(0, parseInt(e.target.value))
-                    }
-                    className="absolute top-1/2 left-0 right-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    disabled={loading}
-                  />
-                  <input
-                    type="range"
-                    min="0"
-                    max="50000"
-                    step="100"
-                    value={priceInputs[1]}
-                    onChange={(e) =>
-                      handlePriceSliderChange(1, parseInt(e.target.value))
-                    }
-                    className="absolute top-1/2 left-0 right-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    disabled={loading}
-                  />
-                </div>
-
-                {/* Price Labels */}
-                <div className="flex justify-between text-xs text-gray-600 mt-2">
-                  <span>৳ 0</span>
-                  <span>৳ 25,000</span>
-                  <span>৳ 50,000</span>
-                </div>
+                <button
+                  onClick={applyFilters}
+                  className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Applying...
+                    </span>
+                  ) : (
+                    "Apply Filters"
+                  )}
+                </button>
               </div>
-
-              <button
-                onClick={applyFilters}
-                className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Applying...
-                  </span>
-                ) : (
-                  "Apply Filters"
-                )}
-              </button>
             </div>
           </aside>
 
@@ -609,7 +585,9 @@ export default function CategoryPage() {
                               type="radio"
                               name="availability"
                               checked={availability === option.value}
-                              onChange={() => setAvailability(option.value)}
+                              onChange={() =>
+                                handleAvailabilityChange(option.value)
+                              }
                               className="w-4 h-4 text-primary border-gray-300"
                               disabled={loading}
                             />
@@ -674,60 +652,13 @@ export default function CategoryPage() {
                               value={priceInputs[1]}
                               onChange={(e) =>
                                 handleMaxPriceChange(
-                                  parseInt(e.target.value) || 0
+                                  parseInt(e.target.value) || 50000
                                 )
                               }
                               className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm"
                               disabled={loading}
                             />
                           </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="relative h-2 bg-gray-200 rounded-full">
-                          <div
-                            className="absolute h-2 bg-primary rounded-full"
-                            style={{
-                              left: `${(priceInputs[0] / 50000) * 100}%`,
-                              right: `${100 - (priceInputs[1] / 50000) * 100}%`,
-                            }}
-                          ></div>
-                          <input
-                            type="range"
-                            min="0"
-                            max="50000"
-                            step="100"
-                            value={priceInputs[0]}
-                            onChange={(e) =>
-                              handlePriceSliderChange(
-                                0,
-                                parseInt(e.target.value)
-                              )
-                            }
-                            className="absolute top-0 left-0 w-full h-full opacity-0"
-                            disabled={loading}
-                          />
-                          <input
-                            type="range"
-                            min="0"
-                            max="50000"
-                            step="100"
-                            value={priceInputs[1]}
-                            onChange={(e) =>
-                              handlePriceSliderChange(
-                                1,
-                                parseInt(e.target.value)
-                              )
-                            }
-                            className="absolute top-0 left-0 w-full h-full opacity-0"
-                            disabled={loading}
-                          />
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-600">
-                          <span>৳ 0</span>
-                          <span>৳ 25,000</span>
-                          <span>৳ 50,000</span>
                         </div>
                       </div>
                     </div>
@@ -765,7 +696,7 @@ export default function CategoryPage() {
           <main className="flex-1">
             {/* Active Filters - Desktop */}
             <div className="hidden md:flex flex-wrap gap-2 mb-6">
-              {priceRange[1] < 50000 && (
+              {(priceRange[0] > 0 || priceRange[1] < 50000) && (
                 <div className="text-sm text-gray-600">
                   Price:{" "}
                   <span className="font-medium">
@@ -785,7 +716,9 @@ export default function CategoryPage() {
                   </span>
                 </div>
               )}
-              {(priceRange[1] < 50000 || availability !== "all") && (
+              {(priceRange[0] > 0 ||
+                priceRange[1] < 50000 ||
+                availability !== "all") && (
                 <button
                   onClick={resetFilters}
                   className="text-sm text-primary hover:underline ml-4"
@@ -862,29 +795,6 @@ export default function CategoryPage() {
               </div>
             ) : (
               <>
-                {/* Desktop Sort and Results Count */}
-                <div className="hidden md:flex justify-between items-center mb-6 p-4 bg-white border border-gray-200 rounded-lg">
-                  <p className="text-sm text-gray-600">
-                    Showing {products.length} of {totalProducts} products
-                    {hasMore && " • Scroll for more"}
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-600">Sort by:</span>
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary outline-none disabled:opacity-50"
-                      disabled={loading}
-                    >
-                      {sortOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
                 {/* Products Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
                   {products.map((product) => (
@@ -943,3 +853,18 @@ export default function CategoryPage() {
     </div>
   );
 }
+
+// Add these outside the component
+const sortOptions = [
+  { value: "newest", label: "Newest Arrivals" },
+  { value: "price-low", label: "Price: Low to High" },
+  { value: "price-high", label: "Price: High to Low" },
+  { value: "popular", label: "Most Popular" },
+  { value: "rating", label: "Top Rated" },
+];
+
+const availabilityOptions = [
+  { value: "all", label: "All Products" },
+  { value: "in-stock", label: "In Stock Only" },
+  { value: "out-of-stock", label: "Out of Stock" },
+];
