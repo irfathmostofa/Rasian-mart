@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useCart } from "@/app/store/useCart";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Heart, ShoppingCart, Star } from "lucide-react";
+import { Heart, ShoppingCart, Star, X } from "lucide-react";
 import ImageMagnifier from "@/components/ui/ImageMagnifier";
 import api from "@/lib/api";
 import { useProductStore } from "@/app/store/useProductStore";
@@ -27,6 +27,7 @@ export default function ProductDetailsPage() {
     []
   );
   const [loading, setLoading] = useState(true);
+  const [showBottomCart, setShowBottomCart] = useState(false);
 
   // Fetch product
   const fetchProduct = async () => {
@@ -108,8 +109,15 @@ export default function ProductDetailsPage() {
 
   const variantStock = selectedVariant?.stock ?? 0;
 
+  const currentPrice = selectedVariant
+    ? parseFloat(product.selling_price) +
+      parseFloat(selectedVariant.additional_price || 0)
+    : parseFloat(product.selling_price);
+
   return (
-    <div className="container mx-auto py-10 space-y-16">
+    <div className="container mx-auto py-10 space-y-16 pb-24">
+      {" "}
+      {/* Added pb-24 for bottom spacing */}
       {/* ================= Main Product ================= */}
       <div className="grid md:grid-cols-2 gap-10">
         {/* Product Image Gallery */}
@@ -172,13 +180,7 @@ export default function ProductDetailsPage() {
 
           {/* Price */}
           <div className="text-2xl font-bold text-primary">
-            ৳{" "}
-            {selectedVariant
-              ? (
-                  parseFloat(product.selling_price) +
-                  parseFloat(selectedVariant.additional_price || 0)
-                ).toFixed(2)
-              : product.selling_price}
+            ৳ {currentPrice.toFixed(2)}
           </div>
 
           {/* Variant Selection */}
@@ -249,13 +251,12 @@ export default function ProductDetailsPage() {
                     id: product.id,
                     primary_variant_id: selectedVariant.id,
                     name: `${product.name} - ${selectedVariant.name || ""}`,
-                    price:
-                      parseFloat(product.selling_price) +
-                      parseFloat(selectedVariant.additional_price || 0),
+                    price: currentPrice,
                     image: mainImage,
                     quantity,
                   });
                   showToast("Added to cart 🛒", "success");
+                  setShowBottomCart(true);
                 }}
                 className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 flex items-center gap-2"
               >
@@ -271,9 +272,7 @@ export default function ProductDetailsPage() {
                   id: product.id,
                   primary_variant_id: selectedVariant?.id,
                   name: `${product.name} - ${selectedVariant?.name || ""}`,
-                  price:
-                    parseFloat(product.selling_price) +
-                    parseFloat(selectedVariant?.additional_price || 0),
+                  price: currentPrice,
                   image: mainImage,
                   stock: 0,
                 });
@@ -296,7 +295,6 @@ export default function ProductDetailsPage() {
           </div>
         </div>
       </div>
-
       {/* Description */}
       <div>
         <h3 className="font-semibold text-lg mb-2">Description</h3>
@@ -304,7 +302,6 @@ export default function ProductDetailsPage() {
           {product.description || "No description available."}
         </p>
       </div>
-
       {/* Customer Reviews */}
       <div className="space-y-6">
         <h2 className="text-xl font-bold mb-4">Customer Reviews</h2>
@@ -350,7 +347,6 @@ export default function ProductDetailsPage() {
           </div>
         )}
       </div>
-
       {/* Related Products */}
       {relatedProducts.length > 0 && (
         <div>
@@ -359,6 +355,57 @@ export default function ProductDetailsPage() {
             {relatedProducts.map((p) => (
               <PremiumProductCard key={p.id} {...p} />
             ))}
+          </div>
+        </div>
+      )}
+      {/* Fixed Bottom Cart Section */}
+      {showBottomCart && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setShowBottomCart(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5 text-primary" />
+                  {/* <span className="font-medium">Cart ({cartItemCount})</span> */}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6">
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">Total</p>
+                  <p className="text-xl font-bold text-primary">
+                    {/* ৳ {cartTotal.toFixed(2)} */}
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      // Navigate to cart page
+                      window.location.href = "/cart";
+                    }}
+                    className="px-6 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition"
+                  >
+                    View Cart
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Navigate to checkout page
+                      window.location.href = "/checkout";
+                    }}
+                    className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
+                  >
+                    Buy Now
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

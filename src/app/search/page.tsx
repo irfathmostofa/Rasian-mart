@@ -380,43 +380,32 @@ export default function SearchPage() {
           </form>
         </div>
 
-        {/* Breadcrumb */}
-        <div className="text-sm text-gray-600 mb-6">
-          <span
-            className="hover:text-primary cursor-pointer"
-            onClick={() => router.push("/")}
-          >
-            Home
-          </span>
-          {" > "}
-          <span className="font-medium">Search</span>
-          {query && (
-            <>
-              {" > "}
-              <span className="font-medium">"{query}"</span>
-              <button
-                onClick={clearSearch}
-                className="ml-3 text-xs text-primary hover:underline flex items-center gap-1"
-              >
-                <X className="w-3 h-3" />
-                Clear search
-              </button>
-            </>
-          )}
-        </div>
-
         {/* Page Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               {query ? `Search results for "${query}"` : "All Products"}
             </h1>
-            {!initialLoading && products.length > 0 && (
-              <p className="text-gray-600 mt-1">
-                Showing {products.length} of {totalProducts} products
-                {hasMore && " • Scroll for more"}
-              </p>
-            )}
+            <div className="flex gap-4 items-center">
+              {" "}
+              {!initialLoading && products.length > 0 && (
+                <p className="text-gray-600 mt-1">
+                  Showing {products.length} of {totalProducts} products
+                  {hasMore && " • Scroll for more"}
+                </p>
+              )}
+              {query && (
+                <>
+                  <button
+                    onClick={clearSearch}
+                    className="ml-3 text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear search
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Mobile Filter/Sort Buttons */}
@@ -818,53 +807,6 @@ export default function SearchPage() {
                           </div>
                         </div>
                       </div>
-
-                      <div className="space-y-4">
-                        <div className="relative h-2 bg-gray-200 rounded-full">
-                          <div
-                            className="absolute h-2 bg-primary rounded-full"
-                            style={{
-                              left: `${(priceInputs[0] / 50000) * 100}%`,
-                              right: `${100 - (priceInputs[1] / 50000) * 100}%`,
-                            }}
-                          ></div>
-                          <input
-                            type="range"
-                            min="0"
-                            max="50000"
-                            step="100"
-                            value={priceInputs[0]}
-                            onChange={(e) =>
-                              handlePriceSliderChange(
-                                0,
-                                parseInt(e.target.value)
-                              )
-                            }
-                            className="absolute top-0 left-0 w-full h-full opacity-0"
-                            disabled={loading}
-                          />
-                          <input
-                            type="range"
-                            min="0"
-                            max="50000"
-                            step="100"
-                            value={priceInputs[1]}
-                            onChange={(e) =>
-                              handlePriceSliderChange(
-                                1,
-                                parseInt(e.target.value)
-                              )
-                            }
-                            className="absolute top-0 left-0 w-full h-full opacity-0"
-                            disabled={loading}
-                          />
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-600">
-                          <span>৳ 0</span>
-                          <span>৳ 25,000</span>
-                          <span>৳ 50,000</span>
-                        </div>
-                      </div>
                     </div>
 
                     {query && (
@@ -1009,31 +951,8 @@ export default function SearchPage() {
               </div>
             ) : (
               <>
-                {/* Desktop Sort and Results Count */}
-                <div className="hidden md:flex justify-between items-center mb-6 p-4 bg-white border border-gray-200 rounded-lg">
-                  <p className="text-sm text-gray-600">
-                    Showing {products.length} of {totalProducts} products
-                    {hasMore && " • Scroll for more"}
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-gray-600">Sort by:</span>
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-primary focus:border-primary outline-none disabled:opacity-50"
-                      disabled={loading}
-                    >
-                      {sortOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
                 {/* Products Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                   {products.map((product) => (
                     <PremiumProductCard
                       key={product.id}
@@ -1055,7 +974,6 @@ export default function SearchPage() {
                     />
                   ))}
                 </div>
-
                 {/* Infinite Scroll Trigger */}
                 {hasMore && (
                   <div ref={ref} className="py-10 text-center">
@@ -1074,7 +992,6 @@ export default function SearchPage() {
                     )}
                   </div>
                 )}
-
                 {/* End of results */}
                 {!hasMore && products.length > 0 && (
                   <div className="text-center py-10 text-gray-500 border-t mt-8">
