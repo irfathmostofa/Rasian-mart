@@ -1,10 +1,19 @@
+// app/search/page.tsx
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Loader2, Filter, X, ChevronDown } from "lucide-react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useRef } from "react";
+import {
+  Filter,
+  X,
+  Loader2,
+  ChevronDown,
+  Search,
+  RefreshCw,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "react-intersection-observer";
+import { useCategoryStore } from "../store/useCatrgoryStore";
 import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
 import api from "@/lib/api";
 
@@ -46,41 +55,65 @@ interface ApiResponse {
   success: boolean;
   message: string;
   data: {
-    data: Product[];
+    products: Product[];
     pagination: {
       currentPage: number;
       limit: number;
       total: number;
       totalPages: number;
-      hasNextPage: boolean;
-      hasPrevPage: boolean;
+      hasMore: boolean;
+      nextPage: number | null;
     };
   };
 }
 
-export default function CategoryPage() {
-  const { id, slug } = useParams(); // id is category_id, slug is category name
+export default function SearchPage() {
+  const params = useSearchParams();
   const router = useRouter();
+  const query = params.get("q") || "";
+  const categoryId = params.get("category_id");
 
+  const { categories, fetchCategories } = useCategoryStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [showSort, setShowSort] = useState(false);
   const [totalProducts, setTotalProducts] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState(query);
 
   // Filters
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
   const [priceInputs, setPriceInputs] = useState<[number, number]>([0, 50000]);
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [sortBy, setSortBy] = useState("newest");
+  const [showSort, setShowSort] = useState(false);
   const [availability, setAvailability] = useState<string>("all");
+
+  // Use refs for values that shouldn't trigger re-renders
+  const filtersRef = useRef({
+    selectedCategories,
+    priceRange,
+    sortBy,
+    availability,
+    query,
+  });
+
+  // Update ref when filters change
+  useEffect(() => {
+    filtersRef.current = {
+      selectedCategories,
+      priceRange,
+      sortBy,
+      availability,
+      query,
+    };
+  }, [selectedCategories, priceRange, sortBy, availability, query]);
 
   const { ref, inView } = useInView({
     threshold: 0,
-    rootMargin: "100px",
+    rootMargin: "100px", // Load more when 100px from viewport
   });
 
   // Initialize price inputs from price range
@@ -88,122 +121,158 @@ export default function CategoryPage() {
     setPriceInputs(priceRange);
   }, []);
 
-  // Fetch products from API
+  // Normalize product data
+  const normalizeProduct = (product: Product) => ({
+    ...product,
+    cost_price: parseFloat(product.cost_price as string) || 0,
+    selling_price: parseFloat(product.selling_price as string) || 0,
+    regular_price: parseFloat(product.regular_price as string) || 0,
+    total_stock: parseFloat(product.total_stock as string) || 0,
+    total_sales: parseFloat(product.total_sales as string) || 0,
+    rating: product.rating || 0,
+    review_count: product.review_count || 0,
+  });
+
+  // Fetch products from your Fastify backend
   const fetchProducts = useCallback(
     async (pageNum: number = 1, reset: boolean = false) => {
       if (loading && !reset) return;
-      if (!id) return;
 
       setLoading(true);
       if (reset) setInitialLoading(true);
-      setError(null);
 
       try {
-        const requestBody: any = {
-          page: pageNum,
-          limit: 20,
-          status: "A",
-          category_id: parseInt(String(id)), // Use the id from URL params
-        };
+        const currentFilters = filtersRef.current;
+        const searchParams = new URLSearchParams({
+          q: currentFilters.query,
+          page: pageNum.toString(),
+          limit: "20",
+          sort: currentFilters.sortBy,
+          availability: currentFilters.availability,
+        });
 
-        // Add price filters
-        if (priceRange[0] > 0) {
-          requestBody.price_min = priceRange[0];
+        if (currentFilters.selectedCategories.length > 0) {
+          searchParams.set(
+            "category_id",
+            currentFilters.selectedCategories.join(",")
+          );
         }
-        if (priceRange[1] < 50000) {
-          requestBody.price_max = priceRange[1];
-        }
+        if (currentFilters.priceRange[0] > 0)
+          searchParams.set(
+            "price_min",
+            currentFilters.priceRange[0].toString()
+          );
+        if (currentFilters.priceRange[1] < 50000)
+          searchParams.set(
+            "price_max",
+            currentFilters.priceRange[1].toString()
+          );
 
-        // Add sort if not default
-        if (sortBy !== "newest") {
-          requestBody.sort = sortBy;
-        }
-
-        // Call API with POST
-        const response = await api.post<ApiResponse>(
-          `/product/get-all-products`,
-          requestBody
+        // Call your Fastify backend API
+        const response = await api.get<ApiResponse>(
+          `/product/products/search?${searchParams}`
         );
 
         if (response.data.success) {
-          const fetchedProducts = response.data.data.data || [];
-          const pagination = response.data.data.pagination;
+          const { products: fetchedProducts, pagination } = response.data.data;
 
-          // Apply availability filter client-side
-          let filteredProducts = fetchedProducts;
-          if (availability === "in-stock") {
-            filteredProducts = fetchedProducts.filter(
-              (p) => parseFloat(String(p.total_stock)) > 0
-            );
-          } else if (availability === "out-of-stock") {
-            filteredProducts = fetchedProducts.filter(
-              (p) => parseFloat(String(p.total_stock)) <= 0
-            );
-          }
+          // Convert string numbers to numbers for consistency
+          const normalizedProducts = fetchedProducts.map(normalizeProduct);
 
           if (reset) {
-            setProducts(filteredProducts);
+            setProducts(normalizedProducts);
           } else {
-            setProducts((prev) => [...prev, ...filteredProducts]);
+            setProducts((prev) => [...prev, ...normalizedProducts]);
           }
-
-          setHasMore(pagination.currentPage < pagination.totalPages);
+          setHasMore(pagination.hasMore);
           setPage(pagination.currentPage);
           setTotalProducts(pagination.total);
-        } else {
-          setError("Failed to fetch products");
         }
-      } catch (error: any) {
-        console.error("Error fetching category products:", error);
-        setError(
-          error.response?.data?.message ||
-            error.message ||
-            "Failed to load products"
-        );
-        if (reset) {
-          setProducts([]);
-          setTotalProducts(0);
-        }
+      } catch (error) {
+        console.error("Error fetching products:", error);
       } finally {
         setLoading(false);
         setInitialLoading(false);
       }
     },
-    [loading, id, priceRange, sortBy, availability]
+    [loading] // Only depend on loading state
   );
 
-  // Initial load when component mounts or id changes
+  // Debounced filter changes
   useEffect(() => {
-    if (id) {
+    const timer = setTimeout(() => {
       setProducts([]);
       setPage(1);
       setHasMore(true);
       fetchProducts(1, true);
+    }, 300); // Debounce by 300ms
+
+    return () => clearTimeout(timer);
+  }, [query, selectedCategories, priceRange, sortBy, availability]);
+
+  // Initial load
+  useEffect(() => {
+    // Reset everything on initial load or when query changes
+    setProducts([]);
+    setPage(1);
+    setHasMore(true);
+    const timer = setTimeout(() => {
+      fetchProducts(1, true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []); // Only run on mount
+
+  // Handle category selection from URL on initial load
+  useEffect(() => {
+    if (categoryId) {
+      const id = parseInt(categoryId);
+      if (!isNaN(id) && !selectedCategories.includes(id)) {
+        setSelectedCategories([id]);
+      }
     }
-  }, [id]);
+  }, [categoryId]);
 
   // Load more when in view
   useEffect(() => {
-    if (inView && hasMore && !loading && products.length > 0) {
+    if (inView && hasMore && !loading) {
       const timer = setTimeout(() => {
         fetchProducts(page + 1);
       }, 200);
       return () => clearTimeout(timer);
     }
-  }, [inView, hasMore, loading, page, fetchProducts, products.length]);
+  }, [inView, hasMore, loading, page, fetchProducts]);
+
+  // Fetch categories
+  useEffect(() => {
+    if (categories.length === 0) {
+      fetchCategories();
+    }
+  }, [categories.length, fetchCategories]);
 
   // Apply filters manually (for button clicks)
   const applyFilters = () => {
+    // Update price range from inputs
     setPriceRange(priceInputs);
+    // Trigger fetch via useEffect
     setShowFilters(false);
   };
 
   // Reset filters
   const resetFilters = () => {
+    setSelectedCategories([]);
     setPriceRange([0, 50000]);
     setPriceInputs([0, 50000]);
     setSortBy("newest");
     setAvailability("all");
+    // Don't trigger fetch here - useEffect will handle it
+  };
+
+  // Clear search and show all products
+  const clearSearch = () => {
+    router.push("/search");
+    setSearchInput("");
+    resetFilters();
   };
 
   // Handle price input changes
@@ -220,11 +289,23 @@ export default function CategoryPage() {
   // Handle price slider changes
   const handlePriceSliderChange = (index: number, value: number) => {
     if (index === 0) {
+      // Min slider
       const newMin = Math.min(value, priceInputs[1]);
       setPriceInputs([newMin, priceInputs[1]]);
     } else {
+      // Max slider
       const newMax = Math.max(value, priceInputs[0]);
       setPriceInputs([priceInputs[0], newMax]);
+    }
+  };
+
+  // Handle search submit
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchInput.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchInput.trim())}`);
+    } else {
+      clearSearch();
     }
   };
 
@@ -252,14 +333,6 @@ export default function CategoryPage() {
     }).format(price);
   };
 
-  // Format category name
-  const formatCategoryName = (slug: string) => {
-    return String(slug)
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
-
   // Render loading skeleton
   const renderSkeleton = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
@@ -274,12 +347,39 @@ export default function CategoryPage() {
     </div>
   );
 
-  // Get current category name
-  const categoryName = formatCategoryName(String(slug));
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-6">
+        {/* Search Bar for Mobile */}
+        <div className="mb-6 md:hidden">
+          <form onSubmit={handleSearchSubmit} className="relative">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search products..."
+                className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-primary focus:border-primary outline-none"
+              />
+              <button
+                type="submit"
+                className="bg-primary text-white px-4 rounded-lg hover:bg-primary/90"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            </div>
+            {query && (
+              <button
+                onClick={clearSearch}
+                className="mt-2 text-sm text-primary hover:underline flex items-center gap-1"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Clear search and show all products
+              </button>
+            )}
+          </form>
+        </div>
+
         {/* Breadcrumb */}
         <div className="text-sm text-gray-600 mb-6">
           <span
@@ -289,16 +389,27 @@ export default function CategoryPage() {
             Home
           </span>
           {" > "}
-          <span className="font-medium">Categories</span>
-          {" > "}
-          <span className="font-medium capitalize">{categoryName}</span>
+          <span className="font-medium">Search</span>
+          {query && (
+            <>
+              {" > "}
+              <span className="font-medium">"{query}"</span>
+              <button
+                onClick={clearSearch}
+                className="ml-3 text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                Clear search
+              </button>
+            </>
+          )}
         </div>
 
         {/* Page Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 capitalize">
-              {categoryName}
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+              {query ? `Search results for "${query}"` : "All Products"}
             </h1>
             {!initialLoading && products.length > 0 && (
               <p className="text-gray-600 mt-1">
@@ -313,13 +424,15 @@ export default function CategoryPage() {
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg md:hidden hover:bg-gray-50 transition-colors"
-              disabled={loading}
             >
               <Filter className="w-4 h-4" />
               Filters
-              {(priceRange[1] < 50000 || availability !== "all") && (
+              {(selectedCategories.length > 0 ||
+                priceRange[1] < 50000 ||
+                availability !== "all") && (
                 <span className="bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {(priceRange[1] < 50000 ? 1 : 0) +
+                  {(selectedCategories.length > 0 ? 1 : 0) +
+                    (priceRange[1] < 50000 ? 1 : 0) +
                     (availability !== "all" ? 1 : 0)}
                 </span>
               )}
@@ -329,7 +442,6 @@ export default function CategoryPage() {
               <button
                 onClick={() => setShowSort(!showSort)}
                 className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                disabled={loading}
               >
                 <span className="hidden sm:inline">Sort by:</span>
                 <span className="font-medium">
@@ -366,7 +478,6 @@ export default function CategoryPage() {
                               ? "bg-primary/5 text-primary font-medium border-l-2 border-primary"
                               : ""
                           }`}
-                          disabled={loading}
                         >
                           {option.label}
                         </button>
@@ -379,19 +490,15 @@ export default function CategoryPage() {
           </div>
         </div>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 text-sm">{error}</p>
-          </div>
-        )}
-
         <div className="flex flex-col md:flex-row gap-6">
           {/* Filters Sidebar - Desktop */}
           <aside className="hidden md:block w-80 flex-shrink-0">
             <div className="bg-white border border-gray-200 rounded-lg p-5 sticky top-24">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-                {(priceRange[1] < 50000 || availability !== "all") && (
+                {(selectedCategories.length > 0 ||
+                  priceRange[1] < 50000 ||
+                  availability !== "all") && (
                   <button
                     onClick={resetFilters}
                     className="text-sm text-primary hover:text-primary/80 transition-colors"
@@ -400,6 +507,54 @@ export default function CategoryPage() {
                     Clear all
                   </button>
                 )}
+              </div>
+
+              {/* Categories */}
+              <div className="mb-8">
+                <h4 className="font-medium text-gray-900 mb-4">Categories</h4>
+                <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
+                  {categories.length === 0 ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                    </div>
+                  ) : (
+                    categories.map((category) => (
+                      <label
+                        key={category.id}
+                        className="flex items-center group cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.includes(category.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedCategories([
+                                ...selectedCategories,
+                                category.id,
+                              ]);
+                            } else {
+                              setSelectedCategories(
+                                selectedCategories.filter(
+                                  (id) => id !== category.id
+                                )
+                              );
+                            }
+                          }}
+                          className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary cursor-pointer"
+                          disabled={loading}
+                        />
+                        <span className="ml-3 text-sm text-gray-700 group-hover:text-primary transition-colors">
+                          {category.name}
+                        </span>
+                        {category.children && category.children.length > 0 && (
+                          <span className="ml-auto text-xs text-gray-500">
+                            ({category.children.length})
+                          </span>
+                        )}
+                      </label>
+                    ))
+                  )}
+                </div>
               </div>
 
               {/* Availability */}
@@ -431,10 +586,6 @@ export default function CategoryPage() {
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-medium text-gray-900">Price Range</h4>
-                  <span className="text-sm text-primary font-medium">
-                    ৳ {formatPrice(priceInputs[0])} - ৳{" "}
-                    {formatPrice(priceInputs[1])}
-                  </span>
                 </div>
 
                 {/* Price Input Fields */}
@@ -451,7 +602,6 @@ export default function CategoryPage() {
                         type="number"
                         min="0"
                         max="50000"
-                        step="100"
                         value={priceInputs[0]}
                         onChange={(e) =>
                           handleMinPriceChange(parseInt(e.target.value) || 0)
@@ -473,7 +623,6 @@ export default function CategoryPage() {
                         type="number"
                         min="0"
                         max="50000"
-                        step="100"
                         value={priceInputs[1]}
                         onChange={(e) =>
                           handleMaxPriceChange(parseInt(e.target.value) || 0)
@@ -483,68 +632,6 @@ export default function CategoryPage() {
                       />
                     </div>
                   </div>
-                </div>
-
-                {/* Dual Slider */}
-                <div className="relative h-8">
-                  {/* Track */}
-                  <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-gray-200 rounded-full transform -translate-y-1/2"></div>
-
-                  {/* Active Range */}
-                  <div
-                    className="absolute top-1/2 h-1.5 bg-primary rounded-full transform -translate-y-1/2"
-                    style={{
-                      left: `${(priceInputs[0] / 50000) * 100}%`,
-                      right: `${100 - (priceInputs[1] / 50000) * 100}%`,
-                    }}
-                  ></div>
-
-                  {/* Slider Thumbs */}
-                  <div
-                    className="absolute top-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow transform -translate-y-1/2 -translate-x-1/2 z-20"
-                    style={{
-                      left: `${(priceInputs[0] / 50000) * 100}%`,
-                    }}
-                  ></div>
-                  <div
-                    className="absolute top-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow transform -translate-y-1/2 -translate-x-1/2 z-20"
-                    style={{
-                      left: `${(priceInputs[1] / 50000) * 100}%`,
-                    }}
-                  ></div>
-
-                  {/* Hidden Range Inputs */}
-                  <input
-                    type="range"
-                    min="0"
-                    max="50000"
-                    step="100"
-                    value={priceInputs[0]}
-                    onChange={(e) =>
-                      handlePriceSliderChange(0, parseInt(e.target.value))
-                    }
-                    className="absolute top-1/2 left-0 right-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    disabled={loading}
-                  />
-                  <input
-                    type="range"
-                    min="0"
-                    max="50000"
-                    step="100"
-                    value={priceInputs[1]}
-                    onChange={(e) =>
-                      handlePriceSliderChange(1, parseInt(e.target.value))
-                    }
-                    className="absolute top-1/2 left-0 right-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    disabled={loading}
-                  />
-                </div>
-
-                {/* Price Labels */}
-                <div className="flex justify-between text-xs text-gray-600 mt-2">
-                  <span>৳ 0</span>
-                  <span>৳ 25,000</span>
-                  <span>৳ 50,000</span>
                 </div>
               </div>
 
@@ -562,6 +649,18 @@ export default function CategoryPage() {
                   "Apply Filters"
                 )}
               </button>
+
+              {/* Clear All Products Link */}
+              {query && (
+                <button
+                  onClick={clearSearch}
+                  className="w-full mt-4 text-sm text-primary hover:text-primary/80 transition-colors flex items-center justify-center gap-2"
+                  disabled={loading}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Clear search and show all products
+                </button>
+              )}
             </div>
           </aside>
 
@@ -595,6 +694,44 @@ export default function CategoryPage() {
                     </div>
 
                     {/* Mobile filter content */}
+                    <div className="mb-6">
+                      <h4 className="font-medium text-gray-900 mb-4">
+                        Categories
+                      </h4>
+                      <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                        {categories.map((category) => (
+                          <label
+                            key={category.id}
+                            className="flex items-center group cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedCategories.includes(category.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedCategories([
+                                    ...selectedCategories,
+                                    category.id,
+                                  ]);
+                                } else {
+                                  setSelectedCategories(
+                                    selectedCategories.filter(
+                                      (id) => id !== category.id
+                                    )
+                                  );
+                                }
+                              }}
+                              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                              disabled={loading}
+                            />
+                            <span className="ml-3 text-sm text-gray-700">
+                              {category.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="mb-6">
                       <h4 className="font-medium text-gray-900 mb-4">
                         Availability
@@ -646,7 +783,6 @@ export default function CategoryPage() {
                               type="number"
                               min="0"
                               max="50000"
-                              step="100"
                               value={priceInputs[0]}
                               onChange={(e) =>
                                 handleMinPriceChange(
@@ -670,7 +806,6 @@ export default function CategoryPage() {
                               type="number"
                               min="0"
                               max="50000"
-                              step="100"
                               value={priceInputs[1]}
                               onChange={(e) =>
                                 handleMaxPriceChange(
@@ -732,6 +867,19 @@ export default function CategoryPage() {
                       </div>
                     </div>
 
+                    {query && (
+                      <div className="mb-4">
+                        <button
+                          onClick={clearSearch}
+                          className="w-full text-sm text-primary hover:text-primary/80 flex items-center justify-center gap-2 py-2"
+                          disabled={loading}
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Clear search
+                        </button>
+                      </div>
+                    )}
+
                     <div className="flex gap-3">
                       <button
                         onClick={resetFilters}
@@ -765,6 +913,20 @@ export default function CategoryPage() {
           <main className="flex-1">
             {/* Active Filters - Desktop */}
             <div className="hidden md:flex flex-wrap gap-2 mb-6">
+              {selectedCategories.length > 0 && (
+                <div className="text-sm text-gray-600">
+                  Categories:{" "}
+                  {selectedCategories.map((catId, idx) => {
+                    const cat = categories.find((c) => c.id === catId);
+                    return (
+                      <span key={catId} className="font-medium">
+                        {cat?.name}
+                        {idx < selectedCategories.length - 1 ? ", " : ""}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               {priceRange[1] < 50000 && (
                 <div className="text-sm text-gray-600">
                   Price:{" "}
@@ -785,7 +947,9 @@ export default function CategoryPage() {
                   </span>
                 </div>
               )}
-              {(priceRange[1] < 50000 || availability !== "all") && (
+              {(selectedCategories.length > 0 ||
+                priceRange[1] < 50000 ||
+                availability !== "all") && (
                 <button
                   onClick={resetFilters}
                   className="text-sm text-primary hover:underline ml-4"
@@ -799,35 +963,6 @@ export default function CategoryPage() {
             {/* Products */}
             {initialLoading ? (
               renderSkeleton()
-            ) : error ? (
-              <div className="bg-white rounded-lg border border-gray-200 p-8 md:p-12 text-center">
-                <div className="text-gray-400 mb-4">
-                  <svg
-                    className="w-16 h-16 mx-auto"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  Error Loading Products
-                </h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">{error}</p>
-                <button
-                  onClick={() => fetchProducts(1, true)}
-                  className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
-                  disabled={loading}
-                >
-                  Try Again
-                </button>
-              </div>
             ) : products.length === 0 ? (
               <div className="bg-white rounded-lg border border-gray-200 p-8 md:p-12 text-center">
                 <div className="text-gray-400 mb-4">
@@ -849,16 +984,28 @@ export default function CategoryPage() {
                   No products found
                 </h3>
                 <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  No products found in this category with the selected filters.
-                  Try adjusting your filters.
+                  {query
+                    ? `We couldn't find any products matching "${query}". Try adjusting your search terms.`
+                    : "No products found with the selected filters. Try adjusting your filters."}
                 </p>
-                <button
-                  onClick={resetFilters}
-                  className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
-                  disabled={loading}
-                >
-                  Reset Filters
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={resetFilters}
+                    className="px-6 py-2 border border-primary text-primary rounded-lg font-medium hover:bg-primary/5 transition-colors"
+                    disabled={loading}
+                  >
+                    Reset Filters
+                  </button>
+                  {query && (
+                    <button
+                      onClick={clearSearch}
+                      className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                      disabled={loading}
+                    >
+                      Clear Search
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <>
@@ -886,7 +1033,7 @@ export default function CategoryPage() {
                 </div>
 
                 {/* Products Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                   {products.map((product) => (
                     <PremiumProductCard
                       key={product.id}
@@ -894,12 +1041,16 @@ export default function CategoryPage() {
                       primary_variant_id={product.primary_variant_id}
                       name={product.name}
                       categories={product.categories}
-                      selling_price={parseFloat(String(product.selling_price))}
-                      regular_price={parseFloat(String(product.regular_price))}
-                      cost_price={parseFloat(String(product.cost_price))}
+                      selling_price={parseFloat(
+                        product.selling_price as string
+                      )}
+                      regular_price={parseFloat(
+                        product.regular_price as string
+                      )}
+                      cost_price={parseFloat(product.cost_price as string)}
                       images={product.images}
                       badge={product.badge}
-                      total_stock={parseFloat(String(product.total_stock))}
+                      total_stock={parseFloat(product.total_stock as string)}
                       rating={product.rating || 0}
                     />
                   ))}
@@ -930,9 +1081,15 @@ export default function CategoryPage() {
                     <p className="text-lg font-medium mb-2">
                       You've seen it all! 🎉
                     </p>
-                    <p className="text-sm">
-                      No more {categoryName} products to load
-                    </p>
+                    <p className="text-sm">No more products to load</p>
+                    {query && (
+                      <button
+                        onClick={clearSearch}
+                        className="mt-4 px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                      >
+                        Browse All Products
+                      </button>
+                    )}
                   </div>
                 )}
               </>

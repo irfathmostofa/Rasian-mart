@@ -18,12 +18,7 @@ export default function HeaderOne() {
   const [focused, setFocused] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
 
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
-  }, []);
+
 
   const filteredProducts = useMemo(() => {
     if (query.length < 3) return [];

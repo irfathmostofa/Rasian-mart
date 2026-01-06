@@ -6,7 +6,7 @@ import HeaderThree from "./HeaderComponent/HeaderThree";
 import HeaderTwo from "./HeaderComponent/HeaderTwo";
 
 export default function Header() {
-  const { headerStyle } = useSettings(); // Zustand store (or DB setting)
+  const { headerStyle } = useSettings();
 
   switch (headerStyle) {
     case 2:

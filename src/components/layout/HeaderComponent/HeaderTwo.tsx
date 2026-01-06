@@ -25,16 +25,26 @@ export default function HeaderTwo() {
   const [focused, setFocused] = useState(false);
   const [mobileSearch, setMobileSearch] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [fetchProducts]);
 
+  /* 🔍 Search redirect handler */
+  const handleSearch = () => {
+    if (query.trim().length < 2) return;
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+    setFocused(false);
+    setMobileSearch(false);
+  };
+
+  /* 🔍 Search suggestions */
   const filteredProducts = useMemo(() => {
     if (query.length < 3) return [];
     return products.filter((p) =>
       p.name.toLowerCase().includes(query.toLowerCase())
     );
-  }, [query]);
+  }, [query, products]);
 
   return (
     <header className="sticky top-0 z-50 bg-white shadow">
@@ -62,9 +72,9 @@ export default function HeaderTwo() {
         </div>
       </div>
 
-      {/* 🔹 Main Header Row */}
+      {/* 🔹 Main Header */}
       <div className="container mx-auto flex items-center justify-between px-4 py-4 relative">
-        {/* Mobile Hamburger + Logo */}
+        {/* Left */}
         <div className="flex items-center gap-4">
           <button
             className="md:hidden p-2 rounded hover:bg-gray-100"
@@ -73,70 +83,80 @@ export default function HeaderTwo() {
             <Menu className="w-6 h-6" />
           </button>
 
-          {/* Logo */}
           <Link href="/" className="text-2xl font-bold text-primary">
-            {/* RasianMart */}
             BizzHut
           </Link>
         </div>
 
-        {/* Desktop Search */}
+        {/* 🔍 Desktop Search */}
         <div className="hidden md:flex flex-1 mx-6 max-w-2xl relative">
           <input
-            type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setFocused(true)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             onBlur={() => setTimeout(() => setFocused(false), 200)}
             placeholder="Search for products, brands, categories..."
             className="flex-1 rounded-l-full border px-4 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
           />
-          <button className="bg-primary text-white px-4 rounded-r-full hover:bg-primary/90">
+          <button
+            onClick={handleSearch}
+            className="bg-primary text-white px-4 rounded-r-full hover:bg-primary/90"
+          >
             <Search className="w-4 h-4" />
           </button>
 
-          {/* Search Results Dropdown */}
+          {/* 🔽 Suggestions */}
           {focused && query.length >= 3 && (
             <div className="absolute top-12 left-0 w-full bg-white border rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
               {filteredProducts.length === 0 ? (
                 <div className="flex items-center justify-center gap-3 p-4">
-                  <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                   <span className="text-sm text-gray-600">Searching...</span>
                 </div>
               ) : (
-                filteredProducts.map((product) => {
-                  const imgSrc = product.images?.[0]?.url || "/placeholder.png";
-                  return (
-                    <div
-                      key={product.id}
-                      onMouseDown={(e) => e.preventDefault()} // prevent input blur before click
-                      onClick={() => {
-                        router.push(`/product/${product.id}`);
-                        setFocused(false);
-                      }}
-                      className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    >
-                      <img
-                        src={imgSrc}
-                        alt={product.name}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                      <div className="flex-1 min-w-0">
+                <>
+                  {filteredProducts.map((product) => {
+                    const imgSrc =
+                      product.images?.[0]?.url || "/placeholder.png";
+                    return (
+                      <div
+                        key={product.id}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          router.push(`/product/${product.id}`);
+                          setFocused(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                      >
+                        <img
+                          src={imgSrc}
+                          alt={product.name}
+                          className="w-12 h-12 rounded object-cover"
+                        />
                         <p className="text-sm font-medium truncate">
                           {product.name}
                         </p>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+
+                  {/* View all results */}
+                  <div
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={handleSearch}
+                    className="px-4 py-2 text-sm text-primary hover:bg-gray-100 cursor-pointer border-t"
+                  >
+                    View all results for “{query}”
+                  </div>
+                </>
               )}
             </div>
           )}
         </div>
 
-        {/* 🔹 Icons */}
+        {/* Right Icons */}
         <div className="flex items-center gap-4">
-          {/* Mobile Search Toggle */}
           <button
             className="md:hidden p-2 rounded hover:bg-gray-100"
             onClick={() => setMobileSearch(true)}
@@ -144,8 +164,7 @@ export default function HeaderTwo() {
             <Search className="w-5 h-5" />
           </button>
 
-          {/* Wishlist */}
-          <Link href="/wishlist" className="relative hover:text-primary">
+          <Link href="/wishlist" className="relative">
             <Heart className="w-5 h-5" />
             {items.length > 0 && (
               <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1">
@@ -154,8 +173,7 @@ export default function HeaderTwo() {
             )}
           </Link>
 
-          {/* Cart */}
-          <Link href="/cart" className="relative hover:text-primary">
+          <Link href="/cart" className="relative">
             <ShoppingCart className="w-5 h-5" />
             {totalItems > 0 && (
               <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1">
@@ -166,7 +184,7 @@ export default function HeaderTwo() {
         </div>
       </div>
 
-      {/* 🔹 Mobile Search Overlay */}
+      {/* 🔹 Mobile Search */}
       <AnimatePresence>
         {mobileSearch && (
           <motion.div
@@ -180,55 +198,26 @@ export default function HeaderTwo() {
                 <X className="w-6 h-6" />
               </button>
               <input
-                type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 placeholder="Search products..."
                 className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
               />
             </div>
-
-            {filteredProducts.length > 0 && (
-              <div className="overflow-y-auto max-h-[60vh]">
-                {filteredProducts.map((product) => {
-                  const imgSrc = product.images?.[0]?.url || "/placeholder.png";
-                  return (
-                    <div
-                      key={product.id}
-                      onClick={() => {
-                        router.push(`/product/${product.id}`);
-                        setMobileSearch(false);
-                      }}
-                      className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    >
-                      <img
-                        src={imgSrc}
-                        alt={product.name}
-                        className="w-12 h-12 object-cover rounded"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {product.name}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 🔹 Mobile Drawer Menu (with user/auth links + categories) */}
+      {/* 🔹 Mobile Menu */}
       <AnimatePresence>
         {mobileMenu && (
           <>
             <motion.div
+              className="fixed inset-0 bg-black z-40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black z-40"
               onClick={() => setMobileMenu(false)}
             />
 
@@ -236,8 +225,7 @@ export default function HeaderTwo() {
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed top-0 right-0 w-80 max-w-full h-full bg-white z-50 shadow-lg overflow-y-auto"
+              className="fixed top-0 right-0 w-80 h-full bg-white z-50 shadow-lg overflow-y-auto"
             >
               <div className="flex justify-between items-center px-4 py-4 border-b">
                 <span className="text-lg font-semibold">
@@ -249,60 +237,24 @@ export default function HeaderTwo() {
               </div>
 
               <div className="p-4 space-y-6">
-                {/* User Links */}
+                <CategoryNav mobile />
 
-                {/* Categories */}
-                <div className="">
-                  <CategoryNav mobile />
-                </div>
                 <div className="flex flex-col gap-3">
-                  <Link
-                    href="/"
-                    onClick={() => setMobileMenu(false)}
-                    className="text-gray-700 hover:text-primary"
-                  >
-                    Help
-                  </Link>
-                  <Link
-                    href="/track-order"
-                    onClick={() => setMobileMenu(false)}
-                    className="text-gray-700 hover:text-primary"
-                  >
-                    Track Order
-                  </Link>
-
+                  <Link href="/track-order">Track Order</Link>
                   {user ? (
                     <>
-                      <Link
-                        href="/profile"
-                        onClick={() => setMobileMenu(false)}
-                        className="text-gray-700 hover:text-primary"
-                      >
-                        {user.full_name}
-                      </Link>
+                      <Link href="/profile">{user.full_name}</Link>
                       <p
-                        className="text-gray-700 hover:text-primary cursor-pointer"
-                        onClick={() => clearSession()}
+                        onClick={clearSession}
+                        className="cursor-pointer text-red-500"
                       >
                         Logout
                       </p>
                     </>
                   ) : (
                     <>
-                      <Link
-                        href="/account/login"
-                        onClick={() => setMobileMenu(false)}
-                        className="text-gray-700 hover:text-primary"
-                      >
-                        Login
-                      </Link>
-                      <Link
-                        href="/account/signup"
-                        onClick={() => setMobileMenu(false)}
-                        className="text-gray-700 hover:text-primary"
-                      >
-                        Signup
-                      </Link>
+                      <Link href="/account/login">Login</Link>
+                      <Link href="/account/signup">Signup</Link>
                     </>
                   )}
                 </div>
@@ -312,7 +264,7 @@ export default function HeaderTwo() {
         )}
       </AnimatePresence>
 
-      {/* 🔹 Desktop Category Navigation */}
+      {/* 🔹 Desktop Categories */}
       <div className="hidden md:block">
         <CategoryNav />
       </div>
