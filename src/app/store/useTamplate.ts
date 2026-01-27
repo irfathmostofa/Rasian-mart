@@ -42,14 +42,16 @@ export const useTemplateStore = create<TemplateState>()(
             key_name: "Template",
           });
 
-          // response.data.data may be a single object; wrap in array
-          const templates = Array.isArray(response.data.data)
-            ? response.data.data
-            : [response.data.data];
-
-          set({ Template: templates, loading: false });
+          if (response.data.length > 0) {
+            const templates = Array.isArray(response.data.data)
+              ? response.data.data
+              : [response.data.data];
+            set({ Template: templates, loading: false });
+          }
         } catch (error) {
           console.error("Error fetching template:", error);
+          set({ loading: false });
+        } finally {
           set({ loading: false });
         }
       },
@@ -60,6 +62,6 @@ export const useTemplateStore = create<TemplateState>()(
       onRehydrateStorage: () => (state) => {
         state?.setHydrated(true);
       },
-    }
-  )
+    },
+  ),
 );

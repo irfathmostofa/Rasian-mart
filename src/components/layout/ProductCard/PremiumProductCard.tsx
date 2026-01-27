@@ -8,6 +8,8 @@ import Link from "next/link";
 import { useCart } from "@/app/store/useCart";
 import { useWishlist } from "@/app/store/useWishlist";
 import { useToastStore } from "@/app/store/useToastStore";
+import { useUserStore } from "@/app/store/useUserStore";
+import { useRouter } from "next/navigation";
 
 export function PremiumProductCard({
   id,
@@ -23,17 +25,106 @@ export function PremiumProductCard({
   images,
   type = "card",
 }: ProductCardProps) {
-  const { toggleWishlist, isInWishlist } = useWishlist();
+  const { user } = useUserStore();
+  const { addToCart, isLoading: cartLoading } = useCart();
+  const {
+    toggleWishlist,
+    isInWishlist,
+    isLoading: wishlistLoading,
+  } = useWishlist();
   const isWishlisted = isInWishlist(id);
   const imageUrl = getImageUrl(images);
   const categoryName = getCategoryName(categories);
   const price = formatPrice(selling_price);
-  const oldPrice = cost_price ? formatPrice(cost_price) : undefined;
+  const oldPrice = regular_price ? formatPrice(regular_price) : undefined;
   const safeRating = typeof rating === "number" ? rating : 0;
   const safeStock =
     typeof total_stock === "string" ? parseInt(total_stock) : total_stock || 0;
-  const { addToCart } = useCart();
   const { showToast } = useToastStore();
+  const router = useRouter();
+  // Handle add to cart with authentication check
+  const handleAddToCart = async () => {
+    if (!user) {
+      showToast("Please login to add items to cart", "error");
+      // Optionally redirect to login page
+      router.push("/account/login");
+      return;
+    }
+
+    try {
+      await addToCart(
+        {
+          id: id,
+          primary_variant_id: primary_variant_id,
+          name: name,
+          price: Number(selling_price) || 0,
+          image: imageUrl,
+          quantity: 1,
+        },
+        user.id,
+      );
+
+      showToast("Added to cart 🛒", "success");
+    } catch (error) {
+      showToast("Failed to add to cart", "error");
+    }
+  };
+
+  // Handle toggle wishlist with authentication check
+  const handleToggleWishlist = async () => {
+    if (!user) {
+      showToast("Please login to manage wishlist", "error");
+      // Optionally redirect to login page
+      router.push("/account/login");
+      return;
+    }
+
+    try {
+      const added = await toggleWishlist(
+        {
+          id: id,
+          primary_variant_id: primary_variant_id,
+          name: name,
+          price: Number(selling_price) || 0,
+          image: imageUrl,
+          stock: safeStock,
+        },
+        user.id,
+      );
+
+      showToast(`${added ? "Added" : "Removed"} to wishlist ❤️`, "success");
+    } catch (error) {
+      showToast("Failed to update wishlist", "error");
+    }
+  };
+
+  // Handle buy now (add to cart and redirect to checkout)
+  const handleBuyNow = async () => {
+    if (!user) {
+      showToast("Please login to buy products", "error");
+      return;
+    }
+
+    try {
+      await addToCart(
+        {
+          id: id,
+          primary_variant_id: primary_variant_id,
+          name: name,
+          price: Number(selling_price) || 0,
+          image: imageUrl,
+          quantity: 1,
+        },
+        user.id,
+      );
+
+      showToast("Added to cart 🛒", "success");
+      // Redirect to checkout page
+      router.push("/checkout");
+    } catch (error) {
+      showToast("Failed to add to cart", "error");
+    }
+  };
 
   return (
     <div className="group flex flex-col justify-between rounded-2xl overflow-hidden bg-white shadow-md hover:shadow-lg transition-all duration-300 border border-gray-100 w-full max-w-xs mx-auto">
@@ -65,48 +156,29 @@ export function PremiumProductCard({
           </span>
         )}
         <div className="absolute top-2 right-2 flex gap-1 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          {/* Hover buttons (only if stock > 0) */}
+          {/* Hover buttons */}
           <button
-            onClick={() => {
-              toggleWishlist({
-                id: id,
-                primary_variant_id: primary_variant_id,
-                name: name,
-                price: Number(selling_price || 0),
-                image: imageUrl,
-                stock: safeStock,
-              });
-              showToast(
-                `${isWishlisted ? "Removed" : "Added"} to wishlist ❤️`,
-                "success"
-              );
-            }}
+            onClick={handleToggleWishlist}
+            disabled={wishlistLoading}
             className={`p-1 sm:p-2 ${
               isWishlisted ? "bg-red-500 text-white" : "bg-white text-red-500"
-            } rounded-full shadow hover:text-white transition`}
+            } rounded-full shadow hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <Heart
               className={`w-3 h-3 sm:w-4 sm:h-4 ${
-                isWishlisted ? "fill-red-500 text-white" : "text-red-500"
-              }`}
+                isWishlisted ? "fill-white text-white" : "text-red-500"
+              } ${wishlistLoading ? "animate-pulse" : ""}`}
             />
           </button>
           {safeStock > 0 && (
             <button
-              onClick={() => {
-                addToCart({
-                  id: id,
-                  primary_variant_id: primary_variant_id,
-                  name: name,
-                  price: Number(selling_price) || 0,
-                  image: imageUrl,
-                  quantity: 1,
-                });
-                showToast("Added to cart 🛒", "success");
-              }}
-              className="p-1 sm:p-2 bg-white rounded-full shadow hover:bg-blue-500 transition"
+              onClick={handleAddToCart}
+              disabled={cartLoading}
+              className="p-1 sm:p-2 bg-white rounded-full shadow hover:bg-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <ShoppingCart className="w-3 h-3 sm:w-4 sm:h-4" />
+              <ShoppingCart
+                className={`w-3 h-3 sm:w-4 sm:h-4 ${cartLoading ? "animate-pulse" : ""}`}
+              />
             </button>
           )}
         </div>
@@ -160,15 +232,15 @@ export function PremiumProductCard({
                 safeStock > 5
                   ? "text-green-600"
                   : safeStock > 0
-                  ? "text-orange-600"
-                  : "text-red-600"
+                    ? "text-orange-600"
+                    : "text-red-600"
               }`}
             >
               {safeStock > 5
                 ? "In Stock"
                 : safeStock > 0
-                ? `Only ${safeStock} left`
-                : "Out of Stock"}
+                  ? `Only ${safeStock} left`
+                  : "Out of Stock"}
             </p>
           </div>
         )}
@@ -177,38 +249,19 @@ export function PremiumProductCard({
         {safeStock > 0 ? (
           type === "card" ? (
             <div className="flex gap-2 justify-between">
-              {" "}
               <button
-                onClick={() => {
-                  addToCart({
-                    id: id,
-                    primary_variant_id: primary_variant_id,
-                    name: name,
-                    price: Number(selling_price) || 0,
-                    image: imageUrl,
-                    quantity: 1,
-                  });
-                  showToast("Added to cart 🛒", "success");
-                }}
-                className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition"
+                onClick={handleBuyNow}
+                disabled={cartLoading}
+                className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Buy Now
+                {cartLoading ? "Adding..." : "Buy Now"}
               </button>
               <button
-                onClick={() => {
-                  addToCart({
-                    id: id,
-                    primary_variant_id: primary_variant_id,
-                    name: name,
-                    price: Number(selling_price) || 0,
-                    image: imageUrl,
-                    quantity: 1,
-                  });
-                  showToast("Added to cart 🛒", "success");
-                }}
-                className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition"
+                onClick={handleAddToCart}
+                disabled={cartLoading}
+                className="w-full bg-black text-white py-2 rounded font-medium text-sm hover:bg-gray-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add to Cart
+                {cartLoading ? "Adding..." : "Add to Cart"}
               </button>
             </div>
           ) : (
