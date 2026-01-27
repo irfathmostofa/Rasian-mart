@@ -13,10 +13,11 @@ import { useProductStore } from "@/app/store/useProductStore";
 import { useWishlist } from "@/app/store/useWishlist";
 
 export default function HeaderTwo() {
-  const { cart } = useCart();
-  const { items } = useWishlist();
+  const { cart, isLoading: cartLoading } = useCart();
+  const { items, isLoading: wishlistLoading } = useWishlist();
   const { user, clearSession } = useUserStore();
   const { products, fetchProducts } = useProductStore();
+  const { user: authUser } = useUserStore(); // Get auth user
 
   const router = useRouter();
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -30,6 +31,14 @@ export default function HeaderTwo() {
     fetchProducts();
   }, [fetchProducts]);
 
+  // Initialize cart and wishlist when user logs in
+  useEffect(() => {
+    if (authUser?.id) {
+      useCart.getState().initializeCart(authUser.id);
+      useWishlist.getState().initializeWishlist(authUser.id);
+    }
+  }, [authUser]);
+
   /* 🔍 Search redirect handler */
   const handleSearch = () => {
     if (query.trim().length < 2) return;
@@ -42,9 +51,17 @@ export default function HeaderTwo() {
   const filteredProducts = useMemo(() => {
     if (query.length < 3) return [];
     return products.filter((p) =>
-      p.name.toLowerCase().includes(query.toLowerCase())
+      p.name.toLowerCase().includes(query.toLowerCase()),
     );
   }, [query, products]);
+
+  const handleLogout = () => {
+    clearSession();
+    // Clear cart and wishlist from memory
+    useCart.getState().resetCart();
+    useWishlist.getState().resetWishlist();
+    setMobileMenu(false);
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white shadow">
@@ -60,8 +77,8 @@ export default function HeaderTwo() {
           <nav className="hidden sm:flex gap-4 whitespace-nowrap ml-4">
             <Link href="/">Help</Link>
             <Link href="/track-order">Track Order</Link>
-            {user ? (
-              <Link href="/profile">{user.full_name}</Link>
+            {user || authUser ? (
+              <Link href="/profile">{user?.full_name}</Link>
             ) : (
               <>
                 <Link href="/account/login">Login</Link>
@@ -147,7 +164,7 @@ export default function HeaderTwo() {
                     onClick={handleSearch}
                     className="px-4 py-2 text-sm text-primary hover:bg-gray-100 cursor-pointer border-t"
                   >
-                    View all results for “{query}”
+                    View all results for "{query}"
                   </div>
                 </>
               )}
@@ -166,7 +183,12 @@ export default function HeaderTwo() {
 
           <Link href="/wishlist" className="relative">
             <Heart className="w-5 h-5" />
-            {items.length > 0 && (
+            {(wishlistLoading || cartLoading) && (
+              <span className="absolute -top-2 -right-2 bg-gray-300 text-white text-xs rounded-full px-1 animate-pulse">
+                ...
+              </span>
+            )}
+            {!wishlistLoading && items.length > 0 && (
               <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1">
                 {items.length}
               </span>
@@ -175,7 +197,12 @@ export default function HeaderTwo() {
 
           <Link href="/cart" className="relative">
             <ShoppingCart className="w-5 h-5" />
-            {totalItems > 0 && (
+            {(cartLoading || wishlistLoading) && (
+              <span className="absolute -top-2 -right-2 bg-gray-300 text-white text-xs rounded-full px-1 animate-pulse">
+                ...
+              </span>
+            )}
+            {!cartLoading && totalItems > 0 && (
               <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1">
                 {totalItems}
               </span>
@@ -229,7 +256,7 @@ export default function HeaderTwo() {
             >
               <div className="flex justify-between items-center px-4 py-4 border-b">
                 <span className="text-lg font-semibold">
-                  {user ? "Welcome" : "Menu"}
+                  {user || authUser ? "Welcome" : "Menu"}
                 </span>
                 <button onClick={() => setMobileMenu(false)}>
                   <X className="w-6 h-6" />
@@ -241,11 +268,11 @@ export default function HeaderTwo() {
 
                 <div className="flex flex-col gap-3">
                   <Link href="/track-order">Track Order</Link>
-                  {user ? (
+                  {user || authUser ? (
                     <>
-                      <Link href="/profile">{user.full_name}</Link>
+                      <Link href="/profile">{user?.full_name}</Link>
                       <p
-                        onClick={clearSession}
+                        onClick={handleLogout}
                         className="cursor-pointer text-red-500"
                       >
                         Logout
