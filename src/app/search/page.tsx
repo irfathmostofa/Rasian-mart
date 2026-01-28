@@ -14,7 +14,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import { useCategoryStore } from "../store/useCatrgoryStore";
-import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
+import { PremiumProductCard } from "@/components/ProductCard/PremiumProductCard";
 import api from "@/lib/api";
 
 interface Product {
@@ -154,23 +154,23 @@ export default function SearchPage() {
         if (currentFilters.selectedCategories.length > 0) {
           searchParams.set(
             "category_id",
-            currentFilters.selectedCategories.join(",")
+            currentFilters.selectedCategories.join(","),
           );
         }
         if (currentFilters.priceRange[0] > 0)
           searchParams.set(
             "price_min",
-            currentFilters.priceRange[0].toString()
+            currentFilters.priceRange[0].toString(),
           );
         if (currentFilters.priceRange[1] < 50000)
           searchParams.set(
             "price_max",
-            currentFilters.priceRange[1].toString()
+            currentFilters.priceRange[1].toString(),
           );
 
         // Call your Fastify backend API
         const response = await api.get<ApiResponse>(
-          `/product/products/search?${searchParams}`
+          `/product/products/search?${searchParams}`,
         );
 
         if (response.data.success) {
@@ -195,7 +195,7 @@ export default function SearchPage() {
         setInitialLoading(false);
       }
     },
-    [loading] // Only depend on loading state
+    [loading], // Only depend on loading state
   );
 
   // Debounced filter changes
@@ -524,8 +524,8 @@ export default function SearchPage() {
                             } else {
                               setSelectedCategories(
                                 selectedCategories.filter(
-                                  (id) => id !== category.id
-                                )
+                                  (id) => id !== category.id,
+                                ),
                               );
                             }
                           }}
@@ -705,8 +705,8 @@ export default function SearchPage() {
                                 } else {
                                   setSelectedCategories(
                                     selectedCategories.filter(
-                                      (id) => id !== category.id
-                                    )
+                                      (id) => id !== category.id,
+                                    ),
                                   );
                                 }
                               }}
@@ -775,7 +775,7 @@ export default function SearchPage() {
                               value={priceInputs[0]}
                               onChange={(e) =>
                                 handleMinPriceChange(
-                                  parseInt(e.target.value) || 0
+                                  parseInt(e.target.value) || 0,
                                 )
                               }
                               className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm"
@@ -798,7 +798,7 @@ export default function SearchPage() {
                               value={priceInputs[1]}
                               onChange={(e) =>
                                 handleMaxPriceChange(
-                                  parseInt(e.target.value) || 0
+                                  parseInt(e.target.value) || 0,
                                 )
                               }
                               className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm"
@@ -961,10 +961,10 @@ export default function SearchPage() {
                       name={product.name}
                       categories={product.categories}
                       selling_price={parseFloat(
-                        product.selling_price as string
+                        product.selling_price as string,
                       )}
                       regular_price={parseFloat(
-                        product.regular_price as string
+                        product.regular_price as string,
                       )}
                       cost_price={parseFloat(product.cost_price as string)}
                       images={product.images}

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import api from "@/lib/api";
 
 import { useProductStore } from "@/app/store/useProductStore";
-import { PremiumProductCard } from "../layout/ProductCard/PremiumProductCard";
+import { PremiumProductCard } from "../ProductCard/PremiumProductCard";
 
 interface CategoryProductsSectionProps {
   config?: {

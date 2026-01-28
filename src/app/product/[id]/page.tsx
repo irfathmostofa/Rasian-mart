@@ -8,7 +8,7 @@ import { Heart, ShoppingCart, Star, X } from "lucide-react";
 import ImageMagnifier from "@/components/ui/ImageMagnifier";
 import api from "@/lib/api";
 import { useProductStore } from "@/app/store/useProductStore";
-import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
+import { PremiumProductCard } from "@/components/ProductCard/PremiumProductCard";
 import { useToastStore } from "@/app/store/useToastStore";
 import { useWishlist } from "@/app/store/useWishlist";
 
@@ -24,7 +24,7 @@ export default function ProductDetailsPage() {
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<typeof allProducts>(
-    []
+    [],
   );
   const [loading, setLoading] = useState(true);
   const [showBottomCart, setShowBottomCart] = useState(false);
@@ -75,7 +75,7 @@ export default function ProductDetailsPage() {
       .filter(
         (p) =>
           p.id !== product.id &&
-          p.categories?.some((c: any) => c.id === mainCategoryId)
+          p.categories?.some((c: any) => c.id === mainCategoryId),
       )
       .slice(0, 10);
     setRelatedProducts(related);
@@ -101,7 +101,7 @@ export default function ProductDetailsPage() {
       ?.flatMap((v: any) => v.images || [])
       .filter(
         (img: any, idx: any, arr: any) =>
-          arr.findIndex((i: any) => i.url === img.url) === idx
+          arr.findIndex((i: any) => i.url === img.url) === idx,
       ) || [];
 
   const galleryImages =
@@ -280,7 +280,7 @@ export default function ProductDetailsPage() {
                 setIsWishlisted(willBeWishlisted);
                 showToast(
                   `${willBeWishlisted ? "Added" : "Removed"} to wishlist ❤️`,
-                  "success"
+                  "success",
                 );
               }}
               className="border px-6 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2"

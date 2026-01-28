@@ -6,8 +6,9 @@ import Link from "next/link";
 import ProductCarousel from "@/components/layout/ProductCarousel";
 import Hero from "@/components/layout/HeroSection";
 import { useProductStore } from "@/app/store/useProductStore";
-import { useTemplateStore } from "./store/useTamplate";
-import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
+import { PremiumProductCard } from "@/components/ProductCard/PremiumProductCard";
+import { useSettings } from "./store/useSettings";
+import { ProductCard } from "@/components/ProductCard";
 
 export default function HomePage() {
   const {
@@ -19,15 +20,11 @@ export default function HomePage() {
     loadMore,
     currentPage,
   } = useProductStore();
-
-  const { fetchTemplate } = useTemplateStore();
-
-  // ✅ Fetch data on mount
+  const { productCardStyle } = useSettings();
   useEffect(() => {
     if (products.length === 0) {
       fetchProducts(1, 12);
     }
-    fetchTemplate();
   }, [products.length]);
 
   return (
@@ -67,7 +64,12 @@ export default function HomePage() {
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
               {products.map((product) => (
-                <PremiumProductCard key={product.id} {...product} />
+                <ProductCard
+                  key={product.id}
+                  {...product}
+                  // You can also override the global style for specific pages
+                  cardStyle={productCardStyle}
+                />
               ))}
             </div>
 

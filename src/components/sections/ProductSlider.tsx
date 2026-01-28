@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useProductStore } from "@/app/store/useProductStore";
-import { PremiumProductCard } from "../layout/ProductCard/PremiumProductCard";
+import { PremiumProductCard } from "../ProductCard/PremiumProductCard";
 
 export default function ProductSlider({ config }: { config: any }) {
   const { products, loading, error, fetchProducts } = useProductStore();

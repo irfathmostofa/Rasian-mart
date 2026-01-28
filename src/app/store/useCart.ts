@@ -4,7 +4,6 @@
 import api from "@/lib/api";
 import { create } from "zustand";
 
-
 interface CartItem {
   id: number;
   primary_variant_id: number;
@@ -18,6 +17,7 @@ interface CartItem {
 interface CartState {
   cart: CartItem[];
   isLoading: boolean;
+  token: string | null;
   error: string | null;
   initializeCart: (customerId: number) => Promise<void>;
   addToCart: (
@@ -35,12 +35,30 @@ interface CartState {
   ) => Promise<void>;
   clearCart: (customerId: number) => Promise<void>;
   resetCart: () => void;
+  setToken: (token: string | null) => void;
 }
 
 export const useCart = create<CartState>((set, get) => ({
   cart: [],
   isLoading: false,
   error: null,
+  token: typeof window !== "undefined" ? localStorage.getItem("token") : null,
+
+  setToken: (token) => {
+    if (token) {
+      localStorage.setItem("token", token);
+      set({ token });
+    } else {
+      localStorage.removeItem("token");
+      set({ token: null, cart: [] });
+    }
+  },
+
+  // Helper function to get headers with token
+  getAuthHeaders: () => {
+    const token = get().token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  },
 
   initializeCart: async (customerId: number) => {
     if (!customerId) {
@@ -48,11 +66,19 @@ export const useCart = create<CartState>((set, get) => ({
       return;
     }
 
+    const token = get().token;
+    if (!token) {
+      set({ error: "Authentication required", cart: [] });
+      return;
+    }
+
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post("/order/get-customer-item", {
-        customerId,
-      });
+      const response = await api.post(
+        "/order/get-customer-item",
+        { customerId: customerId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
 
       if (response.data.success) {
         const cartItems = response.data.data
@@ -85,7 +111,8 @@ export const useCart = create<CartState>((set, get) => ({
   },
 
   addToCart: async (item: Omit<CartItem, "dbId">, customerId: number) => {
-    if (!customerId) {
+    const token = get().token;
+    if (!customerId || !token) {
       set({ error: "User must be logged in to add to cart" });
       return;
     }
@@ -104,14 +131,18 @@ export const useCart = create<CartState>((set, get) => ({
         );
       } else {
         // Add new item to server
-        const response = await api.post("/order/add-customer-item", {
-          customer_id: customerId,
-          product_variant_id: item.id,
-          item_type: "CART",
-          quantity: item.quantity,
-          unit_price: item.price,
-          status: "A",
-        });
+        const response = await api.post(
+          "/order/add-customer-item",
+          {
+            customer_id: customerId,
+            product_variant_id: item.id,
+            item_type: "CART",
+            quantity: item.quantity,
+            unit_price: item.price,
+            status: "A",
+          },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
 
         if (response.data.success) {
           // Add to local state with dbId
@@ -135,7 +166,8 @@ export const useCart = create<CartState>((set, get) => ({
   },
 
   removeFromCart: async (productVariantId: number, customerId: number) => {
-    if (!customerId) {
+    const token = get().token;
+    if (!customerId || !token) {
       set({ error: "User must be logged in to remove from cart" });
       return;
     }
@@ -147,9 +179,13 @@ export const useCart = create<CartState>((set, get) => ({
 
       if (itemToRemove?.dbId) {
         // Delete from server using dbId
-        await api.post("/order/delete-customer-item", {
-          id: itemToRemove.dbId,
-        });
+        await api.post(
+          "/order/delete-customer-item",
+          {
+            id: itemToRemove.dbId,
+          },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
 
         // Remove from local state
         set((state) => ({
@@ -177,7 +213,8 @@ export const useCart = create<CartState>((set, get) => ({
     quantity: number,
     customerId: number,
   ) => {
-    if (!customerId) {
+    const token = get().token;
+    if (!customerId || !token) {
       set({ error: "User must be logged in to update cart" });
       return;
     }
@@ -199,12 +236,16 @@ export const useCart = create<CartState>((set, get) => ({
 
       if (item.dbId) {
         // Update on server
-        await api.post("/order/update-customer-item", {
-          id: item.dbId,
-          quantity,
-          unit_price: item.price,
-          status: "A",
-        });
+        await api.post(
+          "/order/update-customer-item",
+          {
+            id: item.dbId,
+            quantity,
+            unit_price: item.price,
+            status: "A",
+          },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
 
         // Update local state
         set((state) => ({
@@ -214,14 +255,18 @@ export const useCart = create<CartState>((set, get) => ({
         }));
       } else {
         // If no dbId, item might not exist on server yet
-        const response = await api.post("/order/add-customer-item", {
-          customer_id: customerId,
-          product_variant_id: productVariantId,
-          item_type: "CART",
-          quantity,
-          unit_price: item.price,
-          status: "A",
-        });
+        const response = await api.post(
+          "/order/add-customer-item",
+          {
+            customer_id: customerId,
+            product_variant_id: productVariantId,
+            item_type: "CART",
+            quantity,
+            unit_price: item.price,
+            status: "A",
+          },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
 
         if (response.data.success) {
           // Update local state with dbId
@@ -245,7 +290,8 @@ export const useCart = create<CartState>((set, get) => ({
   },
 
   clearCart: async (customerId: number) => {
-    if (!customerId) {
+    const token = get().token;
+    if (!customerId || !token) {
       set({ error: "User must be logged in to clear cart" });
       return;
     }
@@ -253,9 +299,11 @@ export const useCart = create<CartState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       // Get all cart items for this customer
-      const response = await api.post("/order/get-customer-item", {
-        customerId,
-      });
+      const response = await api.post(
+        "/order/get-customer-item",
+        { customerId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
 
       if (response.data.success) {
         const cartItems = response.data.data.filter(
@@ -264,9 +312,13 @@ export const useCart = create<CartState>((set, get) => ({
 
         // Delete each cart item from server
         for (const item of cartItems) {
-          await api.post("/order/delete-customer-item", {
-            id: item.id,
-          });
+          await api.post(
+            "/order/delete-customer-item",
+            {
+              id: item.id,
+            },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
         }
 
         // Clear local state

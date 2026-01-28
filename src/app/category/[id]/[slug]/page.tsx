@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2, Filter, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { PremiumProductCard } from "@/components/layout/ProductCard/PremiumProductCard";
+import { PremiumProductCard } from "@/components/ProductCard/PremiumProductCard";
 import api from "@/lib/api";
 
 interface Product {
@@ -127,7 +127,7 @@ export default function CategoryPage() {
         // Call API with POST
         const response = await api.post<ApiResponse>(
           `/product/get-all-products`,
-          requestBody
+          requestBody,
         );
 
         if (response.data.success) {
@@ -138,11 +138,11 @@ export default function CategoryPage() {
           let filteredProducts = fetchedProducts;
           if (availability === "in-stock") {
             filteredProducts = fetchedProducts.filter(
-              (p) => parseFloat(String(p.total_stock)) > 0
+              (p) => parseFloat(String(p.total_stock)) > 0,
             );
           } else if (availability === "out-of-stock") {
             filteredProducts = fetchedProducts.filter(
-              (p) => parseFloat(String(p.total_stock)) <= 0
+              (p) => parseFloat(String(p.total_stock)) <= 0,
             );
           }
 
@@ -154,7 +154,7 @@ export default function CategoryPage() {
             setProducts((prev) => {
               const existingIds = new Set(prev.map((p) => p.id));
               const newProducts = filteredProducts.filter(
-                (p) => !existingIds.has(p.id)
+                (p) => !existingIds.has(p.id),
               );
               return [...prev, ...newProducts];
             });
@@ -171,7 +171,7 @@ export default function CategoryPage() {
         setError(
           error.response?.data?.message ||
             error.message ||
-            "Failed to load products"
+            "Failed to load products",
         );
         if (reset) {
           setProducts([]);
@@ -182,7 +182,7 @@ export default function CategoryPage() {
         setInitialLoading(false);
       }
     },
-    [loading, id, priceRange, sortBy, availability]
+    [loading, id, priceRange, sortBy, availability],
   );
 
   // Reset everything when category changes
@@ -509,7 +509,7 @@ export default function CategoryPage() {
                         value={priceInputs[1]}
                         onChange={(e) =>
                           handleMaxPriceChange(
-                            parseInt(e.target.value) || 50000
+                            parseInt(e.target.value) || 50000,
                           )
                         }
                         onBlur={applyFilters}
@@ -628,7 +628,7 @@ export default function CategoryPage() {
                               value={priceInputs[0]}
                               onChange={(e) =>
                                 handleMinPriceChange(
-                                  parseInt(e.target.value) || 0
+                                  parseInt(e.target.value) || 0,
                                 )
                               }
                               className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm"
@@ -652,7 +652,7 @@ export default function CategoryPage() {
                               value={priceInputs[1]}
                               onChange={(e) =>
                                 handleMaxPriceChange(
-                                  parseInt(e.target.value) || 50000
+                                  parseInt(e.target.value) || 50000,
                                 )
                               }
                               className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm"

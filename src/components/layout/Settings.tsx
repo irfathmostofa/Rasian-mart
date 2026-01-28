@@ -3,11 +3,17 @@
 
 import { useState } from "react";
 import { useSettings } from "@/app/store/useSettings";
-import { Settings } from "lucide-react";
+import { Grid3X3, Settings } from "lucide-react";
 
 export default function FloatingSettings() {
-  const { headerStyle, setHeaderStyle, heroStyle, setHeroStyle } =
-    useSettings();
+  const {
+    headerStyle,
+    setHeaderStyle,
+    heroStyle,
+    setHeroStyle,
+    productCardStyle,
+    setProductCardStyle,
+  } = useSettings();
   const [open, setOpen] = useState(false);
 
   return (
@@ -41,7 +47,7 @@ export default function FloatingSettings() {
           </div>
 
           <h3 className="text-sm font-semibold mb-2">Choose Hero Style</h3>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-4">
             {[1, 2, 3].map((num) => (
               <button
                 key={num}
@@ -53,6 +59,34 @@ export default function FloatingSettings() {
                 }`}
               >
                 {num}
+              </button>
+            ))}
+          </div>
+
+          <h3 className="text-sm font-semibold mb-2">Product Card Stylee</h3>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: 1, label: "Premium" },
+              { id: 2, label: "Minimal" },
+              { id: 3, label: "Modern" },
+              { id: 4, label: "Compact" },
+              { id: 5, label: "Grid" },
+              { id: 6, label: "Dense" },
+              { id: 7, label: "Elegant" },
+              { id: 8, label: "Horizontal" },
+              { id: 9, label: "Luxury" },
+              { id: 10, label: "Vibrant" },
+            ].map((style) => (
+              <button
+                key={style.id}
+                onClick={() => setProductCardStyle(style.id)}
+                className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all duration-200 ${
+                  productCardStyle === style.id
+                    ? "bg-primary text-white border-primary"
+                    : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                <span className="text-xs font-medium">{style.label}</span>
               </button>
             ))}
           </div>

@@ -10,7 +10,9 @@ import {
 import Autoplay from "embla-carousel-autoplay";
 import { useProductStore } from "@/app/store/useProductStore";
 import { useEffect } from "react";
-import { BasicProductCard } from "./ProductCard/BasicProductCard";
+
+import { ProductCard } from "../ProductCard";
+import { useSettings } from "@/app/store/useSettings";
 
 interface Product {
   id: number;
@@ -44,7 +46,7 @@ interface Product {
 
 export default function ProductCarousel() {
   const { products, loading, error, fetchProducts } = useProductStore();
-
+  const { productCardStyle } = useSettings();
   // Fetch once on mount
   useEffect(() => {
     if (products.length === 0) fetchProducts();
@@ -92,19 +94,12 @@ export default function ProductCarousel() {
           {products.map((product) => (
             <CarouselItem
               key={product.id}
-              className="basis-1/2 sm:basis-1/3 md:basis-1/5"
+              className="basis-1/2 sm:basis-1/3 md:basis-1/4"
             >
-              <BasicProductCard
-                id={product.id}
-                regular_price={product.regular_price}
-                primary_variant_id={product.primary_variant_id}
-                total_stock={product.total_stock}
-                name={product.name}
-                categories={product.categories}
-                selling_price={product.selling_price}
-                badge={product.badge}
-                images={product.images}
-                type="card"
+              <ProductCard
+                key={product.id}
+                {...product}
+                cardStyle={productCardStyle}
               />
             </CarouselItem>
           ))}
