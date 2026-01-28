@@ -16,6 +16,8 @@ interface WishlistItem {
 interface WishlistState {
   items: WishlistItem[];
   isLoading: boolean;
+  token: string | null;
+  setToken: (token: string | null) => void;
   error: string | null;
   initializeWishlist: (customerId: number) => Promise<void>;
   addToWishlist: (
@@ -39,18 +41,34 @@ export const useWishlist = create<WishlistState>((set, get) => ({
   items: [],
   isLoading: false,
   error: null,
+  token: typeof window !== "undefined" ? localStorage.getItem("token") : null,
 
+  setToken: (token) => {
+    if (token) {
+      localStorage.setItem("token", token);
+      set({ token });
+    } else {
+      localStorage.removeItem("token");
+      set({ token: null, items: [] });
+    }
+  },
+  getAuthHeaders: () => {
+    const token = get().token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  },
   initializeWishlist: async (customerId: number) => {
     if (!customerId) {
       set({ error: "Customer ID is required", items: [] });
       return;
     }
-
+    const token = get().token;
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post("/order/get-customer-item", {
-        customerId,
-      });
+      const response = await api.post(
+        "/order/get-customer-item",
+        { customerId: customerId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
 
       if (response.data.success) {
         const wishlistItems = response.data.data
@@ -94,17 +112,21 @@ export const useWishlist = create<WishlistState>((set, get) => ({
     if (get().isInWishlist(item.id)) {
       return; // Already in wishlist
     }
-
+    const token = get().token;
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post("/order/add-customer-item", {
-        customer_id: customerId,
-        product_variant_id: item.id,
-        item_type: "WISHLIST",
-        quantity: 1,
-        unit_price: item.price,
-        status: "A",
-      });
+      const response = await api.post(
+        "/order/add-customer-item",
+        {
+          customer_id: customerId,
+          product_variant_id: item.id,
+          item_type: "WISHLIST",
+          quantity: 1,
+          unit_price: item.price,
+          status: "A",
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
 
       if (response.data.success) {
         // Add to local state with dbId
@@ -137,12 +159,16 @@ export const useWishlist = create<WishlistState>((set, get) => ({
     try {
       // Find item in local state to get dbId
       const itemToRemove = get().items.find((i) => i.id === productVariantId);
-
+      const token = get().token;
       if (itemToRemove?.dbId) {
         // Delete from server using dbId
-        await api.post("/order/delete-customer-item", {
-          id: itemToRemove.dbId,
-        });
+        await api.post(
+          "/order/delete-customer-item",
+          {
+            id: itemToRemove.dbId,
+          },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
 
         // Remove from local state
         set((state) => ({
@@ -195,13 +221,17 @@ export const useWishlist = create<WishlistState>((set, get) => ({
       set({ error: "User must be logged in to clear wishlist" });
       return;
     }
-
+    const token = get().token;
     set({ isLoading: true, error: null });
     try {
       // Get all wishlist items for this customer
-      const response = await api.post("/order/get-customer-item", {
-        customerId,
-      });
+      const response = await api.post(
+        "/order/get-customer-item",
+        {
+          customerId,
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
 
       if (response.data.success) {
         const wishlistItems = response.data.data.filter(

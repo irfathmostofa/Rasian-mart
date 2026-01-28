@@ -42,7 +42,7 @@ export function ProductCard(props: ProductCardProps & { cardStyle?: number }) {
   }
 }
 
-// Export individual components as well
+
 export {
   PremiumProductCard,
   MinimalProductCard,

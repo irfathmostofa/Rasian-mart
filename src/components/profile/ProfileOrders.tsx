@@ -44,7 +44,7 @@ export default function ProfileOrders() {
   const [page, setPage] = useState(1);
   const [limit] = useState(5);
   const [totalPages, setTotalPages] = useState(1);
-
+  const token = localStorage.getItem("token") || "";
   // Filters
   const [orderStatus, setOrderStatus] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("");
@@ -59,15 +59,19 @@ export default function ProfileOrders() {
 
     try {
       setLoading(true);
-      const res = await api.post("/order/get-all-order", {
-        page: pageNumber,
-        limit,
-        customer_id: user.id,
-        order_status: orderStatus || null,
-        payment_status: paymentStatus || null,
-        from_date: fromDate || null,
-        to_date: toDate || null,
-      });
+      const res = await api.post(
+        "/order/get-all-order",
+        {
+          page: pageNumber,
+          limit,
+          customer_id: user.id,
+          order_status: orderStatus || null,
+          payment_status: paymentStatus || null,
+          from_date: fromDate || null,
+          to_date: toDate || null,
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       setOrders(res?.data?.data || []);
       setTotalPages(res?.data?.pagination?.totalPages || 1);
       setPage(pageNumber);
@@ -190,7 +194,7 @@ export default function ProfileOrders() {
               Order #{order.code}{" "}
               <span
                 className={`px-2 py-1 text-xs font-semibold rounded ${getStatusColor(
-                  order.order_status
+                  order.order_status,
                 )}`}
               >
                 {order.order_status}
