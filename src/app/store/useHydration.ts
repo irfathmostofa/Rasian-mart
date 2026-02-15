@@ -2,10 +2,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSettings } from "./useSettings";
-import { useAppStore } from "./useAppStore";
 import { useCategoryStore } from "./useCatrgoryStore";
-import { useProductStore } from "./useProductStore";
-import { useUserStore } from "./useUserStore";
+import { useThemeStore } from "./useThemeData";
 
 export const useHydrationReady = () => {
   const [hydrated, setHydrated] = useState(false);
@@ -14,12 +12,16 @@ export const useHydrationReady = () => {
   // const productReady = useProductStore((state) => state.hydrated);
   const catReady = useCategoryStore((state) => state.hydrated);
   // const templateReady = useTemplateStore((state) => state.hydrated);
+  const themeReady = useThemeStore((state) => !state.loading && state.data);
 
   useEffect(() => {
-    if (settingsReady && catReady) {
+    useThemeStore.getState().fetchThemeData();
+  }, []);
+  useEffect(() => {
+    if (settingsReady && catReady && themeReady) {
       setHydrated(true);
     }
-  }, [settingsReady, catReady]);
+  }, [settingsReady, catReady, themeReady]);
 
   return hydrated;
 };

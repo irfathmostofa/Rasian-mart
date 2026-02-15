@@ -1,300 +1,532 @@
 "use client";
 
-import Link from "next/link";
-import { ShoppingCart, Search, Heart, X, Menu } from "lucide-react";
-import { useCart } from "@/app/store/useCart";
-import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import CategoryNav from "./navigation/CategoryNav";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import LiveNewsTicker from "./LiveNewsTicker";
-import { useUserStore } from "@/app/store/useUserStore";
-import { useProductStore } from "@/app/store/useProductStore";
-import { useWishlist } from "@/app/store/useWishlist";
+import {
+  Volume2,
+  Search,
+  ShoppingCart,
+  Heart,
+  User,
+  Menu,
+  ChevronDown,
+  X,
+  Tag,
+  Phone,
+  Mail,
+  MapPin,
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube,
+  Linkedin,
+  Clock,
+} from "lucide-react";
+import { useThemeData } from "@/app/store/useThemeData";
+
+// Icon mapping for dynamic icons
+const IconMap: Record<string, React.ElementType> = {
+  cart: ShoppingCart,
+  wishlist: Heart,
+  account: User,
+  tag: Tag,
+  phone: Phone,
+  mail: Mail,
+  map: MapPin,
+  facebook: Facebook,
+  twitter: Twitter,
+  instagram: Instagram,
+  youtube: Youtube,
+  linkedin: Linkedin,
+  clock: Clock,
+  menu: Menu,
+  bars: Menu,
+  search: Search,
+  volume: Volume2,
+};
+
+// Type definitions
+interface ContentItem {
+  text: string;
+  text_bn?: string;
+  link?: string;
+  icon?: string;
+  variant?: string;
+  status?: boolean;
+}
+
+interface ContentSection {
+  type?: string;
+  status?: boolean;
+  items?: ContentItem[];
+  layout?: string;
+}
+
+interface HeaderContent {
+  left?: ContentSection;
+  center?: ContentSection;
+  right?: ContentSection;
+  search?: {
+    status?: boolean;
+    placeholder?: string;
+  };
+  action_buttons?: Record<
+    string,
+    {
+      status?: boolean;
+      icon?: string;
+    }
+  >;
+  menu?: {
+    items?: Array<{
+      label: string;
+      link: string;
+    }>;
+  };
+}
+
+interface HeaderData {
+  status?: boolean;
+  header_top?: {
+    status?: boolean;
+    layout?: string;
+    content?: HeaderContent;
+  };
+  header_main?: {
+    content?: HeaderContent;
+  };
+  header_bottom?: {
+    type?: string;
+    menu_id?: string;
+    mobile_menu?: {
+      toggle_icon?: string;
+    };
+  };
+}
+
+interface Colors {
+  primary?: string;
+  secondary?: string;
+  text?: string;
+  background?: string;
+  border?: string;
+  header_top_bg?: string;
+  header_top_text?: string;
+  header_bg?: string;
+  nav_bg?: string;
+  input_bg?: string;
+  text_light?: string;
+}
 
 export default function HeaderTwo() {
-  const { cart, isLoading: cartLoading } = useCart();
-  const { items, isLoading: wishlistLoading } = useWishlist();
-  const { user, clearSession } = useUserStore();
-  const { products, fetchProducts } = useProductStore();
-  const { user: authUser } = useUserStore(); // Get auth user
+  // Get all header data at once with proper typing
+  const headerData = (useThemeData("header_section") || {}) as HeaderData;
+  const colors = (useThemeData("colors") || {}) as Colors;
+  const typography = (useThemeData("typography") || {}) as Record<
+    string,
+    string
+  >;
 
-  const router = useRouter();
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
-  const [query, setQuery] = useState("");
-  const [focused, setFocused] = useState(false);
-  const [mobileSearch, setMobileSearch] = useState(false);
-  const [mobileMenu, setMobileMenu] = useState(false);
+  // Extract header sections
+  const { header_top, header_main, header_bottom } = headerData;
 
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+  // If header is disabled completely
+  if (headerData?.status === false) return null;
 
-  // Initialize cart and wishlist when user logs in
-  useEffect(() => {
-    if (authUser?.id) {
-      useCart.getState().initializeCart(authUser.id);
-      useWishlist.getState().initializeWishlist(authUser.id);
-    }
-  }, [authUser]);
-
-  /* 🔍 Search redirect handler */
-  const handleSearch = () => {
-    if (query.trim().length < 2) return;
-    router.push(`/search?q=${encodeURIComponent(query)}`);
-    setFocused(false);
-    setMobileSearch(false);
-  };
-
-  /* 🔍 Search suggestions */
-  const filteredProducts = useMemo(() => {
-    if (query.length < 3) return [];
-    return products.filter((p) =>
-      p.name.toLowerCase().includes(query.toLowerCase()),
-    );
-  }, [query, products]);
-
-  const handleLogout = () => {
-    clearSession();
-    // Clear cart and wishlist from memory
-    useCart.getState().resetCart();
-    useWishlist.getState().resetWishlist();
-    setMobileMenu(false);
-  };
+  // Default colors with fallbacks
+  const primaryColor = colors?.primary || "#006747";
+  const secondaryColor = colors?.secondary || "#DA291C";
+  const textColor = colors?.text || "#1F2937";
+  const backgroundColor = colors?.background || "#ffffff";
+  const borderColor = colors?.border || "#e5e7eb";
+  const headerTopBg = colors?.header_top_bg || `${primaryColor}10` || "#f8f9fa";
+  const headerTopText = colors?.header_top_text || textColor;
+  const headerBg = colors?.header_bg || backgroundColor;
+  const navBg = colors?.nav_bg || backgroundColor;
+  const inputBg = colors?.input_bg || "#ffffff";
+  const textLight = colors?.text_light || "#9ca3af";
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow">
-      {/* 🔹 Topbar */}
-      <div className="bg-primary text-white text-xs md:text-sm overflow-hidden">
-        <div className="container mx-auto flex justify-between items-center px-4 py-2">
-          {/* Live Ticker */}
-          <div>
-            <LiveNewsTicker />
-          </div>
-
-          {/* Desktop Links */}
-          <nav className="hidden sm:flex gap-4 whitespace-nowrap ml-4">
-            <Link href="/">Help</Link>
-            <Link href="/track-order">Track Order</Link>
-            {user || authUser ? (
-              <Link href="/profile">{user?.full_name}</Link>
-            ) : (
-              <>
-                <Link href="/account/login">Login</Link>
-                <Link href="/account/signup">Signup</Link>
-              </>
-            )}
-          </nav>
-        </div>
-      </div>
-
-      {/* 🔹 Main Header */}
-      <div className="container mx-auto flex items-center justify-between px-4 py-4 relative">
-        {/* Left */}
-        <div className="flex items-center gap-4">
-          <button
-            className="md:hidden p-2 rounded hover:bg-gray-100"
-            onClick={() => setMobileMenu(true)}
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-
-          <Link href="/" className="text-2xl font-bold text-primary">
-            BizzHut
-          </Link>
-        </div>
-
-        {/* 🔍 Desktop Search */}
-        <div className="hidden md:flex flex-1 mx-6 max-w-2xl relative">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setFocused(true)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            onBlur={() => setTimeout(() => setFocused(false), 200)}
-            placeholder="Search for products, brands, categories..."
-            className="flex-1 rounded-l-full border px-4 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
-          />
-          <button
-            onClick={handleSearch}
-            className="bg-primary text-white px-4 rounded-r-full hover:bg-primary/90"
-          >
-            <Search className="w-4 h-4" />
-          </button>
-
-          {/* 🔽 Suggestions */}
-          {focused && query.length >= 3 && (
-            <div className="absolute top-12 left-0 w-full bg-white border rounded-lg shadow-lg max-h-64 overflow-y-auto z-50">
-              {filteredProducts.length === 0 ? (
-                <div className="flex items-center justify-center gap-3 p-4">
-                  <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                  <span className="text-sm text-gray-600">Searching...</span>
-                </div>
-              ) : (
-                <>
-                  {filteredProducts.map((product) => {
-                    const imgSrc =
-                      product.images?.[0]?.url || "/placeholder.png";
-                    return (
-                      <div
-                        key={product.id}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          router.push(`/product/${product.id}`);
-                          setFocused(false);
-                        }}
-                        className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                      >
-                        <img
-                          src={imgSrc}
-                          alt={product.name}
-                          className="w-12 h-12 rounded object-cover"
-                        />
-                        <p className="text-sm font-medium truncate">
-                          {product.name}
-                        </p>
-                      </div>
-                    );
+    <header
+      className="w-full"
+      style={{
+        fontFamily: typography?.font_family || "sans-serif",
+      }}
+    >
+      {/* Header Top - Conditional Rendering based on status */}
+      {header_top?.status && (
+        <div
+          className="border-b"
+          style={{
+            backgroundColor: headerTopBg,
+            color: headerTopText,
+            borderColor: borderColor,
+          }}
+        >
+          <div className="container mx-auto px-4">
+            <div
+              className={`grid ${header_top.layout || "grid-cols-3"} items-center min-h-[40px] text-sm`}
+            >
+              {/* Left Section */}
+              {header_top.content?.left?.status !== false && (
+                <div className="flex items-center">
+                  {renderHeaderContent(header_top.content?.left, {
+                    primary: primaryColor,
+                    text: headerTopText,
                   })}
+                </div>
+              )}
 
-                  {/* View all results */}
-                  <div
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={handleSearch}
-                    className="px-4 py-2 text-sm text-primary hover:bg-gray-100 cursor-pointer border-t"
-                  >
-                    View all results for "{query}"
-                  </div>
-                </>
+              {/* Center Section */}
+              {header_top.content?.center?.status !== false && (
+                <div className="flex items-center justify-center">
+                  {renderHeaderContent(header_top.content?.center, {
+                    primary: primaryColor,
+                    text: headerTopText,
+                  })}
+                </div>
+              )}
+
+              {/* Right Section */}
+              {header_top.content?.right?.status !== false && (
+                <div className="flex items-center justify-end">
+                  {renderHeaderContent(header_top.content?.right, {
+                    primary: primaryColor,
+                    text: headerTopText,
+                  })}
+                </div>
               )}
             </div>
-          )}
+          </div>
         </div>
+      )}
 
-        {/* Right Icons */}
-        <div className="flex items-center gap-4">
-          <button
-            className="md:hidden p-2 rounded hover:bg-gray-100"
-            onClick={() => setMobileSearch(true)}
-          >
-            <Search className="w-5 h-5" />
-          </button>
+      {/* Header Main */}
+      {header_main && (
+        <div
+          className="py-4"
+          style={{
+            backgroundColor: headerBg,
+            color: textColor,
+            borderBottom: `1px solid ${borderColor}`,
+          }}
+        >
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between gap-4">
+              {/* Logo Area */}
+              <div className="flex items-center gap-4">
+                <button
+                  className="lg:hidden"
+                  onClick={() => setMobileMenuOpen(true)}
+                  style={{ color: primaryColor }}
+                >
+                  <Menu size={24} />
+                </button>
+                <a
+                  href="/"
+                  className="text-2xl font-bold"
+                  style={{ color: primaryColor }}
+                >
+                  {(useThemeData("general") as any)?.site_title || "BizHut"}
+                </a>
+              </div>
 
-          <Link href="/wishlist" className="relative">
-            <Heart className="w-5 h-5" />
-            {(wishlistLoading || cartLoading) && (
-              <span className="absolute -top-2 -right-2 bg-gray-300 text-white text-xs rounded-full px-1 animate-pulse">
-                ...
-              </span>
-            )}
-            {!wishlistLoading && items.length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1">
-                {items.length}
-              </span>
-            )}
-          </Link>
+              {/* Search Bar */}
+              {header_main.content?.search?.status !== false && (
+                <div className="flex-1 max-w-2xl mx-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder={
+                        header_main.content?.search?.placeholder ||
+                        "Search products..."
+                      }
+                      className="w-full px-4 py-2 pl-10 pr-12 rounded-lg border focus:outline-none focus:ring-2"
+                      style={{
+                        borderColor: borderColor,
+                        backgroundColor: inputBg,
+                        color: textColor,
+                      }}
+                    />
+                    <Search
+                      className="absolute left-3 top-1/2 transform -translate-y-1/2"
+                      size={18}
+                      style={{ color: textLight }}
+                    />
+                    <button
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 rounded-md text-sm font-medium text-white"
+                      style={{
+                        backgroundColor: primaryColor,
+                      }}
+                      onClick={() => {
+                        // Handle search
+                        console.log("Searching for:", searchQuery);
+                        window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+                      }}
+                    >
+                      Search
+                    </button>
+                  </div>
+                </div>
+              )}
 
-          <Link href="/cart" className="relative">
-            <ShoppingCart className="w-5 h-5" />
-            {(cartLoading || wishlistLoading) && (
-              <span className="absolute -top-2 -right-2 bg-gray-300 text-white text-xs rounded-full px-1 animate-pulse">
-                ...
-              </span>
-            )}
-            {!cartLoading && totalItems > 0 && (
-              <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full px-1">
-                {totalItems}
-              </span>
-            )}
-          </Link>
+              {/* Action Buttons */}
+              {header_main.content?.action_buttons && (
+                <div className="flex items-center gap-3">
+                  {Object.entries(header_main.content.action_buttons).map(
+                    ([key, config]: [string, any]) => {
+                      if (config?.status === false) return null;
+
+                      const Icon =
+                        IconMap[config?.icon || "cart"] || ShoppingCart;
+
+                      return (
+                        <a
+                          key={key}
+                          href={`/${key}`}
+                          className="relative p-2 hover:opacity-80 transition-opacity"
+                          style={{ color: primaryColor }}
+                        >
+                          <Icon size={22} />
+                          {key === "cart" && (
+                            <span
+                              className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-xs flex items-center justify-center text-white"
+                              style={{
+                                backgroundColor: secondaryColor,
+                              }}
+                            >
+                              0
+                            </span>
+                          )}
+                        </a>
+                      );
+                    },
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* 🔹 Mobile Search */}
+      {/* Header Bottom - Navigation */}
+      {header_bottom?.type && (
+        <div
+          className="border-t"
+          style={{
+            backgroundColor: navBg,
+            borderColor: borderColor,
+          }}
+        >
+          <div className="container mx-auto px-4">
+            <nav className="hidden lg:flex items-center gap-6 h-12">
+              {header_bottom.type === "categories" && (
+                <>
+                  <button
+                    className="flex items-center gap-2 px-4 py-2 rounded-md font-medium"
+                    style={{
+                      backgroundColor: `${primaryColor}10`,
+                      color: primaryColor,
+                    }}
+                  >
+                    <Menu size={18} />
+                    <span>All Categories</span>
+                    <ChevronDown size={16} />
+                  </button>
+                  {/* Dynamic menu items from header_main */}
+                  {header_main?.content?.menu?.items?.map(
+                    (item: any, index: number) => (
+                      <a
+                        key={index}
+                        href={item.link}
+                        className="hover:opacity-80 transition-opacity"
+                        style={{ color: textColor }}
+                      >
+                        {item.label}
+                      </a>
+                    ),
+                  )}
+                </>
+              )}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Menu */}
       <AnimatePresence>
-        {mobileSearch && (
+        {mobileMenuOpen && (
           <motion.div
-            initial={{ y: "-100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "-100%" }}
-            className="fixed inset-0 z-50 bg-white p-4"
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "tween" }}
+            className="fixed inset-0 z-50 lg:hidden"
+            style={{ backgroundColor: backgroundColor }}
           >
-            <div className="flex items-center gap-3 mb-4">
-              <button onClick={() => setMobileSearch(false)}>
-                <X className="w-6 h-6" />
-              </button>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Search products..."
-                className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary"
-              />
+            <div className="flex flex-col h-full">
+              <div
+                className="flex items-center justify-between p-4 border-b"
+                style={{ borderColor: borderColor }}
+              >
+                <span
+                  className="text-lg font-semibold"
+                  style={{ color: textColor }}
+                >
+                  Menu
+                </span>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{ color: textColor }}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto p-4">
+                {/* Mobile menu items */}
+                {header_main?.content?.menu?.items?.map(
+                  (item: any, index: number) => (
+                    <a
+                      key={index}
+                      href={item.link}
+                      className="block py-3 border-b"
+                      style={{
+                        borderColor: borderColor,
+                        color: textColor,
+                      }}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {item.label}
+                    </a>
+                  ),
+                )}
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* 🔹 Mobile Menu */}
-      <AnimatePresence>
-        {mobileMenu && (
-          <>
-            <motion.div
-              className="fixed inset-0 bg-black z-40"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMobileMenu(false)}
-            />
-
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              className="fixed top-0 right-0 w-80 h-full bg-white z-50 shadow-lg overflow-y-auto"
-            >
-              <div className="flex justify-between items-center px-4 py-4 border-b">
-                <span className="text-lg font-semibold">
-                  {user || authUser ? "Welcome" : "Menu"}
-                </span>
-                <button onClick={() => setMobileMenu(false)}>
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="p-4 space-y-6">
-                <CategoryNav mobile />
-
-                <div className="flex flex-col gap-3">
-                  <Link href="/track-order">Track Order</Link>
-                  {user || authUser ? (
-                    <>
-                      <Link href="/profile">{user?.full_name}</Link>
-                      <p
-                        onClick={handleLogout}
-                        className="cursor-pointer text-red-500"
-                      >
-                        Logout
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <Link href="/account/login">Login</Link>
-                      <Link href="/account/signup">Signup</Link>
-                    </>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* 🔹 Desktop Categories */}
-      <div className="hidden md:block">
-        <CategoryNav />
-      </div>
     </header>
+  );
+}
+
+// Helper function to render different content types
+function renderHeaderContent(
+  content: any,
+  colors: { primary: string; text: string },
+) {
+  if (!content) return null;
+
+  switch (content.type) {
+    case "news_ticker":
+      return <NewsTicker items={content.items || []} colors={colors} />;
+
+    case "buttons":
+      return (
+        <div className="flex items-center gap-3">
+          {content.items?.map((item: any, index: number) => {
+            const Icon = IconMap[item.icon];
+            const isTextVariant = item.variant === "text";
+
+            return (
+              <a
+                key={index}
+                href={item.link || "#"}
+                className={`flex items-center gap-1 hover:opacity-80 transition-opacity ${
+                  isTextVariant ? "text-sm" : "px-3 py-1 rounded-md text-white"
+                }`}
+                style={{
+                  color: isTextVariant ? colors.primary : undefined,
+                  backgroundColor: !isTextVariant
+                    ? colors.primary
+                    : "transparent",
+                }}
+              >
+                {Icon && <Icon size={14} />}
+                <span>{item.text}</span>
+              </a>
+            );
+          })}
+        </div>
+      );
+
+    case "text":
+      return (
+        <div className="flex items-center gap-3">
+          {content.items?.map((item: any, index: number) => {
+            const Icon = IconMap[item.icon];
+            return (
+              <a
+                key={index}
+                href={item.link || "#"}
+                className="flex items-center gap-1 text-sm hover:opacity-80"
+                style={{ color: colors.text }}
+              >
+                {Icon && <Icon size={14} style={{ color: colors.primary }} />}
+                <span>{item.text}</span>
+              </a>
+            );
+          })}
+        </div>
+      );
+
+    default:
+      return null;
+  }
+}
+
+// Dedicated NewsTicker component
+function NewsTicker({
+  items,
+  colors,
+}: {
+  items: any[];
+  colors: { primary: string; text: string };
+}) {
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused || !items?.length) return;
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % items.length);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [paused, items]);
+
+  if (!items?.length) return null;
+
+  const currentItem = items[index];
+
+  return (
+    <div
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      className="relative w-full flex items-center overflow-hidden"
+    >
+      <div className="flex items-center gap-2">
+        <Volume2 size={16} style={{ color: colors.primary }} />
+        <div className="overflow-hidden h-6 flex items-center min-w-[250px] sm:min-w-[300px]">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={index}
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 20, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-sm whitespace-nowrap"
+              style={{ color: colors.text }}
+            >
+              {currentItem?.text}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
   );
 }

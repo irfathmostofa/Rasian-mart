@@ -26,7 +26,7 @@ export default function HomePage() {
       fetchProducts(1, 12);
     }
   }, [products.length]);
-  console.log(products);
+
   return (
     <div className="space-y-10">
       {/* Hero Section */}
