@@ -16,40 +16,9 @@ import { useInView } from "react-intersection-observer";
 import { useCategoryStore } from "../store/useCatrgoryStore";
 import { PremiumProductCard } from "@/components/ProductCard/PremiumProductCard";
 import api from "@/lib/api";
-
-interface Product {
-  id: number;
-  code: string;
-  name: string;
-  description: string;
-  cost_price: string | number;
-  selling_price: string | number;
-  regular_price: string | number;
-  status: string;
-  uom_name: string;
-  images: Array<{
-    id: number;
-    url: string;
-    alt_text: string;
-    is_primary: boolean;
-    variant_id: number;
-  }>;
-  categories: Array<{
-    id: number;
-    name: string;
-    slug: string;
-    code: string;
-    image: string | null;
-    is_primary: boolean;
-  }>;
-  total_stock: string | number;
-  badge: string | null;
-  rating: number | null;
-  review_count: number | null;
-  total_sales: string | number;
-  primary_variant_id: number;
-  discount_percentage?: number;
-}
+import { useSettings } from "../store/useSettings";
+import { ProductCard } from "@/components/ProductCard";
+import { Product } from "../store/useProductStore";
 
 interface ApiResponse {
   success: boolean;
@@ -72,7 +41,7 @@ export default function SearchPage() {
   const router = useRouter();
   const query = params.get("q") || "";
   const categoryId = params.get("category_id");
-
+  const { productCardStyle } = useSettings();
   const { categories, fetchCategories } = useCategoryStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -124,11 +93,11 @@ export default function SearchPage() {
   // Normalize product data
   const normalizeProduct = (product: Product) => ({
     ...product,
-    cost_price: parseFloat(product.cost_price as string) || 0,
-    selling_price: parseFloat(product.selling_price as string) || 0,
-    regular_price: parseFloat(product.regular_price as string) || 0,
-    total_stock: parseFloat(product.total_stock as string) || 0,
-    total_sales: parseFloat(product.total_sales as string) || 0,
+    cost_price: parseFloat(product.cost_price) || 0,
+    selling_price: parseFloat(product.selling_price) || 0,
+    regular_price: parseFloat(product.regular_price) || 0,
+    total_stock: parseFloat(product.total_stock) || 0,
+    total_sales: parseFloat(product.total_sales) || 0,
     rating: product.rating || 0,
     review_count: product.review_count || 0,
   });
@@ -284,19 +253,6 @@ export default function SearchPage() {
   const handleMaxPriceChange = (value: number) => {
     const newMax = Math.min(50000, Math.max(value, priceInputs[0]));
     setPriceInputs([priceInputs[0], newMax]);
-  };
-
-  // Handle price slider changes
-  const handlePriceSliderChange = (index: number, value: number) => {
-    if (index === 0) {
-      // Min slider
-      const newMin = Math.min(value, priceInputs[1]);
-      setPriceInputs([newMin, priceInputs[1]]);
-    } else {
-      // Max slider
-      const newMax = Math.max(value, priceInputs[0]);
-      setPriceInputs([priceInputs[0], newMax]);
-    }
   };
 
   // Handle search submit
@@ -854,7 +810,7 @@ export default function SearchPage() {
           {/* Products Grid */}
           <main className="flex-1">
             {/* Active Filters - Desktop */}
-            <div className="hidden md:flex flex-wrap gap-2 mb-6">
+            <div className="hidden md:flex flex-wrap gap-2 ">
               {selectedCategories.length > 0 && (
                 <div className="text-sm text-gray-600">
                   Categories:{" "}
@@ -952,26 +908,31 @@ export default function SearchPage() {
             ) : (
               <>
                 {/* Products Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 md:gap-2">
                   {products.map((product) => (
-                    <PremiumProductCard
+                    <ProductCard
                       key={product.id}
-                      id={product.id}
-                      primary_variant_id={product.primary_variant_id}
-                      name={product.name}
-                      categories={product.categories}
-                      selling_price={parseFloat(
-                        product.selling_price as string,
-                      )}
-                      regular_price={parseFloat(
-                        product.regular_price as string,
-                      )}
-                      cost_price={parseFloat(product.cost_price as string)}
-                      images={product.images}
-                      badge={product.badge}
-                      total_stock={parseFloat(product.total_stock as string)}
-                      rating={product.rating || 0}
+                      {...product}
+                      cardStyle={productCardStyle}
                     />
+                    // <PremiumProductCard
+                    //   key={product.id}
+                    //   id={product.id}
+                    //   primary_variant_id={product.primary_variant_id}
+                    //   name={product.name}
+                    //   categories={product.categories}
+                    //   selling_price={parseFloat(
+                    //     product.selling_price as string,
+                    //   )}
+                    //   regular_price={parseFloat(
+                    //     product.regular_price as string,
+                    //   )}
+                    //   cost_price={parseFloat(product.cost_price as string)}
+                    //   images={product.images}
+                    //   badge={product.badge}
+                    //   total_stock={parseFloat(product.total_stock as string)}
+                    //   rating={product.rating || 0}
+                    // />
                   ))}
                 </div>
                 {/* Infinite Scroll Trigger */}

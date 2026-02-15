@@ -26,7 +26,7 @@ export default function HomePage() {
       fetchProducts(1, 12);
     }
   }, [products.length]);
-
+  console.log(products);
   return (
     <div className="space-y-10">
       {/* Hero Section */}
@@ -67,7 +67,6 @@ export default function HomePage() {
                 <ProductCard
                   key={product.id}
                   {...product}
-                  // You can also override the global style for specific pages
                   cardStyle={productCardStyle}
                 />
               ))}

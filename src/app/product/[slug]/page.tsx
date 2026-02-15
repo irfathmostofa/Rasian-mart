@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCart } from "@/app/store/useCart";
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -11,29 +11,56 @@ import { useProductStore } from "@/app/store/useProductStore";
 import { PremiumProductCard } from "@/components/ProductCard/PremiumProductCard";
 import { useToastStore } from "@/app/store/useToastStore";
 import { useWishlist } from "@/app/store/useWishlist";
+import { ProductCard } from "@/components/ProductCard";
+import { useSettings } from "@/app/store/useSettings";
+import { useUserStore } from "@/app/store/useUserStore";
 
 export default function ProductDetailsPage() {
-  const { id } = useParams();
-  const { addToCart } = useCart();
+  const { slug } = useParams();
+  const router = useRouter();
+  const { user } = useUserStore();
+  const { addToCart, isLoading: cartLoading } = useCart();
+  const {
+    toggleWishlist,
+    isInWishlist,
+    isLoading: wishlistLoading,
+  } = useWishlist();
   const { showToast } = useToastStore();
   const { products: allProducts } = useProductStore();
-  const { toggleWishlist, isInWishlist } = useWishlist();
   const [product, setProduct] = useState<any>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [mainImage, setMainImage] = useState<string>("/no-image.png");
   const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<typeof allProducts>(
     [],
   );
+  const { productCardStyle } = useSettings();
   const [loading, setLoading] = useState(true);
   const [showBottomCart, setShowBottomCart] = useState(false);
+
+  // Get product ID based on variant or product itself
+  const getProductId = () => {
+    return selectedVariant?.id || product?.id;
+  };
+
+  const getPrimaryVariantId = () => {
+    return selectedVariant?.id || product?.id;
+  };
+
+  const getImageUrl = () => {
+    return mainImage;
+  };
+
+  const getSafeStock = () => {
+    return selectedVariant?.stock ?? product?.stock ?? 0;
+  };
 
   // Fetch product
   const fetchProduct = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/product/products/${id}`);
+      const response = await api.get(`/product/product/${slug}`);
+      console.log(response);
       if (response.data.success) {
         const data = response.data.data;
         setProduct(data);
@@ -62,8 +89,80 @@ export default function ProductDetailsPage() {
   };
 
   useEffect(() => {
-    fetchProduct();
-  }, [id]);
+    if (slug) {
+      fetchProduct();
+    }
+  }, [slug]);
+
+  const handleAddToCart = async () => {
+    if (!user) {
+      showToast("Please login to add items to cart", "error");
+      router.push("/account/login");
+      return;
+    }
+
+    // Calculate price based on variant or base product
+    const price = selectedVariant
+      ? parseFloat(product.selling_price) +
+        parseFloat(selectedVariant.additional_price || 0)
+      : parseFloat(product.selling_price);
+
+    try {
+      await addToCart(
+        {
+          id: getProductId(),
+          primary_variant_id: getPrimaryVariantId(),
+          name:
+            product.name +
+            (selectedVariant ? ` - ${selectedVariant.name}` : ""),
+          price: price || 0,
+          image: getImageUrl(),
+          quantity: quantity,
+        },
+        user.id,
+      );
+      showToast("Added to cart 🛒", "success");
+      setShowBottomCart(true); // Show bottom cart after adding
+    } catch (error) {
+      showToast("Failed to add to cart", "error");
+    }
+  };
+
+  const handleToggleWishlist = async () => {
+    if (!user) {
+      showToast("Please login to manage wishlist", "error");
+      router.push("/account/login");
+      return;
+    }
+
+    // Calculate price based on variant or base product
+    const price = selectedVariant
+      ? parseFloat(product.selling_price) +
+        parseFloat(selectedVariant.additional_price || 0)
+      : parseFloat(product.selling_price);
+
+    try {
+      const added = await toggleWishlist(
+        {
+          id: getProductId(),
+          primary_variant_id: getPrimaryVariantId(),
+          name:
+            product.name +
+            (selectedVariant ? ` - ${selectedVariant.name}` : ""),
+          price: price || 0,
+          image: getImageUrl(),
+          stock: getSafeStock(),
+        },
+        user.id,
+      );
+      showToast(
+        `${added ? "Added to" : "Removed from"} wishlist ❤️`,
+        "success",
+      );
+    } catch (error) {
+      showToast("Failed to update wishlist", "error");
+    }
+  };
 
   // Load related products
   useEffect(() => {
@@ -73,13 +172,22 @@ export default function ProductDetailsPage() {
 
     const related = allProducts
       .filter(
-        (p) =>
+        (p: any) =>
           p.id !== product.id &&
           p.categories?.some((c: any) => c.id === mainCategoryId),
       )
-      .slice(0, 10);
+      .slice(0, 4);
     setRelatedProducts(related);
   }, [product, allProducts]);
+
+  // Check if current product is in wishlist
+  useEffect(() => {
+    if (product) {
+      const productVariantId = getProductId();
+      // You might want to sync this with your wishlist store
+      // For now, we'll rely on the store's isInWishlist function
+    }
+  }, [product, selectedVariant]);
 
   if (loading)
     return (
@@ -108,16 +216,17 @@ export default function ProductDetailsPage() {
     allImages.length > 0 ? allImages : [{ url: "/no-image.png" }];
 
   const variantStock = selectedVariant?.stock ?? 0;
-
   const currentPrice = selectedVariant
     ? parseFloat(product.selling_price) +
       parseFloat(selectedVariant.additional_price || 0)
     : parseFloat(product.selling_price);
 
+  // Check if product is in wishlist
+  const productVariantId = getProductId();
+  const isWishlisted = isInWishlist(productVariantId);
+
   return (
     <div className="container mx-auto py-10 space-y-16 pb-24">
-      {" "}
-      {/* Added pb-24 for bottom spacing */}
       {/* ================= Main Product ================= */}
       <div className="grid md:grid-cols-2 gap-10">
         {/* Product Image Gallery */}
@@ -149,6 +258,7 @@ export default function ProductDetailsPage() {
                   alt={`product-img-${index}`}
                   fill
                   className="object-cover"
+                  sizes="(max-width: 768px) 20vw, 10vw"
                 />
               </button>
             ))}
@@ -181,6 +291,11 @@ export default function ProductDetailsPage() {
           {/* Price */}
           <div className="text-2xl font-bold text-primary">
             ৳ {currentPrice.toFixed(2)}
+            {product.regular_price && (
+              <span className="text-lg text-gray-500 line-through ml-2">
+                ৳ {parseFloat(product.regular_price).toFixed(2)}
+              </span>
+            )}
           </div>
 
           {/* Variant Selection */}
@@ -206,6 +321,11 @@ export default function ProductDetailsPage() {
                     }`}
                   >
                     {v.name || v.code}
+                    {v.additional_price && (
+                      <span className="ml-1 text-xs">
+                        (+৳{parseFloat(v.additional_price).toFixed(2)})
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -226,6 +346,7 @@ export default function ProductDetailsPage() {
             <button
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
               className="px-3 py-1 border rounded-lg hover:bg-gray-100"
+              disabled={variantStock <= 0}
             >
               -
             </button>
@@ -233,6 +354,7 @@ export default function ProductDetailsPage() {
             <button
               onClick={() => setQuantity((q) => q + 1)}
               className="px-3 py-1 border rounded-lg hover:bg-gray-100"
+              disabled={variantStock <= 0 || quantity >= variantStock}
             >
               +
             </button>
@@ -242,72 +364,47 @@ export default function ProductDetailsPage() {
           <div className="flex gap-3 mt-4 flex-wrap">
             {variantStock > 0 && (
               <button
-                onClick={() => {
-                  if (!selectedVariant) {
-                    showToast("Please select a variant first", "error");
-                    return;
-                  }
-                  addToCart({
-                    id: product.id,
-                    primary_variant_id: selectedVariant.id,
-                    name: `${product.name} - ${selectedVariant.name || ""}`,
-                    price: currentPrice,
-                    image: mainImage,
-                    quantity,
-                  });
-                  showToast("Added to cart 🛒", "success");
-                  setShowBottomCart(true);
-                }}
-                className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 flex items-center gap-2"
+                onClick={handleAddToCart}
+                disabled={cartLoading || variantStock <= 0}
+                className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <ShoppingCart className="w-5 h-5" /> Add to Cart
+                <ShoppingCart className="w-5 h-5" />
+                {cartLoading ? "Adding..." : "Add to Cart"}
               </button>
             )}
 
             <button
-              onClick={() => {
-                const willBeWishlisted = !isWishlisted;
-
-                toggleWishlist({
-                  id: product.id,
-                  primary_variant_id: selectedVariant?.id,
-                  name: `${product.name} - ${selectedVariant?.name || ""}`,
-                  price: currentPrice,
-                  image: mainImage,
-                  stock: 0,
-                });
-
-                setIsWishlisted(willBeWishlisted);
-                showToast(
-                  `${willBeWishlisted ? "Added" : "Removed"} to wishlist ❤️`,
-                  "success",
-                );
-              }}
-              className="border px-6 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2"
+              onClick={handleToggleWishlist}
+              disabled={wishlistLoading}
+              className="border px-6 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Heart
                 className={`w-5 h-5 ${
                   isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"
                 }`}
               />
-              {isWishlisted ? "Wishlisted" : "Add to Wishlist"}
+              {wishlistLoading
+                ? "Updating..."
+                : isWishlisted
+                  ? "Wishlisted"
+                  : "Add to Wishlist"}
             </button>
           </div>
         </div>
       </div>
+
       {/* Description */}
       <div>
         <h3 className="font-semibold text-lg mb-2">Description</h3>
-        <p className="text-gray-600 leading-relaxed">
+        <p className="text-gray-600 leading-relaxed whitespace-pre-line">
           {product.description || "No description available."}
         </p>
       </div>
+
       {/* Customer Reviews */}
-      <div className="space-y-6">
-        <h2 className="text-xl font-bold mb-4">Customer Reviews</h2>
-        {product.reviews?.length === 0 ? (
-          <p className="text-gray-500">No reviews yet.</p>
-        ) : (
+      {product.reviews?.length > 0 && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold mb-4">Customer Reviews</h2>
           <div className="space-y-4">
             {product.reviews.map((review: any) => (
               <div
@@ -345,22 +442,24 @@ export default function ProductDetailsPage() {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
       {/* Related Products */}
       {relatedProducts.length > 0 && (
         <div>
           <h2 className="text-xl font-bold mb-6">Related Products</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-5">
-            {relatedProducts.map((p) => (
-              <PremiumProductCard key={p.id} {...p} />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
+            {relatedProducts.map((p: any) => (
+              <ProductCard key={p.id} {...p} cardStyle={productCardStyle} />
             ))}
           </div>
         </div>
       )}
+
       {/* Fixed Bottom Cart Section */}
       {showBottomCart && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50 animate-slide-up">
           <div className="container mx-auto px-4 py-3">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-4">
@@ -372,7 +471,7 @@ export default function ProductDetailsPage() {
                 </button>
                 <div className="flex items-center gap-2">
                   <ShoppingCart className="w-5 h-5 text-primary" />
-                  {/* <span className="font-medium">Cart ({cartItemCount})</span> */}
+                  <span className="font-medium">Added to cart!</span>
                 </div>
               </div>
 
@@ -380,15 +479,14 @@ export default function ProductDetailsPage() {
                 <div className="text-right">
                   <p className="text-sm text-gray-500">Total</p>
                   <p className="text-xl font-bold text-primary">
-                    {/* ৳ {cartTotal.toFixed(2)} */}
+                    ৳ {(currentPrice * quantity).toFixed(2)}
                   </p>
                 </div>
 
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
-                      // Navigate to cart page
-                      window.location.href = "/cart";
+                      router.push("/cart");
                     }}
                     className="px-6 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition"
                   >
@@ -396,12 +494,11 @@ export default function ProductDetailsPage() {
                   </button>
                   <button
                     onClick={() => {
-                      // Navigate to checkout page
-                      window.location.href = "/checkout";
+                      router.push("/checkout");
                     }}
                     className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition"
                   >
-                    Buy Now
+                    Checkout
                   </button>
                 </div>
               </div>

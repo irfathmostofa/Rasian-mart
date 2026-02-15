@@ -6,6 +6,7 @@ import api from "@/lib/api";
 export interface Product {
   id: number;
   code: string;
+  slug: string;
   name: string;
   description: string;
   cost_price: number;
@@ -48,7 +49,7 @@ interface ProductStore {
   fetchProducts: (
     page?: number,
     limit?: number,
-    append?: boolean
+    append?: boolean,
   ) => Promise<void>;
   loadMore: () => Promise<void>;
   clearProducts: () => void;

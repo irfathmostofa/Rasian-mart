@@ -23,6 +23,7 @@ import { useState } from "react";
 
 export function ModernProductCard({
   id,
+  slug,
   primary_variant_id,
   name,
   categories,
@@ -170,7 +171,7 @@ export function ModernProductCard({
 
       {/* Image Container */}
       <div className="relative aspect-square overflow-hidden">
-        <Link href={`/product/${id}`} className="block h-full">
+        <Link href={`/product/${slug}`} className="block h-full">
           {imageUrl ? (
             <Image
               src={imageUrl}
@@ -250,7 +251,7 @@ export function ModernProductCard({
         </p>
 
         {/* Title */}
-        <Link href={`/product/${id}`}>
+        <Link href={`/product/${slug}`}>
           <h3 className="text-lg font-bold text-gray-900 line-clamp-1 mb-3 hover:text-primary transition-colors">
             {name}
           </h3>
@@ -299,20 +300,8 @@ export function ModernProductCard({
           )}
         </div>
 
-        {/* Features */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <Shield className="w-4 h-4 text-green-500" />
-            <span>1 Year Warranty</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <Truck className="w-4 h-4 text-blue-500" />
-            <span>Free Delivery</span>
-          </div>
-        </div>
-
         {/* Stock Progress Bar */}
-        {safeStock > 0 && safeStock <= 20 && (
+        {/* {safeStock > 0 && safeStock <= 20 && (
           <div className="mb-4">
             <div className="flex justify-between text-xs text-gray-600 mb-1">
               <span>Selling fast!</span>
@@ -325,15 +314,15 @@ export function ModernProductCard({
               />
             </div>
           </div>
-        )}
+        )} */}
 
         {/* View Details Button */}
-        <Link
-          href={`/product/${id}`}
+        {/* <Link
+          href={`/product/${slug}`}
           className="block w-full text-center border-2 border-gray-300 text-gray-700 py-2 rounded-xl font-semibold hover:border-primary hover:bg-primary/5 hover:text-primary transition-all duration-300"
         >
           View Details
-        </Link>
+        </Link> */}
       </div>
 
       {/* Hover Effect Border */}

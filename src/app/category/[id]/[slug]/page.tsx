@@ -5,13 +5,15 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2, Filter, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "react-intersection-observer";
-import { PremiumProductCard } from "@/components/ProductCard/PremiumProductCard";
 import api from "@/lib/api";
+import { ProductCard } from "@/components/ProductCard";
+import { useSettings } from "@/app/store/useSettings";
 
 interface Product {
   id: number;
   code: string;
   name: string;
+  slug: string;
   description: string;
   cost_price: string | number;
   selling_price: string | number;
@@ -61,7 +63,7 @@ interface ApiResponse {
 export default function CategoryPage() {
   const { id, slug } = useParams(); // id is category_id, slug is category name
   const router = useRouter();
-
+  const { productCardStyle } = useSettings();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -796,21 +798,12 @@ export default function CategoryPage() {
             ) : (
               <>
                 {/* Products Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                  {products.map((product) => (
-                    <PremiumProductCard
-                      key={product.id}
-                      id={product.id}
-                      primary_variant_id={product.primary_variant_id}
-                      name={product.name}
-                      categories={product.categories}
-                      selling_price={parseFloat(String(product.selling_price))}
-                      regular_price={parseFloat(String(product.regular_price))}
-                      cost_price={parseFloat(String(product.cost_price))}
-                      images={product.images}
-                      badge={product.badge}
-                      total_stock={parseFloat(String(product.total_stock))}
-                      rating={product.rating || 0}
+                <div className="grid grid-cols-2 md:grid-cols-3  gap-4 md:gap-6">
+                  {products.map((p) => (
+                    <ProductCard
+                      key={p.id}
+                      {...p}
+                      cardStyle={productCardStyle}
                     />
                   ))}
                 </div>
