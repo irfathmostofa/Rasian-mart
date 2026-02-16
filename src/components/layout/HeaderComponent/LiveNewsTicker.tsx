@@ -71,7 +71,7 @@ export default function LiveNewsTicker({
     : iconMap.default;
 
   // Determine text color from theme or default
-  const textColor = colors?.header_top_text || colors?.text || "#ffffff";
+  const textColor = colors?.text;
 
   return (
     <div
@@ -84,7 +84,7 @@ export default function LiveNewsTicker({
         {currentItem.icon && (
           <IconComponent
             size={16}
-            style={{ color: colors?.primary || textColor }}
+            style={{ textColor }}
             className="flex-shrink-0"
           />
         )}

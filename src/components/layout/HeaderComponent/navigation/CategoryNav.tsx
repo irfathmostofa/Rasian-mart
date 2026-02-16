@@ -27,7 +27,7 @@ export default function CategoryNav({ mobile = false }: Props) {
   // Wait until client hydration
   if (!mounted || !hydrated) {
     return (
-      <nav className="bg-gray-50 border-t">
+      <nav className=" border-t">
         <div className="container mx-auto px-4 py-2 flex justify-between items-center">
           <div className="hidden md:flex gap-6 text-sm font-medium relative">
             {[...Array(5)].map((_, i) => (
@@ -109,7 +109,7 @@ export default function CategoryNav({ mobile = false }: Props) {
 
   // 💻 Desktop View
   return (
-    <nav className="bg-gray-50 border-t">
+    <nav className=" border-t">
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">
         <div className="hidden md:flex gap-6 text-sm font-medium relative">
           {categories?.map((cat) => (

@@ -205,7 +205,7 @@ export function ModernProductCard({
             <button
               onClick={handleAddToCart}
               disabled={cartLoading || safeStock === 0}
-              className="flex-1 bg-white text-gray-900 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 text-sm bg-white text-gray-900 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {cartLoading ? (
                 <>
@@ -223,7 +223,7 @@ export function ModernProductCard({
             <button
               onClick={handleQuickBuy}
               disabled={cartLoading || safeStock === 0}
-              className="flex-1 bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 text-sm bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <Zap className="w-4 h-4" />
               Buy Now

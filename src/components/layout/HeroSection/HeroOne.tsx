@@ -1,9 +1,12 @@
 // components/hero/HeroOne.tsx
 "use client";
 
+import { useThemeData } from "@/app/store/useThemeData";
 import Link from "next/link";
 
 export default function HeroOne() {
+  const heroData = (useThemeData("hero_section") || {}) as any;
+  console.log(heroData);
   return (
     <section className="relative bg-gradient-to-r from-primary/90 to-primary text-white py-16 rounded-2xl">
       <div className="container mx-auto px-6 flex flex-col md:flex-row items-center ">

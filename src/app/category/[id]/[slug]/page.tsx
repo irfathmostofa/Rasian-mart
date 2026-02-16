@@ -308,9 +308,9 @@ export default function CategoryPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 ">
         {/* Breadcrumb */}
-        <div className="text-sm text-gray-600 mb-6">
+        <div className="text-sm text-gray-600 mb-2">
           <span
             className="hover:text-primary cursor-pointer"
             onClick={() => router.push("/")}
@@ -602,7 +602,7 @@ export default function CategoryPage() {
                     </div>
 
                     {/* Price Range for Mobile */}
-                    <div className="mb-8">
+                    <div className="mb-2">
                       <div className="flex justify-between items-center mb-4">
                         <h4 className="font-medium text-gray-900">
                           Price Range
@@ -697,7 +697,7 @@ export default function CategoryPage() {
           {/* Products Grid */}
           <main className="flex-1">
             {/* Active Filters - Desktop */}
-            <div className="hidden md:flex flex-wrap gap-2 mb-6">
+            <div className="hidden md:flex flex-wrap gap-2 ">
               {(priceRange[0] > 0 || priceRange[1] < 50000) && (
                 <div className="text-sm text-gray-600">
                   Price:{" "}
