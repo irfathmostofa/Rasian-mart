@@ -21,6 +21,7 @@ export default function HomePage() {
     currentPage,
   } = useProductStore();
   const { productCardStyle } = useSettings();
+  console.log(products);
   useEffect(() => {
     if (products.length === 0) {
       fetchProducts(1, 12);

@@ -20,7 +20,7 @@ export default function SiteLayoutClient({
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
+      <main className="flex-1 container mx-auto px-4">{children}</main>
       <FloatingSettings />
       <Footer />
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2, Filter, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,6 +8,9 @@ import { useInView } from "react-intersection-observer";
 import api from "@/lib/api";
 import { ProductCard } from "@/components/ProductCard";
 import { useSettings } from "@/app/store/useSettings";
+import { useThemeData } from "@/app/store/useThemeData";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Product {
   id: number;
@@ -60,10 +63,79 @@ interface ApiResponse {
   };
 }
 
+interface PriceRangeConfig {
+  min: number;
+  max: number;
+  label: string;
+}
+
+interface SortOption {
+  value: string;
+  label: string;
+}
+
+interface ProductSectionConfig {
+  status: boolean;
+  filter_options: string[]; // e.g. ["category","price_range","brand","rating"]
+  price_ranges: PriceRangeConfig[];
+  show_pagination: boolean;
+  sort_options: SortOption[]; // empty array → use defaults
+}
+
+// ─── Default fallbacks ────────────────────────────────────────────────────────
+
+const DEFAULT_SORT_OPTIONS: SortOption[] = [
+  { value: "newest", label: "Newest Arrivals" },
+  { value: "price-low", label: "Price: Low to High" },
+  { value: "price-high", label: "Price: High to Low" },
+  { value: "popular", label: "Most Popular" },
+  { value: "rating", label: "Top Rated" },
+];
+
+const AVAILABILITY_OPTIONS = [
+  { value: "all", label: "All Products" },
+  { value: "in-stock", label: "In Stock Only" },
+  { value: "out-of-stock", label: "Out of Stock" },
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function CategoryPage() {
-  const { id, slug } = useParams(); // id is category_id, slug is category name
+  const { id, slug } = useParams();
   const router = useRouter();
   const { productCardStyle } = useSettings();
+
+  // Pull product_section config from theme
+  const rawSection = (useThemeData("product_section") ||
+    {}) as Partial<ProductSectionConfig>;
+
+  // Resolve config with safe defaults
+  const sectionConfig: ProductSectionConfig = {
+    status: rawSection.status ?? true,
+    filter_options: rawSection.filter_options ?? ["price_range"],
+    price_ranges: rawSection.price_ranges ?? [
+      { min: 0, max: 50000, label: "Price Range" },
+    ],
+    show_pagination: rawSection.show_pagination ?? true,
+    sort_options: rawSection.sort_options ?? [],
+  };
+
+  // Use backend sort options if provided, otherwise fall back to defaults
+  const activeSortOptions: SortOption[] =
+    sectionConfig.sort_options.length > 0
+      ? sectionConfig.sort_options
+      : DEFAULT_SORT_OPTIONS;
+
+  // Which filters to show (driven by filter_options array)
+  const showPriceFilter = sectionConfig.filter_options.includes("price_range");
+  const showAvailability = sectionConfig.filter_options.includes("category"); // maps to availability
+  const showRatingFilter = sectionConfig.filter_options.includes("rating");
+
+  // Price bounds from config
+  const PRICE_MIN = sectionConfig.price_ranges[0]?.min ?? 0;
+  const PRICE_MAX = sectionConfig.price_ranges[0]?.max ?? 50000;
+
+  // ── State ──────────────────────────────────────────────────────────────────
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -75,22 +147,36 @@ export default function CategoryPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Filters
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
-  const [priceInputs, setPriceInputs] = useState<[number, number]>([0, 50000]);
-  const [sortBy, setSortBy] = useState("newest");
+  const [priceRange, setPriceRange] = useState<[number, number]>([
+    PRICE_MIN,
+    PRICE_MAX,
+  ]);
+  const [priceInputs, setPriceInputs] = useState<[number, number]>([
+    PRICE_MIN,
+    PRICE_MAX,
+  ]);
+  const [sortBy, setSortBy] = useState(activeSortOptions[0]?.value ?? "newest");
   const [availability, setAvailability] = useState<string>("all");
+  const [minRating, setMinRating] = useState<number>(0);
 
-  const { ref, inView } = useInView({
-    threshold: 0,
-    rootMargin: "100px",
-  });
+  // Count active filters for badge
+  const activeFilterCount =
+    (showPriceFilter && (priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX)
+      ? 1
+      : 0) +
+    (showAvailability && availability !== "all" ? 1 : 0) +
+    (showRatingFilter && minRating > 0 ? 1 : 0);
 
-  // Initialize price inputs from price range
+  const { ref, inView } = useInView({ threshold: 0, rootMargin: "100px" });
+
+  // ── Infinite scroll ────────────────────────────────────────────────────────
   useEffect(() => {
-    setPriceInputs(priceRange);
-  }, []);
+    if (inView && hasMore && !loading) {
+      fetchProducts(page + 1, false);
+    }
+  }, [inView]);
 
-  // Fetch products from API
+  // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchProducts = useCallback(
     async (pageNum: number = 1, reset: boolean = false) => {
       if (loading && !reset) return;
@@ -101,64 +187,59 @@ export default function CategoryPage() {
       setError(null);
 
       try {
-        const requestBody: any = {
+        const requestBody: Record<string, unknown> = {
           page: pageNum,
           limit: 20,
           status: "A",
           category_id: parseInt(String(id)),
         };
 
-        // Add price filters - IMPORTANT: Use undefined, not 0, for no filter
-        if (priceRange[0] > 0) {
-          requestBody.price_min = priceRange[0];
-        }
-        // Don't send price_max if it's the maximum (50000) unless min is also set
-        if (priceRange[1] < 50000 || priceRange[0] > 0) {
-          requestBody.price_max = priceRange[1];
+        // Price filters — only send when user actually changed them
+        if (showPriceFilter) {
+          if (priceRange[0] > PRICE_MIN) requestBody.price_min = priceRange[0];
+          if (priceRange[1] < PRICE_MAX) requestBody.price_max = priceRange[1];
         }
 
-        // Add availability filter to API call instead of client-side
-        if (availability === "in-stock") {
-          // You'll need to add a stock filter parameter to your backend
-          // For now, we'll handle it client-side
-        } else if (availability === "out-of-stock") {
-          // You'll need to add a stock filter parameter to your backend
-          // For now, we'll handle it client-side
+        // Rating filter
+        if (showRatingFilter && minRating > 0) {
+          requestBody.min_rating = minRating;
         }
 
-        // Call API with POST
+        // Sort
+        requestBody.sort = sortBy;
+
         const response = await api.post<ApiResponse>(
           `/product/get-all-products`,
           requestBody,
         );
 
         if (response.data.success) {
-          const fetchedProducts = response.data.data.data || [];
+          const fetched = response.data.data.data || [];
           const pagination = response.data.data.pagination;
 
-          // Apply availability filter client-side (temporary)
-          let filteredProducts = fetchedProducts;
-          if (availability === "in-stock") {
-            filteredProducts = fetchedProducts.filter(
-              (p) => parseFloat(String(p.total_stock)) > 0,
-            );
-          } else if (availability === "out-of-stock") {
-            filteredProducts = fetchedProducts.filter(
-              (p) => parseFloat(String(p.total_stock)) <= 0,
-            );
+          // Client-side availability filter (until backend supports it)
+          let filtered = fetched;
+          if (showAvailability) {
+            if (availability === "in-stock") {
+              filtered = fetched.filter(
+                (p) => parseFloat(String(p.total_stock)) > 0,
+              );
+            } else if (availability === "out-of-stock") {
+              filtered = fetched.filter(
+                (p) => parseFloat(String(p.total_stock)) <= 0,
+              );
+            }
           }
 
-          // For reset, replace products
           if (reset) {
-            setProducts(filteredProducts);
+            setProducts(filtered);
           } else {
-            // For pagination, append unique products
             setProducts((prev) => {
               const existingIds = new Set(prev.map((p) => p.id));
-              const newProducts = filteredProducts.filter(
-                (p) => !existingIds.has(p.id),
-              );
-              return [...prev, ...newProducts];
+              return [
+                ...prev,
+                ...filtered.filter((p) => !existingIds.has(p.id)),
+              ];
             });
           }
 
@@ -168,13 +249,17 @@ export default function CategoryPage() {
         } else {
           setError("Failed to fetch products");
         }
-      } catch (error: any) {
-        console.error("Error fetching category products:", error);
-        setError(
-          error.response?.data?.message ||
-            error.message ||
-            "Failed to load products",
-        );
+      } catch (err: unknown) {
+        const msg =
+          (
+            err as {
+              response?: { data?: { message?: string } };
+              message?: string;
+            }
+          )?.response?.data?.message ??
+          (err as { message?: string })?.message ??
+          "Failed to load products";
+        setError(msg);
         if (reset) {
           setProducts([]);
           setTotalProducts(0);
@@ -184,219 +269,395 @@ export default function CategoryPage() {
         setInitialLoading(false);
       }
     },
-    [loading, id, priceRange, sortBy, availability],
+    [
+      loading,
+      id,
+      priceRange,
+      sortBy,
+      availability,
+      minRating,
+      showPriceFilter,
+      showRatingFilter,
+      showAvailability,
+    ],
   );
 
-  // Reset everything when category changes
+  // Reset + refetch when category changes
   useEffect(() => {
     if (id) {
       setProducts([]);
       setPage(1);
       setHasMore(true);
-      setPriceRange([0, 50000]);
-      setPriceInputs([0, 50000]);
-      setSortBy("newest");
+      setPriceRange([PRICE_MIN, PRICE_MAX]);
+      setPriceInputs([PRICE_MIN, PRICE_MAX]);
+      setSortBy(activeSortOptions[0]?.value ?? "newest");
       setAvailability("all");
+      setMinRating(0);
       fetchProducts(1, true);
     }
   }, [id]);
 
-  // Apply filters manually (for button clicks)
+  // ── Filter actions ─────────────────────────────────────────────────────────
+
   const applyFilters = () => {
     if (priceInputs[0] > priceInputs[1]) {
       setError("Minimum price cannot be greater than maximum price");
       return;
     }
-
     setPriceRange(priceInputs);
     setShowFilters(false);
-    // Reset and fetch with new filters
     setProducts([]);
     setPage(1);
     setHasMore(true);
     fetchProducts(1, true);
   };
 
-  // Reset all filters
   const resetFilters = () => {
-    const newPriceRange: [number, number] = [0, 50000];
-    setPriceRange(newPriceRange);
-    setPriceInputs(newPriceRange);
-    setSortBy("newest");
+    setPriceRange([PRICE_MIN, PRICE_MAX]);
+    setPriceInputs([PRICE_MIN, PRICE_MAX]);
+    setSortBy(activeSortOptions[0]?.value ?? "newest");
     setAvailability("all");
-
-    // Only fetch if not already at default values
-    if (
-      id &&
-      (priceRange[0] !== 0 ||
-        priceRange[1] !== 50000 ||
-        sortBy !== "newest" ||
-        availability !== "all")
-    ) {
-      setProducts([]);
-      setPage(1);
-      setHasMore(true);
-      fetchProducts(1, true);
-    }
+    setMinRating(0);
+    setProducts([]);
+    setPage(1);
+    setHasMore(true);
+    fetchProducts(1, true);
   };
 
-  // Handle price input changes
-  const handleMinPriceChange = (value: number) => {
-    const newMin = Math.max(0, Math.min(value, 50000));
-    setPriceInputs([newMin, priceInputs[1]]);
-  };
-
-  const handleMaxPriceChange = (value: number) => {
-    const newMax = Math.min(50000, Math.max(value, 0));
-    setPriceInputs([priceInputs[0], newMax]);
-  };
-
-  // Handle sort change
   const handleSortChange = (value: string) => {
     setSortBy(value);
     setShowSort(false);
-    // Reset and fetch with new sort
     setProducts([]);
     setPage(1);
     setHasMore(true);
     fetchProducts(1, true);
   };
 
-  // Handle availability change
   const handleAvailabilityChange = (value: string) => {
     setAvailability(value);
-    // Reset and fetch with new availability filter
     setProducts([]);
     setPage(1);
     setHasMore(true);
     fetchProducts(1, true);
   };
 
-  // Format price
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-BD", {
+  const handleRatingChange = (value: number) => {
+    setMinRating(value);
+    setProducts([]);
+    setPage(1);
+    setHasMore(true);
+    fetchProducts(1, true);
+  };
+
+  // ── Formatters ─────────────────────────────────────────────────────────────
+
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("en-BD", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price);
-  };
 
-  // Format category name
-  const formatCategoryName = (slug: string) => {
-    if (!slug) return "";
-    return String(slug)
+  const formatCategoryName = (s: string) =>
+    String(s)
       .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
       .join(" ");
-  };
 
-  // Render loading skeleton
+  const categoryName = formatCategoryName(String(slug));
+
+  // ── Skeleton ───────────────────────────────────────────────────────────────
   const renderSkeleton = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="border rounded-lg p-4 animate-pulse">
-          <div className="bg-gray-200 h-60 rounded-lg mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-3"></div>
-          <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+          <div className="bg-gray-200 h-52 rounded-lg mb-4" />
+          <div className="h-4 bg-gray-200 rounded mb-2" />
+          <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
+          <div className="h-6 bg-gray-200 rounded w-1/2" />
         </div>
       ))}
     </div>
   );
 
-  // Get current category name
-  const categoryName = formatCategoryName(String(slug));
+  // ── Shared filter panel (used in both sidebar and mobile drawer) ───────────
+  const renderFilterPanel = (mobile = false) => (
+    <div className={mobile ? "p-4" : ""}>
+      {/* Availability */}
+      {showAvailability && (
+        <div className="mb-7">
+          <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">
+            Availability
+          </h4>
+          <div className="space-y-2">
+            {AVAILABILITY_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <input
+                  type="radio"
+                  name={`availability-${mobile ? "mobile" : "desktop"}`}
+                  checked={availability === opt.value}
+                  onChange={() => handleAvailabilityChange(opt.value)}
+                  className="w-4 h-4 text-primary border-gray-300 focus:ring-primary cursor-pointer"
+                  disabled={loading}
+                />
+                <span className="text-sm text-gray-700 group-hover:text-primary transition-colors">
+                  {opt.label}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Price Range */}
+      {showPriceFilter && (
+        <div className="mb-7">
+          <div className="flex justify-between items-center mb-3">
+            <h4 className="font-semibold text-gray-900 text-sm uppercase tracking-wide">
+              {sectionConfig.price_ranges[0]?.label ?? "Price Range"}
+            </h4>
+            <span className="text-xs text-primary font-semibold bg-primary/8 px-2 py-0.5 rounded">
+              ৳{formatPrice(priceInputs[0])} – ৳{formatPrice(priceInputs[1])}
+            </span>
+          </div>
+
+          <div className="flex gap-3 mb-4">
+            {/* Min */}
+            <div className="flex-1">
+              <label className="text-xs text-gray-500 mb-1 block">Min</label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                  ৳
+                </span>
+                <input
+                  type="number"
+                  min={PRICE_MIN}
+                  max={PRICE_MAX}
+                  step="100"
+                  value={priceInputs[0]}
+                  onChange={(e) => {
+                    const v = Math.max(
+                      PRICE_MIN,
+                      Math.min(
+                        parseInt(e.target.value) || PRICE_MIN,
+                        PRICE_MAX,
+                      ),
+                    );
+                    setPriceInputs([v, priceInputs[1]]);
+                  }}
+                  onBlur={applyFilters}
+                  onKeyDown={(e) => e.key === "Enter" && applyFilters()}
+                  className="w-full border border-gray-300 rounded-lg pl-7 pr-2 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            {/* Max */}
+            <div className="flex-1">
+              <label className="text-xs text-gray-500 mb-1 block">Max</label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                  ৳
+                </span>
+                <input
+                  type="number"
+                  min={PRICE_MIN}
+                  max={PRICE_MAX}
+                  step="100"
+                  value={priceInputs[1]}
+                  onChange={(e) => {
+                    const v = Math.min(
+                      PRICE_MAX,
+                      Math.max(
+                        parseInt(e.target.value) || PRICE_MAX,
+                        PRICE_MIN,
+                      ),
+                    );
+                    setPriceInputs([priceInputs[0], v]);
+                  }}
+                  onBlur={applyFilters}
+                  onKeyDown={(e) => e.key === "Enter" && applyFilters()}
+                  className="w-full border border-gray-300 rounded-lg pl-7 pr-2 py-2 text-sm focus:ring-1 focus:ring-primary focus:border-primary outline-none"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={applyFilters}
+            className="w-full bg-primary text-white py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" /> Applying…
+              </span>
+            ) : (
+              "Apply Price Filter"
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Rating */}
+      {showRatingFilter && (
+        <div className="mb-7">
+          <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">
+            Min Rating
+          </h4>
+          <div className="space-y-2">
+            {[0, 1, 2, 3, 4].map((r) => (
+              <label
+                key={r}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <input
+                  type="radio"
+                  name={`rating-${mobile ? "mobile" : "desktop"}`}
+                  checked={minRating === r}
+                  onChange={() => handleRatingChange(r)}
+                  className="w-4 h-4 text-primary border-gray-300 focus:ring-primary cursor-pointer"
+                  disabled={loading}
+                />
+                <span className="text-sm text-gray-700 group-hover:text-primary transition-colors flex items-center gap-1">
+                  {r === 0 ? (
+                    "All Ratings"
+                  ) : (
+                    <>
+                      {"★".repeat(r)}
+                      {"☆".repeat(5 - r)}
+                      <span className="text-gray-500 ml-1">& up</span>
+                    </>
+                  )}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reset */}
+      {activeFilterCount > 0 && (
+        <button
+          onClick={resetFilters}
+          className="w-full border border-gray-300 text-gray-700 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+          disabled={loading}
+        >
+          Clear All Filters
+        </button>
+      )}
+    </div>
+  );
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  // If section is disabled, show nothing
+  if (!sectionConfig.status) return null;
+
+  // Check if any filter panel should be rendered at all
+  const hasAnyFilter = showPriceFilter || showAvailability || showRatingFilter;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 ">
+      <div className="container mx-auto px-4 py-6">
         {/* Breadcrumb */}
-        <div className="text-sm text-gray-600 mb-2">
+        <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
           <span
-            className="hover:text-primary cursor-pointer"
+            className="hover:text-primary cursor-pointer transition-colors"
             onClick={() => router.push("/")}
           >
             Home
           </span>
-          {" > "}
-          <span className="font-medium">Categories</span>
-          {" > "}
-          <span className="font-medium capitalize">{categoryName}</span>
-        </div>
+          <span className="text-gray-300">/</span>
+          <span>Categories</span>
+          <span className="text-gray-300">/</span>
+          <span className="text-gray-900 font-medium capitalize">
+            {categoryName}
+          </span>
+        </nav>
 
         {/* Page Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 capitalize">
               {categoryName}
             </h1>
             {!initialLoading && products.length > 0 && (
-              <p className="text-gray-600 mt-1">
+              <p className="text-sm text-gray-500 mt-1">
                 Showing {products.length} of {totalProducts} products
-                {hasMore && " • Scroll for more"}
+                {hasMore && " · Scroll for more"}
               </p>
             )}
           </div>
 
-          {/* Mobile Filter/Sort Buttons */}
-          <div className="flex gap-3 mt-4 md:mt-0">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg md:hidden hover:bg-gray-50 transition-colors"
-              disabled={loading}
-            >
-              <Filter className="w-4 h-4" />
-              Filters
-              {(priceRange[0] > 0 ||
-                priceRange[1] < 50000 ||
-                availability !== "all") && (
-                <span className="bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {(priceRange[0] > 0 || priceRange[1] < 50000 ? 1 : 0) +
-                    (availability !== "all" ? 1 : 0)}
-                </span>
-              )}
-            </button>
-
-            <div className="relative">
+          <div className="flex items-center gap-3">
+            {/* Mobile filter button — only if there are filters */}
+            {hasAnyFilter && (
               <button
-                onClick={() => setShowSort(!showSort)}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                onClick={() => setShowFilters(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg md:hidden hover:bg-white transition-colors text-sm font-medium relative"
                 disabled={loading}
               >
-                <span className="hidden sm:inline">Sort by:</span>
-                <span className="font-medium">
-                  {sortOptions.find((s) => s.value === sortBy)?.label}
+                <Filter className="w-4 h-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Sort dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowSort((p) => !p)}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg bg-white hover:border-primary transition-colors text-sm font-medium"
+                disabled={loading}
+              >
+                <span className="hidden sm:inline text-gray-500">Sort:</span>
+                <span>
+                  {activeSortOptions.find((s) => s.value === sortBy)?.label ??
+                    "Sort"}
                 </span>
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown
+                  className="w-4 h-4 text-gray-400 transition-transform"
+                  style={{
+                    transform: showSort ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
+                />
               </button>
 
               <AnimatePresence>
                 {showSort && (
                   <>
-                    <motion.div
-                      className="fixed inset-0 z-40 md:hidden"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
+                    <div
+                      className="fixed inset-0 z-40"
                       onClick={() => setShowSort(false)}
                     />
                     <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
+                      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-1.5 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden"
                     >
-                      {sortOptions.map((option) => (
+                      {activeSortOptions.map((opt) => (
                         <button
-                          key={option.value}
-                          onClick={() => handleSortChange(option.value)}
-                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
-                            sortBy === option.value
-                              ? "bg-primary/5 text-primary font-medium border-l-2 border-primary"
-                              : ""
+                          key={opt.value}
+                          onClick={() => handleSortChange(opt.value)}
+                          className={`w-full text-left px-4 py-3 text-sm transition-colors ${
+                            sortBy === opt.value
+                              ? "bg-primary/5 text-primary font-semibold border-l-2 border-primary"
+                              : "hover:bg-gray-50 text-gray-700"
                           }`}
                           disabled={loading}
                         >
-                          {option.label}
+                          {opt.label}
                         </button>
                       ))}
                     </motion.div>
@@ -407,145 +668,48 @@ export default function CategoryPage() {
           </div>
         </div>
 
+        {/* Error banner */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <X className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
             <p className="text-red-600 text-sm">{error}</p>
+            <button
+              className="ml-auto text-red-400 hover:text-red-600"
+              onClick={() => setError(null)}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Filters Sidebar - Desktop */}
-          <aside className="hidden md:block w-80 flex-shrink-0">
-            <div className="bg-white border border-gray-200 rounded-lg p-5 sticky top-24">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-                {(priceRange[0] > 0 ||
-                  priceRange[1] < 50000 ||
-                  availability !== "all") && (
-                  <button
-                    onClick={resetFilters}
-                    className="text-sm text-primary hover:text-primary/80 transition-colors"
-                    disabled={loading}
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-
-              {/* Availability */}
-              <div className="mb-8">
-                <h4 className="font-medium text-gray-900 mb-4">Availability</h4>
-                <div className="space-y-2">
-                  {availabilityOptions.map((option) => (
-                    <label
-                      key={option.value}
-                      className="flex items-center group cursor-pointer"
+          {/* ── Sidebar — desktop only, only if there are filters ── */}
+          {hasAnyFilter && (
+            <aside className="hidden md:block w-72 flex-shrink-0">
+              <div className="bg-white border border-gray-200 rounded-xl p-5 sticky top-24">
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    Filters
+                  </h3>
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={resetFilters}
+                      className="text-xs text-primary hover:underline font-medium"
+                      disabled={loading}
                     >
-                      <input
-                        type="radio"
-                        name="availability"
-                        checked={availability === option.value}
-                        onChange={() => handleAvailabilityChange(option.value)}
-                        className="w-4 h-4 text-primary border-gray-300 focus:ring-primary cursor-pointer"
-                        disabled={loading}
-                      />
-                      <span className="ml-3 text-sm text-gray-700 group-hover:text-primary transition-colors">
-                        {option.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Price Range */}
-              <div className="mb-8">
-                <div className="flex justify-between items-center mb-4">
-                  <h4 className="font-medium text-gray-900">Price Range</h4>
-                  <span className="text-sm text-primary font-medium">
-                    ৳ {formatPrice(priceInputs[0])} - ৳{" "}
-                    {formatPrice(priceInputs[1])}
-                  </span>
-                </div>
-
-                {/* Price Input Fields */}
-                <div className="flex gap-3 mb-4">
-                  <div className="flex-1">
-                    <label className="text-xs text-gray-600 mb-1 block">
-                      Min Price
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                        ৳
-                      </span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="50000"
-                        step="100"
-                        value={priceInputs[0]}
-                        onChange={(e) =>
-                          handleMinPriceChange(parseInt(e.target.value) || 0)
-                        }
-                        onBlur={applyFilters}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter") applyFilters();
-                        }}
-                        className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:ring-primary focus:border-primary outline-none"
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-xs text-gray-600 mb-1 block">
-                      Max Price
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                        ৳
-                      </span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="50000"
-                        step="100"
-                        value={priceInputs[1]}
-                        onChange={(e) =>
-                          handleMaxPriceChange(
-                            parseInt(e.target.value) || 50000,
-                          )
-                        }
-                        onBlur={applyFilters}
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter") applyFilters();
-                        }}
-                        className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm focus:ring-primary focus:border-primary outline-none"
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={applyFilters}
-                  className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Applying...
-                    </span>
-                  ) : (
-                    "Apply Filters"
+                      Clear all ({activeFilterCount})
+                    </button>
                   )}
-                </button>
+                </div>
+                {renderFilterPanel(false)}
               </div>
-            </div>
-          </aside>
+            </aside>
+          )}
 
-          {/* Mobile Filters Overlay */}
+          {/* ── Mobile Drawer ── */}
           <AnimatePresence>
-            {showFilters && (
+            {showFilters && hasAnyFilter && (
               <>
                 <motion.div
                   className="fixed inset-0 bg-black/50 z-40 md:hidden"
@@ -554,251 +718,175 @@ export default function CategoryPage() {
                   exit={{ opacity: 0 }}
                   onClick={() => setShowFilters(false)}
                 />
-                <motion.div
+                <motion.aside
                   initial={{ x: "-100%" }}
                   animate={{ x: 0 }}
                   exit={{ x: "-100%" }}
-                  className="fixed left-0 top-0 h-full w-80 bg-white z-50 overflow-y-auto md:hidden"
+                  transition={{ type: "tween", duration: 0.25 }}
+                  className="fixed left-0 top-0 h-full w-80 max-w-[85vw] bg-white z-50 overflow-y-auto shadow-2xl md:hidden"
                 >
-                  <div className="p-4">
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-lg font-semibold">Filters</h3>
-                      <button
-                        onClick={() => setShowFilters(false)}
-                        className="p-2 hover:bg-gray-100 rounded-lg"
-                        disabled={loading}
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    {/* Mobile filter content */}
-                    <div className="mb-6">
-                      <h4 className="font-medium text-gray-900 mb-4">
-                        Availability
-                      </h4>
-                      <div className="space-y-2">
-                        {availabilityOptions.map((option) => (
-                          <label
-                            key={option.value}
-                            className="flex items-center"
-                          >
-                            <input
-                              type="radio"
-                              name="availability"
-                              checked={availability === option.value}
-                              onChange={() =>
-                                handleAvailabilityChange(option.value)
-                              }
-                              className="w-4 h-4 text-primary border-gray-300"
-                              disabled={loading}
-                            />
-                            <span className="ml-3 text-sm text-gray-700">
-                              {option.label}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Price Range for Mobile */}
-                    <div className="mb-2">
-                      <div className="flex justify-between items-center mb-4">
-                        <h4 className="font-medium text-gray-900">
-                          Price Range
-                        </h4>
-                        <span className="text-sm text-primary font-medium">
-                          ৳ {formatPrice(priceInputs[0])} - ৳{" "}
-                          {formatPrice(priceInputs[1])}
-                        </span>
-                      </div>
-
-                      <div className="flex gap-3 mb-4">
-                        <div className="flex-1">
-                          <label className="text-xs text-gray-600 mb-1 block">
-                            Min Price
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                              ৳
-                            </span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="50000"
-                              step="100"
-                              value={priceInputs[0]}
-                              onChange={(e) =>
-                                handleMinPriceChange(
-                                  parseInt(e.target.value) || 0,
-                                )
-                              }
-                              className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm"
-                              disabled={loading}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-xs text-gray-600 mb-1 block">
-                            Max Price
-                          </label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                              ৳
-                            </span>
-                            <input
-                              type="number"
-                              min="0"
-                              max="50000"
-                              step="100"
-                              value={priceInputs[1]}
-                              onChange={(e) =>
-                                handleMaxPriceChange(
-                                  parseInt(e.target.value) || 50000,
-                                )
-                              }
-                              className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 text-sm"
-                              disabled={loading}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <button
-                        onClick={resetFilters}
-                        className="flex-1 border border-primary text-primary py-3 rounded-lg font-medium hover:bg-primary/5 transition-colors disabled:opacity-50"
-                        disabled={loading}
-                      >
-                        Reset
-                      </button>
-                      <button
-                        onClick={applyFilters}
-                        className="flex-1 bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={loading}
-                      >
-                        {loading ? (
-                          <span className="flex items-center justify-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Applying...
-                          </span>
-                        ) : (
-                          "Apply"
-                        )}
-                      </button>
-                    </div>
+                  <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white z-10">
+                    <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                      <Filter className="w-4 h-4" />
+                      Filters
+                    </h3>
+                    <button
+                      onClick={() => setShowFilters(false)}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
-                </motion.div>
+                  {renderFilterPanel(true)}
+
+                  {/* Mobile apply/reset footer */}
+                  <div className="p-4 border-t sticky bottom-0 bg-white flex gap-3">
+                    <button
+                      onClick={() => {
+                        resetFilters();
+                        setShowFilters(false);
+                      }}
+                      className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                      disabled={loading}
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={() => {
+                        applyFilters();
+                      }}
+                      className="flex-1 bg-primary text-white py-3 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        </span>
+                      ) : (
+                        "Apply"
+                      )}
+                    </button>
+                  </div>
+                </motion.aside>
               </>
             )}
           </AnimatePresence>
 
-          {/* Products Grid */}
-          <main className="flex-1">
-            {/* Active Filters - Desktop */}
-            <div className="hidden md:flex flex-wrap gap-2 ">
-              {(priceRange[0] > 0 || priceRange[1] < 50000) && (
-                <div className="text-sm text-gray-600">
-                  Price:{" "}
-                  <span className="font-medium">
-                    ৳ {formatPrice(priceRange[0])} - ৳{" "}
-                    {formatPrice(priceRange[1])}
-                  </span>
-                </div>
-              )}
-              {availability !== "all" && (
-                <div className="text-sm text-gray-600">
-                  Availability:{" "}
-                  <span className="font-medium">
+          {/* ── Products ── */}
+          <main className="flex-1 min-w-0">
+            {/* Active filter chips */}
+            {activeFilterCount > 0 && (
+              <div className="hidden md:flex flex-wrap items-center gap-2 mb-4 text-sm">
+                <span className="text-gray-500">Active filters:</span>
+                {showPriceFilter &&
+                  (priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX) && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full font-medium">
+                      ৳{formatPrice(priceRange[0])} – ৳
+                      {formatPrice(priceRange[1])}
+                      <button
+                        onClick={() => {
+                          setPriceRange([PRICE_MIN, PRICE_MAX]);
+                          setPriceInputs([PRICE_MIN, PRICE_MAX]);
+                          fetchProducts(1, true);
+                        }}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                {showAvailability && availability !== "all" && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full font-medium">
                     {
-                      availabilityOptions.find((a) => a.value === availability)
+                      AVAILABILITY_OPTIONS.find((a) => a.value === availability)
                         ?.label
                     }
+                    <button onClick={() => handleAvailabilityChange("all")}>
+                      <X className="w-3 h-3" />
+                    </button>
                   </span>
-                </div>
-              )}
-              {(priceRange[0] > 0 ||
-                priceRange[1] < 50000 ||
-                availability !== "all") && (
+                )}
+                {showRatingFilter && minRating > 0 && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full font-medium">
+                    {"★".repeat(minRating)} & up
+                    <button onClick={() => handleRatingChange(0)}>
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
                 <button
                   onClick={resetFilters}
-                  className="text-sm text-primary hover:underline ml-4"
-                  disabled={loading}
+                  className="text-gray-400 hover:text-primary transition-colors text-xs underline ml-1"
                 >
                   Clear all
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Products */}
+            {/* Content states */}
             {initialLoading ? (
               renderSkeleton()
-            ) : error ? (
-              <div className="bg-white rounded-lg border border-gray-200 p-8 md:p-12 text-center">
-                <div className="text-gray-400 mb-4">
-                  <svg
-                    className="w-16 h-16 mx-auto"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  Error Loading Products
+            ) : error && products.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                <svg
+                  className="w-14 h-14 mx-auto text-gray-300 mb-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+                  />
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Something went wrong
                 </h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">{error}</p>
+                <p className="text-gray-500 text-sm mb-5 max-w-sm mx-auto">
+                  {error}
+                </p>
                 <button
                   onClick={() => fetchProducts(1, true)}
-                  className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
-                  disabled={loading}
+                  className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
                 >
                   Try Again
                 </button>
               </div>
             ) : products.length === 0 ? (
-              <div className="bg-white rounded-lg border border-gray-200 p-8 md:p-12 text-center">
-                <div className="text-gray-400 mb-4">
-                  <svg
-                    className="w-16 h-16 mx-auto"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+              <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                <svg
+                  className="w-14 h-14 mx-auto text-gray-300 mb-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   No products found
                 </h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  No products found in this category with the selected filters.
-                  Try adjusting your filters.
+                <p className="text-gray-500 text-sm mb-5 max-w-sm mx-auto">
+                  No products match your current filters. Try adjusting or
+                  clearing them.
                 </p>
-                <button
-                  onClick={resetFilters}
-                  className="px-6 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
-                  disabled={loading}
-                >
-                  Reset Filters
-                </button>
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={resetFilters}
+                    className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    Clear Filters
+                  </button>
+                )}
               </div>
             ) : (
               <>
-                {/* Products Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3  gap-4 md:gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
                   {products.map((p) => (
                     <ProductCard
                       key={p.id}
@@ -808,33 +896,29 @@ export default function CategoryPage() {
                   ))}
                 </div>
 
-                {/* Infinite Scroll Trigger */}
+                {/* Infinite scroll sentinel */}
                 {hasMore && (
-                  <div ref={ref} className="py-10 text-center">
-                    {loading ? (
-                      <div className="flex flex-col items-center justify-center gap-3">
+                  <div
+                    ref={ref}
+                    className="py-10 flex flex-col items-center gap-3 text-gray-500"
+                  >
+                    {loading && (
+                      <>
                         <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                        <span className="text-gray-600">
-                          Loading more products...
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-gray-500">
-                        <div className="w-8 h-8 border-2 border-gray-300 border-t-primary rounded-full animate-spin mx-auto mb-3"></div>
-                        <p>Scroll to load more</p>
-                      </div>
+                        <span className="text-sm">Loading more…</span>
+                      </>
                     )}
                   </div>
                 )}
 
-                {/* End of results */}
+                {/* End of list */}
                 {!hasMore && products.length > 0 && (
-                  <div className="text-center py-10 text-gray-500 border-t mt-8">
-                    <p className="text-lg font-medium mb-2">
+                  <div className="text-center py-10 border-t mt-8">
+                    <p className="text-gray-700 font-semibold mb-1">
                       You've seen it all! 🎉
                     </p>
-                    <p className="text-sm">
-                      No more {categoryName} products to load
+                    <p className="text-sm text-gray-400">
+                      All {totalProducts} {categoryName} products loaded
                     </p>
                   </div>
                 )}
@@ -846,18 +930,3 @@ export default function CategoryPage() {
     </div>
   );
 }
-
-// Add these outside the component
-const sortOptions = [
-  { value: "newest", label: "Newest Arrivals" },
-  { value: "price-low", label: "Price: Low to High" },
-  { value: "price-high", label: "Price: High to Low" },
-  { value: "popular", label: "Most Popular" },
-  { value: "rating", label: "Top Rated" },
-];
-
-const availabilityOptions = [
-  { value: "all", label: "All Products" },
-  { value: "in-stock", label: "In Stock Only" },
-  { value: "out-of-stock", label: "Out of Stock" },
-];

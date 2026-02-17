@@ -13,7 +13,7 @@ interface Props {
 export default function CategoryNav({ mobile = false }: Props) {
   const { categories, fetchCategories, loading, hydrated } = useCategoryStore();
   const [mounted, setMounted] = useState(false);
-
+  console.log(categories);
   // Prevent SSR mismatch flicker
   useEffect(() => {
     setMounted(true);

@@ -80,6 +80,11 @@ interface HeaderContent {
     suggestion_api?: string;
     min_chars?: number;
   };
+  logo?: {
+    src?: string;
+    height?: number;
+    width?: number;
+  };
   action_buttons?: Record<
     string,
     {
@@ -108,6 +113,8 @@ interface HeaderData {
   header_bottom?: {
     type?: string;
     menu_id?: string;
+    status?: string;
+    sticky?: string;
     mobile_menu?: {
       toggle_icon?: string;
     };
@@ -126,6 +133,8 @@ interface Colors {
   nav_bg?: string;
   input_bg?: string;
   text_light?: string;
+  footer_bg?: string;
+  footer_text?: string;
 }
 
 export default function HeaderTwo() {
@@ -162,7 +171,7 @@ export default function HeaderTwo() {
   // Fetch products for search suggestions
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+  }, []);
 
   // Initialize cart and wishlist when user logs in
   useEffect(() => {
@@ -187,6 +196,8 @@ export default function HeaderTwo() {
   const navBg = colors?.nav_bg;
   const inputBg = colors?.input_bg || "#ffffff";
   const textLight = colors?.text_light || "#9ca3af";
+  const footerbg = colors?.footer_bg;
+  const footertxt = colors?.footer_text;
 
   // Search functionality
   const minChars = header_main?.content?.search?.min_chars || 3;
@@ -216,6 +227,7 @@ export default function HeaderTwo() {
     useWishlist.getState().resetWishlist();
     setMobileMenuOpen(false);
   };
+
   return (
     <header
       className="w-full sticky top-0 z-50 shadow"
@@ -229,7 +241,7 @@ export default function HeaderTwo() {
         <div
           className="border-b"
           style={{
-            backgroundColor: headerTopBg,
+            backgroundColor: footerbg,
             color: headerTopText,
             borderColor: borderColor,
           }}
@@ -245,12 +257,12 @@ export default function HeaderTwo() {
                     {header_top.content?.left?.type === "news_ticker" ? (
                       <LiveNewsTicker
                         data={header_top.content?.left}
-                        colors={{ primary: primaryColor, text: headerTopText }}
+                        colors={{ primary: primaryColor, text: footertxt }}
                       />
                     ) : (
                       renderHeaderContent(header_top.content?.left, {
                         primary: primaryColor,
-                        text: headerTopText,
+                        text: footertxt,
                       })
                     )}
                   </>
@@ -263,7 +275,7 @@ export default function HeaderTwo() {
                   <>
                     {renderHeaderContent(header_top.content?.center, {
                       primary: primaryColor,
-                      text: headerTopText,
+                      text: footertxt,
                     })}
                   </>
                 )}
@@ -273,34 +285,27 @@ export default function HeaderTwo() {
               <div className="flex items-center justify-end gap-4">
                 {/* Desktop Links */}
                 <nav className="hidden sm:flex items-center gap-4 whitespace-nowrap">
-                  <Link href="/help" style={{ color: headerTopText }}>
+                  <Link href="/help" style={{ color: footertxt }}>
                     Help
                   </Link>
-                  <Link href="/track-order" style={{ color: headerTopText }}>
+                  <Link href="/track-order" style={{ color: footertxt }}>
                     Track Order
                   </Link>
                   {user || authUser ? (
                     <Link
                       href="/profile"
                       className="flex items-center gap-1 font-medium"
-                      style={{ color: headerTopText }}
+                      style={{ color: footertxt }}
                     >
                       <User size={14} />
-
                       {user?.full_name || authUser?.full_name}
                     </Link>
                   ) : (
                     <>
-                      <Link
-                        href="/account/login"
-                        style={{ color: headerTopText }}
-                      >
+                      <Link href="/account/login" style={{ color: footertxt }}>
                         Login
                       </Link>
-                      <Link
-                        href="/account/signup"
-                        style={{ color: headerTopText }}
-                      >
+                      <Link href="/account/signup" style={{ color: footertxt }}>
                         Signup
                       </Link>
                     </>
@@ -312,7 +317,7 @@ export default function HeaderTwo() {
                   header_top.content?.right?.type !== "buttons" &&
                   renderHeaderContent(header_top.content?.right, {
                     primary: primaryColor,
-                    text: headerTopText,
+                    text: footertxt,
                   })}
               </div>
             </div>
@@ -333,20 +338,34 @@ export default function HeaderTwo() {
           <div className="container mx-auto px-4">
             <div className="flex items-center justify-between gap-4">
               {/* Logo Area */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
                 <button
                   className="lg:hidden p-2 rounded hover:bg-gray-100"
                   onClick={() => setMobileMenuOpen(true)}
                   style={{ color: primaryColor }}
                 >
                   <Menu size={24} />
-                </button>
+                </button>{" "}
                 <Link
                   href="/"
                   className="text-2xl font-bold"
                   style={{ color: primaryColor }}
                 >
-                  {(useThemeData("general") as any)?.site_title}
+                  {/* Fixed: Added optional chaining and null checks for logo */}
+                  {header_main?.content?.logo?.src ? (
+                    <img
+                      src={header_main.content.logo.src}
+                      alt={
+                        (useThemeData("general") as any)?.site_title || "Logo"
+                      }
+                      width={header_main.content.logo.width || 150}
+                      height={header_main.content.logo.height || 50}
+                    />
+                  ) : (
+                    <span>
+                      {(useThemeData("general") as any)?.site_title || "Store"}
+                    </span>
+                  )}
                 </Link>
               </div>
 
@@ -611,7 +630,7 @@ export default function HeaderTwo() {
       )}
 
       {/* Header Bottom - Navigation */}
-      {header_bottom?.type && (
+      {header_bottom?.status && (
         <div
           className="border-t"
           style={{
