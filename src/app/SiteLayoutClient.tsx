@@ -6,6 +6,8 @@ import Footer from "@/components/layout/Footer";
 import FloatingSettings from "@/components/layout/Settings";
 import FullScreenLoader from "@/components/ui/FullScreenLoader";
 import { useHydrationReady } from "@/app/store/useHydration";
+import { useThemeData } from "./store/useThemeData";
+import FloatingButtons from "@/components/layout/FloatingButtons";
 
 export default function SiteLayoutClient({
   children,
@@ -21,7 +23,8 @@ export default function SiteLayoutClient({
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1 container mx-auto px-4">{children}</main>
-      <FloatingSettings />
+      {/* <FloatingSettings /> */}
+      <FloatingButtons />
       <Footer />
     </div>
   );

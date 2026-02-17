@@ -26,6 +26,7 @@ import { useWishlist } from "@/app/store/useWishlist";
 import { useToastStore } from "@/app/store/useToastStore";
 import { useUserStore } from "@/app/store/useUserStore";
 import { useThemeData } from "@/app/store/useThemeData";
+import { FaWhatsapp } from "react-icons/fa";
 
 // ─── Config types ─────────────────────────────────────────────────────────────
 
@@ -127,6 +128,7 @@ function buildWhatsAppUrl(
 
 export function MinimalProductCard({
   id,
+  slug,
   primary_variant_id,
   name,
   categories,
@@ -484,14 +486,14 @@ export function MinimalProductCard({
       className="group relative bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col h-full"
       onMouseEnter={() => !isMobile && setHovered(true)}
       onMouseLeave={() => !isMobile && setHovered(false)}
-      onClick={() => isMobile && router.push(`/product/${id}`)}
+      onClick={() => isMobile && router.push(`/product/${slug}`)}
     >
       {/* ══ IMAGE AREA ════════════════════════════════════════════════════════ */}
       <div
         className={`relative ${aspectClass} overflow-hidden bg-gray-50 flex-shrink-0`}
       >
         <Link
-          href={`/product/${id}`}
+          href={`/product/${slug}`}
           className="block w-full h-full absolute inset-0"
           onClick={(e) => e.stopPropagation()}
         >
@@ -629,7 +631,7 @@ export function MinimalProductCard({
         {/* Category */}
         {cfg.show_category && categoryName && (
           <Link
-            href={`/category/${categories?.[0]?.id}`}
+            href={`/category/${categories?.[0]?.id}/${categories?.[0]?.slug}`}
             className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-widest truncate hover:text-primary transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
@@ -639,7 +641,7 @@ export function MinimalProductCard({
 
         {/* Title */}
         {cfg.show_title && (
-          <Link href={`/product/${id}`} onClick={(e) => e.stopPropagation()}>
+          <Link href={`/product/${slug}`} onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xs sm:text-sm font-semibold text-gray-800 line-clamp-2 leading-snug hover:text-primary transition-colors">
               {name}
             </h3>
@@ -754,7 +756,7 @@ export function MinimalProductCard({
                 className={`flex-shrink-0 flex items-center justify-center rounded-lg text-white transition-opacity hover:opacity-85 ${iconPad}`}
                 style={{ background: cfg.whatsapp.button_color }}
               >
-                <MessageCircle className={`${buttonSizes.icon}`} />
+                <FaWhatsapp className={`${buttonSizes.icon}`} />
               </button>
             )}
           </div>
