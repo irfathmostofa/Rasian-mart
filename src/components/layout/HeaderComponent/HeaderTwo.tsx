@@ -84,7 +84,9 @@ interface HeaderContent {
     src?: string;
     height?: number;
     width?: number;
+    status?: string;
   };
+
   action_buttons?: Record<
     string,
     {
@@ -109,6 +111,10 @@ interface HeaderData {
   };
   header_main?: {
     content?: HeaderContent;
+    site_title?: {
+      status?: string;
+      text?: string;
+    };
   };
   header_bottom?: {
     type?: string;
@@ -348,23 +354,20 @@ export default function HeaderTwo() {
                 </button>{" "}
                 <Link
                   href="/"
-                  className="text-2xl font-bold"
+                  className="text-2xl font-bold flex items-center gap-2"
                   style={{ color: primaryColor }}
                 >
                   {/* Fixed: Added optional chaining and null checks for logo */}
-                  {header_main?.content?.logo?.src ? (
+                  {header_main?.content?.logo?.status && (
                     <img
                       src={header_main.content.logo.src}
-                      alt={
-                        (useThemeData("general") as any)?.site_title || "Logo"
-                      }
+                      alt={header_main?.site_title?.text}
                       width={header_main.content.logo.width || 150}
                       height={header_main.content.logo.height || 50}
                     />
-                  ) : (
-                    <span>
-                      {(useThemeData("general") as any)?.site_title || "Store"}
-                    </span>
+                  )}
+                  {header_main?.site_title?.status && (
+                    <span>{header_main?.site_title?.text}</span>
                   )}
                 </Link>
               </div>

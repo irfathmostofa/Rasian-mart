@@ -1,0 +1,988 @@
+// components/sections/DynamicSectionRenderer.tsx
+"use client";
+import React from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  memo,
+  type JSX,
+} from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import {
+  ChevronRight,
+  ChevronLeft,
+  TrendingUp,
+  Clock,
+  Star,
+  Sparkles,
+} from "lucide-react";
+import { useThemeData } from "@/app/store/useThemeData";
+import { useCategoryStore } from "@/app/store/useCatrgoryStore";
+import { ProductCard } from "@/components/ProductCard";
+import { useSettings } from "@/app/store/useSettings";
+import api from "@/lib/api";
+
+// Import shadcn carousel
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
+
+// ==================== Types ====================
+interface ThemeColors {
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string;
+  text: string;
+  heading: string;
+  link: string;
+  footer_bg: string;
+  footer_text: string;
+  sale_badge: string;
+  new_badge: string;
+  discount_badge: string;
+}
+
+interface Banner {
+  image: string;
+  title: string;
+  title_bn?: string;
+  subtitle: string;
+  subtitle_bn?: string;
+  button_text: string;
+  button_text_bn?: string;
+  link: string;
+  size: "full" | "half" | "third" | "quarter";
+  text_position: "left" | "center" | "right";
+  text_color: string;
+  overlay_opacity: number;
+  button_color: string;
+}
+
+interface Brand {
+  name: string;
+  name_bn?: string;
+  logo: string;
+  link: string;
+}
+
+interface Section {
+  id: string;
+  type:
+    | "category_grid"
+    | "featured_products"
+    | "banner"
+    | "featured_brands"
+    | "recent_products"
+    | "best_sellers";
+  title: string;
+  title_bn?: string;
+  status: boolean;
+  layout?: "grid" | "slider";
+  columns?: number;
+  grid_columns?: number;
+  categoryids?: number[];
+  banner_image?: string;
+  banners?: Banner[];
+  brands?: Brand[];
+  show_images?: boolean;
+  bg_color?: string;
+  text_color?: string;
+  padding?: string;
+  margin?: string;
+  border_radius?: string;
+  products_count?: number;
+  days?: number;
+}
+
+interface Product {
+  id: number;
+  primary_variant_id: number;
+  name: string;
+  slug: string;
+  categories?: {
+    id: number;
+    name: string;
+    slug?: string;
+    code: string;
+    image: string | null;
+    is_primary: boolean;
+  }[];
+  selling_price: string | number;
+  regular_price: string | number;
+  cost_price?: string | number;
+  badge?: string | null;
+  total_stock?: string | number;
+  rating?: number | null;
+  images?:
+    | {
+        id: number;
+        url: string;
+        alt_text: string;
+        is_primary: boolean;
+      }[]
+    | null;
+  type?: "card" | "contact";
+}
+
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  image: string | null;
+  parent_id?: number | null; // Add this if your store has parent_id
+  children?: Category[];
+  // Add any other fields that exist in your store's Category type
+}
+
+// ==================== Icons Map ====================
+const typeIcons: Record<string, JSX.Element | null> = {
+  best_sellers: <TrendingUp className="w-5 h-5" />,
+  recent_products: <Clock className="w-5 h-5" />,
+  featured_brands: <Star className="w-5 h-5" />,
+  category_grid: <Sparkles className="w-5 h-5" />,
+  featured_products: <Sparkles className="w-5 h-5" />,
+  banner: null,
+};
+
+const badgeStyles: Record<
+  string,
+  { icon: string; colorKey: keyof ThemeColors }
+> = {
+  "Best Seller": { icon: "🔥", colorKey: "sale_badge" },
+  Recent: { icon: "🆕", colorKey: "new_badge" },
+  Sale: { icon: "🏷️", colorKey: "sale_badge" },
+  New: { icon: "✨", colorKey: "new_badge" },
+  Discount: { icon: "💥", colorKey: "discount_badge" },
+};
+
+// ==================== Utility Functions ====================
+const getColumnClass = (cols: number = 4) => {
+  const map: Record<number, string> = {
+    1: "grid-cols-1",
+    2: "grid-cols-2",
+    3: "grid-cols-1 md:grid-cols-3",
+    4: "grid-cols-2 md:grid-cols-4",
+    5: "grid-cols-2 md:grid-cols-5",
+    6: "grid-cols-2 md:grid-cols-3 lg:grid-cols-6",
+  };
+  return map[cols] || "grid-cols-2 md:grid-cols-4";
+};
+
+const getCarouselItemClass = (cols: number = 4) => {
+  const map: Record<number, string> = {
+    1: "basis-full",
+    2: "basis-1/2",
+    3: "basis-1/2 sm:basis-1/3",
+    4: "basis-1/2 sm:basis-1/3 md:basis-1/4",
+    5: "basis-1/2 sm:basis-1/3 md:basis-1/5",
+    6: "basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/6",
+  };
+  return map[cols] || "basis-1/2 sm:basis-1/3 md:basis-1/4";
+};
+
+// ==================== Memoized Sub-Components ====================
+
+// Memoized Category Card
+const CategoryCard = memo(
+  ({
+    category,
+    primaryColor,
+  }: {
+    category: Category;
+    primaryColor: string;
+  }) => (
+    <Link
+      href={`/category/${category.id}/${category.slug}`}
+      className="group block h-full"
+    >
+      <div className="relative bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden h-full">
+        <div className="relative aspect-square overflow-hidden bg-gray-50">
+          {category.image ? (
+            <Image
+              src={category.image}
+              alt={category.name}
+              fill
+              sizes="(max-width: 768px) 50vw, 25vw"
+              className="object-cover group-hover:scale-110 transition-transform duration-700"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+              <span className="text-5xl opacity-30">📦</span>
+            </div>
+          )}
+
+          <div
+            className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500"
+            style={{ backgroundColor: primaryColor }}
+          />
+        </div>
+
+        <div className="p-4 text-center">
+          <h3 className="text-sm font-medium group-hover:text-primary transition-colors line-clamp-2">
+            {category.name}
+          </h3>
+
+          <p className="text-xs mt-1 text-gray-400">
+            {category?.children?.length} items
+          </p>
+        </div>
+      </div>
+    </Link>
+  ),
+);
+CategoryCard.displayName = "CategoryCard";
+
+// Memoized Brand Card
+const BrandCard = memo(
+  ({ brand, primaryColor }: { brand: Brand; primaryColor: string }) => (
+    <Link href={brand.link || "/brands"} className="group block h-full">
+      <div className="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-500 p-6 text-center border border-gray-100 h-full flex flex-col justify-center">
+        <div className="relative h-24 w-24 mx-auto mb-4 flex-shrink-0">
+          <Image
+            src={brand.logo}
+            alt={brand.name}
+            fill
+            className="object-contain group-hover:scale-110 transition-transform duration-500"
+          />
+        </div>
+        <h3
+          className="font-medium transition-colors group-hover:text-primary"
+          style={{ color: primaryColor }}
+        >
+          {brand.name}
+        </h3>
+        <p className="text-xs mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          Shop Collection →
+        </p>
+      </div>
+    </Link>
+  ),
+);
+BrandCard.displayName = "BrandCard";
+
+// Memoized Product Slider using shadcn Carousel
+const ProductSlider = memo(
+  ({
+    products,
+    badge,
+    badgeIcon,
+    badgeColor,
+    cardStyle,
+    columns = 4,
+  }: {
+    products: Product[];
+    badge?: string;
+    badgeIcon?: string;
+    badgeColor?: string;
+    cardStyle: any;
+    columns?: number;
+  }) => {
+    const autoplayPlugin = useMemo(
+      () =>
+        Autoplay({
+          delay: 3000,
+          stopOnInteraction: false,
+          stopOnMouseEnter: true,
+        }),
+      [],
+    );
+
+    if (products.length === 0) return null;
+
+    const itemClass = getCarouselItemClass(columns);
+
+    return (
+      <div className="relative w-full py-2">
+        <Carousel
+          opts={{
+            align: "start",
+            loop: true,
+            dragFree: true,
+          }}
+          plugins={[autoplayPlugin]}
+          className="relative"
+        >
+          <div className="hidden md:flex absolute top-1/2 left-0 -translate-y-1/2 z-10">
+            <CarouselPrevious />
+          </div>
+          <div className="hidden md:flex absolute top-1/2 right-0 -translate-y-1/2 z-10">
+            <CarouselNext />
+          </div>
+
+          <CarouselContent className="flex flex-nowrap pb-2">
+            {products.map((product) => (
+              <CarouselItem key={product.id} className={itemClass}>
+                <div className="h-full">
+                  <ProductCard
+                    {...product}
+                    cardStyle={cardStyle}
+                    badge={badge}
+                    badgeIcon={badgeIcon}
+                    badgeColor={badgeColor}
+                  />
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
+    );
+  },
+);
+ProductSlider.displayName = "ProductSlider";
+
+// Memoized Brand Slider
+const BrandSlider = memo(
+  ({
+    brands,
+    primaryColor,
+    columns = 4,
+  }: {
+    brands: Brand[];
+    primaryColor: string;
+    columns?: number;
+  }) => {
+    const autoplayPlugin = useMemo(
+      () =>
+        Autoplay({
+          delay: 4000,
+          stopOnInteraction: false,
+          stopOnMouseEnter: true,
+        }),
+      [],
+    );
+
+    if (brands.length === 0) return null;
+
+    const itemClass = getCarouselItemClass(columns);
+
+    return (
+      <div className="relative w-full py-2">
+        <Carousel
+          opts={{
+            align: "start",
+            loop: true,
+            dragFree: true,
+          }}
+          plugins={[autoplayPlugin]}
+          className="relative"
+        >
+          <div className="hidden md:flex absolute top-1/2 left-0 -translate-y-1/2 z-10">
+            <CarouselPrevious />
+          </div>
+          <div className="hidden md:flex absolute top-1/2 right-0 -translate-y-1/2 z-10">
+            <CarouselNext />
+          </div>
+
+          <CarouselContent className="flex flex-nowrap pb-2">
+            {brands.map((brand, index) => (
+              <CarouselItem key={index} className={itemClass}>
+                <div className="h-full">
+                  <BrandCard brand={brand} primaryColor={primaryColor} />
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
+    );
+  },
+);
+BrandSlider.displayName = "BrandSlider";
+
+// Memoized Category Slider
+const CategorySlider = memo(
+  ({
+    categories,
+    primaryColor,
+    columns = 4,
+  }: {
+    categories: Category[];
+    primaryColor: string;
+    columns?: number;
+  }) => {
+    const autoplayPlugin = useMemo(
+      () =>
+        Autoplay({
+          delay: 4000,
+          stopOnInteraction: false,
+          stopOnMouseEnter: true,
+        }),
+      [],
+    );
+
+    if (categories.length === 0) return null;
+
+    const itemClass = getCarouselItemClass(columns);
+
+    return (
+      <div className="relative w-full py-2">
+        <Carousel
+          opts={{
+            align: "start",
+            loop: true,
+            dragFree: true,
+          }}
+          plugins={[autoplayPlugin]}
+          className="relative"
+        >
+          <div className="hidden md:flex absolute top-1/2 left-0 -translate-y-1/2 z-10">
+            <CarouselPrevious />
+          </div>
+          <div className="hidden md:flex absolute top-1/2 right-0 -translate-y-1/2 z-10">
+            <CarouselNext />
+          </div>
+
+          <CarouselContent className="flex flex-nowrap pb-2">
+            {categories.map((category) => (
+              <CarouselItem key={category.id} className={itemClass}>
+                <div className="h-full">
+                  <CategoryCard
+                    category={category}
+                    primaryColor={primaryColor}
+                  />
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+      </div>
+    );
+  },
+);
+CategorySlider.displayName = "CategorySlider";
+
+// ==================== Main Component ====================
+function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
+  const { productCardStyle } = useSettings();
+  const {
+    categories,
+    fetchCategories,
+    loading: categoriesLoading,
+  } = useCategoryStore();
+
+  // Theme colors
+  const themeColors = (useThemeData("colors") || {}) as Partial<ThemeColors>;
+  const colors = useMemo(
+    () => ({
+      primary: themeColors.primary || "#222524",
+      secondary: themeColors.secondary || "#DA291C",
+      accent: themeColors.accent || "#F68B1E",
+      background: themeColors.background || "#ffffff",
+      text: themeColors.text || "#222524",
+      heading: themeColors.heading || "#111827",
+      link: themeColors.link || "#006747",
+      sale_badge: themeColors.sale_badge || "#DA291C",
+      new_badge: themeColors.new_badge || "#006747",
+      discount_badge: themeColors.discount_badge || "#F68B1E",
+    }),
+    [themeColors],
+  );
+
+  // State
+  const [products, setProducts] = useState<Record<string, Product[]>>({});
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [sectionCategories, setSectionCategories] = useState<
+    Record<string, Category[]>
+  >({});
+
+  // Active sections
+  const activeSections = useMemo(
+    () => sections.filter((s) => s.status),
+    [sections],
+  );
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const hasCategorySections = activeSections.some(
+      (s) => s.type === "category_grid" && s.categoryids?.length,
+    );
+    if (hasCategorySections) fetchCategories();
+  }, [activeSections, fetchCategories]);
+
+  // Filter categories for each section
+  useEffect(() => {
+    if (categories.length > 0) {
+      const newCategories: Record<string, Category[]> = {};
+      activeSections.forEach((section) => {
+        if (section.type === "category_grid" && section.categoryids) {
+          // Use type assertion to tell TypeScript these are Category objects
+          newCategories[section.id] = (categories as Category[]).filter(
+            (cat: Category) => {
+              if (!section.categoryids) return false;
+              return section.categoryids.includes(cat.id);
+            },
+          );
+        }
+      });
+      setSectionCategories(newCategories);
+    }
+  }, [categories, activeSections]);
+
+  // Fetch products for sections
+  useEffect(() => {
+    const fetchSectionProducts = async () => {
+      const productSections = activeSections.filter((s) =>
+        ["featured_products", "recent_products", "best_sellers"].includes(
+          s.type,
+        ),
+      );
+
+      for (const section of productSections) {
+        setLoading((prev) => ({ ...prev, [section.id]: true }));
+
+        try {
+          let response;
+          const params: any = {
+            page: 1,
+            limit: section.products_count || 8,
+          };
+
+          if (section.type === "recent_products" && section.days) {
+            params.days = section.days;
+            response = await api.post("/product/recent-products", params);
+          } else if (section.type === "best_sellers") {
+            response = await api.post("/product/best-sellers", params);
+          } else if (section.categoryids?.length) {
+            params.category_ids = section.categoryids;
+            params.category_match_type = "ANY";
+            response = await api.post("/product/get-all-products-with-cat", {
+              params,
+            });
+          }
+
+          if (
+            response?.data?.data?.data &&
+            Array.isArray(response.data.data.data)
+          ) {
+            setProducts((prev) => ({
+              ...prev,
+              [section.id]: response.data.data.data,
+            }));
+          } else if (
+            response?.data?.data &&
+            Array.isArray(response.data.data)
+          ) {
+            setProducts((prev) => ({
+              ...prev,
+              [section.id]: response.data.data,
+            }));
+          } else {
+            setProducts((prev) => ({
+              ...prev,
+              [section.id]: [],
+            }));
+          }
+        } catch (error) {
+          console.error(`Error fetching section ${section.id}:`, error);
+          setProducts((prev) => ({
+            ...prev,
+            [section.id]: [],
+          }));
+        } finally {
+          setLoading((prev) => ({ ...prev, [section.id]: false }));
+        }
+      }
+    };
+
+    fetchSectionProducts();
+  }, [activeSections]);
+
+  // ==================== Loading Skeleton ====================
+  const LoadingSkeleton = useCallback(
+    ({ count = 4, type = "product" }: { count?: number; type?: string }) => (
+      <div className={`grid ${getColumnClass(count)} gap-4`}>
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} className="animate-pulse">
+            {type === "category" ? (
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-gray-100 aspect-square w-full" />
+                <div className="p-4">
+                  <div className="h-4 bg-gray-100 rounded w-3/4 mx-auto" />
+                </div>
+              </div>
+            ) : type === "brand" ? (
+              <div className="bg-white rounded-xl shadow-sm p-6">
+                <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full" />
+                <div className="h-4 bg-gray-100 rounded w-20 mx-auto mt-4" />
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-gray-100 aspect-square w-full" />
+                <div className="p-4 space-y-2">
+                  <div className="h-4 bg-gray-100 rounded w-3/4" />
+                  <div className="h-4 bg-gray-100 rounded w-1/2" />
+                  <div className="h-8 bg-gray-100 rounded w-full mt-4" />
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    ),
+    [],
+  );
+
+  // ==================== Empty State ====================
+  const EmptyState = useCallback(
+    ({ message, icon }: { message: string; icon?: string }) => (
+      <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+        <span className="text-4xl mb-3 block opacity-50">{icon || "📦"}</span>
+        <p className="text-gray-500">{message}</p>
+      </div>
+    ),
+    [],
+  );
+
+  // ==================== Section Header ====================
+  const SectionHeader = useCallback(
+    ({ section, showViewAll }: { section: Section; showViewAll?: boolean }) => (
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl" style={{ color: colors.primary }}>
+            {typeIcons[section.type]}
+          </span>
+          <div>
+            <h2
+              className="text-xl md:text-2xl font-bold tracking-tight"
+              style={{ color: colors.heading }}
+            >
+              {section.title}
+            </h2>
+            {section.title_bn && (
+              <p className="text-sm text-gray-500 mt-0.5">{section.title_bn}</p>
+            )}
+          </div>
+        </div>
+
+        {showViewAll &&
+          section.categoryids &&
+          section.categoryids.length > 0 && (
+            <Link
+              href={`/categories?ids=${section.categoryids.join(",")}`}
+              className="group flex items-center gap-1 text-sm font-medium transition-colors hover:gap-2"
+              style={{ color: colors.primary }}
+            >
+              View All
+              <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          )}
+      </div>
+    ),
+    [colors],
+  );
+
+  // ==================== Section Container ====================
+  const SectionContainer = useCallback(
+    ({
+      section,
+      children,
+    }: {
+      section: Section;
+      children: React.ReactNode;
+    }) => {
+      const style = {
+        backgroundColor: section.bg_color || colors.background,
+        color: section.text_color || colors.text,
+      };
+
+      const classes = [
+        section.padding || "p-6",
+        section.margin || "mb-8",
+        section.border_radius || "rounded-lg",
+        "transition-all duration-300",
+      ].join(" ");
+
+      return (
+        <div style={style} className={classes}>
+          {children}
+        </div>
+      );
+    },
+    [colors],
+  );
+
+  // ==================== Category Grid Section ====================
+  const renderCategoryGrid = useCallback(
+    (section: Section) => {
+      const cats = sectionCategories[section.id] || [];
+      const cols = section.grid_columns || section.columns || 4;
+
+      if (categoriesLoading)
+        return <LoadingSkeleton count={cols} type="category" />;
+      if (cats.length === 0)
+        return <EmptyState message="No categories available" icon="📦" />;
+
+      if (section.layout === "slider") {
+        return (
+          <CategorySlider
+            categories={cats}
+            primaryColor={colors.primary}
+            columns={cols}
+          />
+        );
+      }
+
+      return (
+        <div className={`grid ${getColumnClass(cols)} gap-4`}>
+          {cats.map((cat) => (
+            <CategoryCard
+              key={cat.id}
+              category={cat}
+              primaryColor={colors.primary}
+            />
+          ))}
+        </div>
+      );
+    },
+    [
+      sectionCategories,
+      categoriesLoading,
+      LoadingSkeleton,
+      EmptyState,
+      colors.primary,
+    ],
+  );
+
+  // ==================== Product Section ====================
+  const renderProductSection = useCallback(
+    (section: Section, badge?: string, badgeIcon?: string) => {
+      const prods = products[section.id] || [];
+      const cols = section.columns || 4;
+      const isLoading = loading[section.id];
+
+      const productsArray = Array.isArray(prods) ? prods : [];
+
+      if (isLoading) return <LoadingSkeleton count={cols} type="product" />;
+      if (productsArray.length === 0)
+        return (
+          <EmptyState
+            message={`No ${badge?.toLowerCase() || "products"} available`}
+            icon="🛍️"
+          />
+        );
+
+      const getBadgeColor = () => {
+        if (!badge) return undefined;
+        const style = badgeStyles[badge];
+        if (!style) return colors.primary;
+        const colorKey = style.colorKey;
+        return colors[colorKey as keyof typeof colors] || colors.primary;
+      };
+
+      if (section.layout === "slider") {
+        return (
+          <ProductSlider
+            products={productsArray.slice(0, section.products_count || 8)}
+            badge={badge}
+            badgeIcon={badgeIcon || badgeStyles[badge || ""]?.icon}
+            badgeColor={getBadgeColor()}
+            cardStyle={productCardStyle}
+            columns={cols}
+          />
+        );
+      }
+
+      return (
+        <div className={`grid ${getColumnClass(cols)} gap-4`}>
+          {productsArray.slice(0, cols).map((product) => (
+            <ProductCard
+              key={product.id}
+              {...product}
+              cardStyle={productCardStyle}
+              badge={badge}
+              badgeIcon={badgeIcon || badgeStyles[badge || ""]?.icon}
+              badgeColor={getBadgeColor()}
+            />
+          ))}
+        </div>
+      );
+    },
+    [products, loading, LoadingSkeleton, EmptyState, colors, productCardStyle],
+  );
+
+  // ==================== Banner Section ====================
+  const renderBanner = useCallback((section: Section) => {
+    const banners = section.banners || [];
+
+    if (banners.length === 0 && section.banner_image) {
+      return (
+        <div className="relative rounded-xl overflow-hidden shadow-2xl h-[300px] md:h-[400px] group">
+          <Image
+            src={section.banner_image}
+            alt={section.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-1000"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex flex-col items-center justify-center text-white p-6">
+            <h3 className="text-3xl md:text-4xl font-bold mb-2 text-center">
+              {section.title}
+            </h3>
+            <Link
+              href="/shop"
+              className="mt-4 px-8 py-3 bg-white text-black rounded-full font-semibold hover:bg-gray-100 transition-all hover:scale-105"
+            >
+              Shop Now
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-12 gap-4">
+        {banners.map((banner, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            viewport={{ once: true }}
+            className={`${getBannerSizeClass(banner.size)} relative rounded-xl overflow-hidden shadow-lg h-[250px] md:h-[300px] group`}
+          >
+            <Image
+              src={banner.image}
+              alt={banner.title}
+              fill
+              className="object-cover group-hover:scale-110 transition-transform duration-1000"
+            />
+
+            <div
+              className="absolute inset-0 flex flex-col justify-center p-6 md:p-8"
+              style={{
+                backgroundColor: `rgba(0,0,0,${banner.overlay_opacity / 100})`,
+              }}
+            >
+              <div className={getTextPositionClass(banner.text_position)}>
+                <h3
+                  className="text-xl md:text-2xl font-bold mb-2 drop-shadow-lg"
+                  style={{ color: banner.text_color }}
+                >
+                  {banner.title}
+                </h3>
+
+                {banner.subtitle && (
+                  <p
+                    className="text-sm mb-4 drop-shadow-md"
+                    style={{ color: banner.text_color }}
+                  >
+                    {banner.subtitle}
+                  </p>
+                )}
+
+                <Link
+                  href={banner.link || "/shop"}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold hover:opacity-90 transition-all hover:scale-105 text-sm"
+                  style={{
+                    backgroundColor: banner.button_color,
+                    color: banner.text_color,
+                  }}
+                >
+                  {banner.button_text}
+                  <span className="text-lg">→</span>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    );
+  }, []);
+
+  // ==================== Brand Section ====================
+  const renderBrands = useCallback(
+    (section: Section) => {
+      const brands = section.brands || [];
+      const cols = section.columns || 4;
+
+      if (brands.length === 0)
+        return <EmptyState message="No brands available" icon="🏢" />;
+
+      if (section.layout === "slider") {
+        return (
+          <BrandSlider
+            brands={brands}
+            primaryColor={colors.primary}
+            columns={cols}
+          />
+        );
+      }
+
+      return (
+        <div className={`grid ${getColumnClass(cols)} gap-4`}>
+          {brands.map((brand, index) => (
+            <BrandCard
+              key={index}
+              brand={brand}
+              primaryColor={colors.primary}
+            />
+          ))}
+        </div>
+      );
+    },
+    [EmptyState, colors.primary],
+  );
+
+  // ==================== Banner Size Class Helper ====================
+  const getBannerSizeClass = useCallback((size: string = "full") => {
+    const map: Record<string, string> = {
+      full: "col-span-12",
+      half: "col-span-12 md:col-span-6",
+      third: "col-span-12 md:col-span-4",
+      quarter: "col-span-12 md:col-span-6 lg:col-span-3",
+    };
+    return map[size] || "col-span-12";
+  }, []);
+
+  const getTextPositionClass = useCallback((position: string = "center") => {
+    const map = {
+      left: "items-start text-left",
+      center: "items-center text-center",
+      right: "items-end text-right",
+    };
+    return map[position as keyof typeof map] || map.center;
+  }, []);
+
+  // ==================== Main Render ====================
+  if (activeSections.length === 0) return null;
+
+  return (
+    <>
+      {activeSections.map((section) => {
+        const showViewAll = ["category_grid", "featured_products"].includes(
+          section.type,
+        );
+
+        return (
+          <SectionContainer key={section.id} section={section}>
+            <SectionHeader section={section} showViewAll={showViewAll} />
+
+            {section.type === "category_grid" && renderCategoryGrid(section)}
+            {section.type === "featured_products" &&
+              renderProductSection(section)}
+            {section.type === "recent_products" &&
+              renderProductSection(section, "Recent", "🆕")}
+            {section.type === "best_sellers" &&
+              renderProductSection(section, "Best Seller", "🔥")}
+            {section.type === "banner" && renderBanner(section)}
+            {section.type === "featured_brands" && renderBrands(section)}
+          </SectionContainer>
+        );
+      })}
+    </>
+  );
+}
+
+// Memoize the entire component to prevent unnecessary re-renders
+export default memo(DynamicSectionRenderer);

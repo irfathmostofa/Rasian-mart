@@ -1,3 +1,4 @@
+// In types/ProductCard.ts, ensure the interface matches:
 export interface ProductCardProps {
   id: number;
   primary_variant_id: number;
@@ -13,7 +14,6 @@ export interface ProductCardProps {
   }[];
   selling_price: string | number;
   regular_price: string | number;
-  cost_price?: string | number;
   badge?: string | null;
   total_stock?: string | number;
   rating?: number | null;
@@ -25,5 +25,8 @@ export interface ProductCardProps {
         is_primary: boolean;
       }[]
     | null;
-  type?: "card" | "contact";
+  code?: string;
+  cardStyle?: any;
+  badgeIcon?: string;
+  badgeColor?: string;
 }

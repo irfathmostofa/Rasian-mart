@@ -717,53 +717,53 @@ export default function HeroOne() {
                 >
                   {slide.subtitle}
                 </motion.p>
-
-                <motion.div
-                  initial={{ y: 24, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.35, duration: 0.5 }}
-                  style={{
-                    display: "flex",
-                    gap: "8px",
-                    justifyContent: isDesktop
-                      ? flexJustify(slide.text_position)
-                      : "flex-start",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <Link
-                    href={slide.button_link || "/shop"}
+                {slide.button_link !== "" && (
+                  <motion.div
+                    initial={{ y: 24, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.35, duration: 0.5 }}
                     style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      padding: isDesktop ? "10px 22px" : "8px 16px",
-                      background: ctaColor,
-                      color: ctaTextColor,
-                      borderRadius: "8px",
-                      fontWeight: 700,
-                      fontSize: isDesktop ? "13px" : "12px",
-                      textDecoration: "none",
-                      boxShadow: `0 4px 16px ${hexToRgba(ctaColor, 0.45)}`,
-                      transition: "all 0.2s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      const el = e.currentTarget as HTMLElement;
-                      el.style.transform = "translateY(-2px)";
-                      el.style.boxShadow = `0 8px 24px ${hexToRgba(ctaColor, 0.55)}`;
-                    }}
-                    onMouseLeave={(e) => {
-                      const el = e.currentTarget as HTMLElement;
-                      el.style.transform = "translateY(0)";
-                      el.style.boxShadow = `0 4px 16px ${hexToRgba(ctaColor, 0.45)}`;
+                      display: "flex",
+                      gap: "8px",
+                      justifyContent: isDesktop
+                        ? flexJustify(slide.text_position)
+                        : "flex-start",
+                      flexWrap: "wrap",
                     }}
                   >
-                    {slide.button_text}
-                    <ChevronRight style={{ width: "14px", height: "14px" }} />
-                  </Link>
+                    <Link
+                      href={slide.button_link}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: isDesktop ? "10px 22px" : "8px 16px",
+                        background: ctaColor,
+                        color: ctaTextColor,
+                        borderRadius: "8px",
+                        fontWeight: 700,
+                        fontSize: isDesktop ? "13px" : "12px",
+                        textDecoration: "none",
+                        boxShadow: `0 4px 16px ${hexToRgba(ctaColor, 0.45)}`,
+                        transition: "all 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        const el = e.currentTarget as HTMLElement;
+                        el.style.transform = "translateY(-2px)";
+                        el.style.boxShadow = `0 8px 24px ${hexToRgba(ctaColor, 0.55)}`;
+                      }}
+                      onMouseLeave={(e) => {
+                        const el = e.currentTarget as HTMLElement;
+                        el.style.transform = "translateY(0)";
+                        el.style.boxShadow = `0 4px 16px ${hexToRgba(ctaColor, 0.45)}`;
+                      }}
+                    >
+                      {slide.button_text}
+                      <ChevronRight style={{ width: "14px", height: "14px" }} />
+                    </Link>
 
-                  {/* Ghost CTA — hide on very small mobile to save space */}
-                  {isDesktop && (
+                    {/* Ghost CTA — hide on very small mobile to save space */}
+                    {/* {isDesktop && (
                     <Link
                       href="/deals"
                       style={{
@@ -791,8 +791,9 @@ export default function HeroOne() {
                     >
                       View Deals
                     </Link>
-                  )}
-                </motion.div>
+                  )} */}
+                  </motion.div>
+                )}
               </div>
             </div>
           </motion.div>
@@ -1203,7 +1204,7 @@ export default function HeroOne() {
         style={{
           maxWidth: "1280px",
           margin: "0 auto",
-          padding: isDesktop ? "0 16px" : "0 12px",
+          // padding: isDesktop ? "0 16px" : "0 12px",
         }}
       >
         {renderContent()}

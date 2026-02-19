@@ -77,17 +77,17 @@ export default function LiveNewsTicker({
     <div
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className="relative w-full flex items-center justify-start overflow-hidden"
+      className="relative w-full flex items-center justify-start overflow-hidden px-1"
     >
       <div className="flex items-center gap-2">
         {/* Icon with theme color */}
-        {currentItem.icon && (
+        {/* {currentItem.icon && (
           <IconComponent
             size={16}
             style={{ textColor }}
             className="flex-shrink-0"
           />
-        )}
+        )} */}
 
         {/* News ticker content */}
         <div className="overflow-hidden h-6 flex items-center">

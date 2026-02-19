@@ -17,7 +17,6 @@ import { useThemeData } from "@/app/store/useThemeData";
 
 export function ProductCard(props: ProductCardProps & { cardStyle?: number }) {
   const { productCardStyle } = useSettings();
-  const productCard = (useThemeData("product_card") || {}) as any;
   const style = props.cardStyle || productCardStyle || 1;
 
   switch (style) {
