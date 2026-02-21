@@ -3,16 +3,61 @@ import { useEffect, useState } from "react";
 import { useCart } from "../store/useCart";
 import { useUserStore } from "../store/useUserStore";
 import api from "@/lib/api";
-import { Home, AlertCircle, Loader2, CheckCircle, Truck } from "lucide-react";
+import {
+  Home,
+  AlertCircle,
+  Loader2,
+  CheckCircle,
+  Truck,
+  CreditCard,
+  Landmark,
+  Smartphone,
+  Lock,
+  Wallet,
+  Globe,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useThemeData } from "../store/useThemeData";
+
+interface PaymentGateway {
+  id: string;
+  name: string;
+  status: boolean;
+  environment: "sandbox" | "production";
+  store_password?: string;
+  store_id?: string;
+  sandbox_url?: string;
+  production_url?: string;
+}
+
+interface PaymentConfig {
+  enable_review: {
+    status: boolean;
+    require_login: boolean;
+    moderate_reviews: boolean;
+  };
+  online_payment: {
+    status: boolean;
+    gateways: PaymentGateway[];
+    success_url: string;
+    fail_url: string;
+    ipn_url: string;
+    cancel_url: string;
+  };
+  cash_on_delivery: {
+    status: boolean;
+  };
+}
 
 export default function CheckoutPage() {
-  const { user: authUser, clearSession } = useUserStore();
+  const { user: authUser } = useUserStore();
   const { cart, clearCart, initializeCart, isLoading: cartLoading } = useCart();
+  const paymentConfig = (useThemeData("payment") || {}) as PaymentConfig;
 
   const [selectedAddress, setSelectedAddress] = useState<number | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<number | null>(null);
+  const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
   const [coupon, setCoupon] = useState("");
   const [discount, setDiscount] = useState(0);
   const [freeShipping, setFreeShipping] = useState(false);
@@ -21,48 +66,98 @@ export default function CheckoutPage() {
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
-  // Get the current user (prefer auth context over user store)
+  // Get the current user
   const currentUser = authUser;
 
   useEffect(() => {
     if (currentUser?.id) {
       initializeCart(currentUser.id);
-      fetchData();
+      fetchAddresses();
+      fetchPaymentMethods();
     }
   }, [currentUser?.id, initializeCart]);
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingCost = freeShipping || total > 1000 ? 0 : 50;
 
-  // 🔹 Fetch Address & Payment methods
-  const fetchData = async () => {
+  // Check if payment methods are available based on config
+  const hasOnlinePayment = paymentConfig?.online_payment?.status ?? false;
+  const hasCashOnDelivery = paymentConfig?.cash_on_delivery?.status ?? false;
+  const activeGateways =
+    paymentConfig?.online_payment?.gateways?.filter((g) => g.status) || [];
+
+  // 🔹 Fetch Addresses only
+  const fetchAddresses = async () => {
     if (!currentUser?.id) return;
     try {
-      setLoading(true);
-      const [resAddress, resPayment] = await Promise.all([
-        api.get(`/users/get-customer-address/${currentUser.id}`),
-        api.get(`/setup/get-payment-methods`),
-      ]);
-
+      const resAddress = await api.get(
+        `/users/get-customer-address/${currentUser.id}`,
+      );
       setAddressList(resAddress?.data?.data || []);
-      setPaymentMethods(resPayment?.data?.data || []);
 
-      // Select first address and payment method by default
+      // Select first address by default
       if (resAddress?.data?.data?.length > 0) {
         setSelectedAddress(resAddress.data.data[0].id);
       }
-      if (resPayment?.data?.data?.length > 0) {
-        setSelectedPayment(resPayment.data.data[0].id);
+    } catch (err) {
+      console.error("Failed to fetch addresses:", err);
+    }
+  };
+
+  // 🔹 Fetch Payment Methods from API
+  const fetchPaymentMethods = async () => {
+    try {
+      setLoading(true);
+      const resPayment = await api.get(`/setup/get-payment-methods`);
+
+      let methods = resPayment?.data?.data || [];
+
+      // Filter based on payment config
+      if (paymentConfig) {
+        methods = methods.filter((method: any) => {
+          if (method.type === "COD") {
+            return paymentConfig.cash_on_delivery?.status === true;
+          } else if (method.type === "ONLINE") {
+            return paymentConfig.online_payment?.status === true;
+          }
+          return true;
+        });
+      }
+
+      setPaymentMethods(methods);
+
+      // Select first payment method by default
+      if (methods.length > 0) {
+        setSelectedPayment(methods[0].id);
       }
     } catch (err) {
-      console.error("Failed to fetch data:", err);
+      console.error("Failed to fetch payment methods:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔹 Coupon
+  // Get payment method icon
+  const getPaymentIcon = (method: any) => {
+    if (method.type === "COD") {
+      return <Truck className="w-5 h-5" />;
+    }
+
+    const icons: Record<string, any> = {
+      SSLCommerz: Landmark,
+      Stripe: CreditCard,
+      PayPal: Wallet,
+      bKash: Smartphone,
+      Nagad: Smartphone,
+      Rocket: Smartphone,
+    };
+    const Icon = icons[method.name] || CreditCard;
+    return <Icon className="w-5 h-5" />;
+  };
+
+  // Handle coupon
   const handleApplyCoupon = () => {
     const code = coupon.toUpperCase();
     if (code === "DISCOUNT10") {
@@ -80,7 +175,124 @@ export default function CheckoutPage() {
     }
   };
 
-  // 🔹 Place Order
+  // Handle online payment redirect
+  const handleOnlinePayment = async (paymentMethod: any) => {
+    const token = localStorage.getItem("token");
+
+    try {
+      setLoading(true);
+
+      // Create order first
+      const orderData = {
+        customer_id: currentUser!.id,
+        delivery_address_id: selectedAddress,
+        delivery_method_id: 4,
+        payment_method_id: paymentMethod.id, // Use the integer ID from database
+        discount_amount: discount,
+        is_cod: false,
+        items: cart.map((item) => ({
+          product_variant_id: item.primary_variant_id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          discount: 0,
+        })),
+      };
+
+      const orderRes = await api.post("/order/create-order", orderData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!orderRes.data.success) {
+        throw new Error(orderRes.data.message || "Failed to create order");
+      }
+
+      const orderId = orderRes.data.data.order_id;
+
+      // Find the matching gateway from config
+      const gateway = activeGateways.find(
+        (g) => g.name.toLowerCase() === paymentMethod.name.toLowerCase(),
+      );
+
+      if (!gateway) {
+        throw new Error("Payment gateway not configured");
+      }
+
+      // Initialize payment based on gateway
+      const paymentData = {
+        order_id: orderId,
+        amount: total - discount + shippingCost,
+        gateway: paymentMethod.name,
+        success_url: paymentConfig.online_payment.success_url,
+        fail_url: paymentConfig.online_payment.fail_url,
+        cancel_url: paymentConfig.online_payment.cancel_url,
+        ipn_url: paymentConfig.online_payment.ipn_url,
+        customer: {
+          name: currentUser?.full_name,
+          email: currentUser?.email,
+          phone: currentUser?.phone,
+        },
+      };
+
+      const paymentRes = await api.post("/payment/initiate", paymentData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (paymentRes.data.success && paymentRes.data.payment_url) {
+        // Redirect to payment gateway
+        window.location.href = paymentRes.data.payment_url;
+      } else {
+        throw new Error("Failed to initialize payment");
+      }
+    } catch (err: any) {
+      console.error("Payment failed:", err);
+      alert(`❌ ${err.response?.data?.message || "Failed to process payment"}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle COD order
+  const handleCODOrder = async (paymentMethod: any) => {
+    const token = localStorage.getItem("token");
+
+    try {
+      setLoading(true);
+
+      const orderData = {
+        customer_id: currentUser!.id,
+        delivery_address_id: selectedAddress,
+        delivery_method_id: 4,
+        payment_method_id: paymentMethod.id, // Use the integer ID from database
+        discount_amount: discount,
+        is_cod: true,
+        items: cart.map((item) => ({
+          product_variant_id: item.primary_variant_id,
+          quantity: item.quantity,
+          unit_price: item.price,
+          discount: 0,
+        })),
+      };
+
+      const res = await api.post("/order/create-order", orderData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data.success) {
+        setOrderId(res.data.data.order_id);
+        setOrderPlaced(true);
+        clearCart(currentUser!.id);
+      } else {
+        throw new Error(res.data.message || "Failed to place order");
+      }
+    } catch (err: any) {
+      console.error("Order failed:", err);
+      alert(`❌ ${err.response?.data?.message || "Failed to place order"}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle place order based on selected payment
   const handlePlaceOrder = async () => {
     if (!currentUser?.id) {
       alert("⚠️ You must be logged in to place an order!");
@@ -95,41 +307,19 @@ export default function CheckoutPage() {
       return;
     }
 
-    const token = localStorage.getItem("token");
-    const orderData = {
-      customer_id: currentUser.id,
-      delivery_address_id: selectedAddress,
-      delivery_method_id: 4, // Replace if you later add delivery methods
-      payment_method_id: selectedPayment,
-      discount_amount: discount,
-      is_cod:
-        paymentMethods.find((p) => p.id === selectedPayment)?.type === "COD",
-      items: cart.map((item) => ({
-        product_variant_id: item.primary_variant_id,
-        quantity: item.quantity,
-        unit_price: item.price,
-        discount: 0,
-      })),
-    };
+    const selectedPaymentMethod = paymentMethods.find(
+      (p) => p.id === selectedPayment,
+    );
 
-    try {
-      setLoading(true);
-      const res = await api.post("/order/create-order", orderData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    if (!selectedPaymentMethod) {
+      alert("⚠️ Invalid payment method selected!");
+      return;
+    }
 
-      if (res.data.success) {
-        setOrderId(res.data.data.order_id);
-        setOrderPlaced(true);
-        clearCart(currentUser.id);
-      } else {
-        throw new Error(res.data.message || "Failed to place order");
-      }
-    } catch (err: any) {
-      console.error("Order failed:", err);
-      alert(`❌ ${err.response?.data?.message || "Failed to place order"}`);
-    } finally {
-      setLoading(false);
+    if (selectedPaymentMethod.type === "COD") {
+      await handleCODOrder(selectedPaymentMethod);
+    } else {
+      await handleOnlinePayment(selectedPaymentMethod);
     }
   };
 
@@ -209,7 +399,9 @@ export default function CheckoutPage() {
           </p>
         )}
         <p className="text-gray-500 mb-8">
-          You will receive a confirmation email shortly with order details.
+          {paymentMethods.find((p) => p.id === selectedPayment)?.type === "COD"
+            ? "You will pay upon delivery. A confirmation email has been sent."
+            : "You will be redirected to the payment gateway shortly."}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
@@ -294,42 +486,95 @@ export default function CheckoutPage() {
           )}
         </div>
 
-        {/* Payment Method */}
+        {/* Payment Method - Based on Config */}
         <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h2 className="text-xl font-bold mb-6">Payment Method</h2>
-          {paymentMethods.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">
-              Loading payment methods...
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {paymentMethods.map((p) => (
+          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-primary" />
+            Payment Method
+          </h2>
+
+          {paymentMethods.length > 0 ? (
+            <div className="space-y-4">
+              {paymentMethods.map((method) => (
                 <label
-                  key={p.id}
+                  key={method.id}
                   className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition ${
-                    selectedPayment === p.id
+                    selectedPayment === method.id
                       ? "border-primary bg-primary/5"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
-                  onClick={() => setSelectedPayment(p.id)}
+                  onClick={() => setSelectedPayment(method.id)}
                 >
                   <input
                     type="radio"
                     name="payment"
-                    checked={selectedPayment === p.id}
-                    onChange={() => setSelectedPayment(p.id)}
+                    checked={selectedPayment === method.id}
+                    onChange={() => setSelectedPayment(method.id)}
                   />
-                  <div className="flex-1">
-                    <p className="font-medium">{p.name}</p>
-                    <p className="text-sm text-gray-500">{p.description}</p>
+                  <div className="flex items-center gap-3 flex-1">
+                    <div
+                      className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                        method.type === "COD"
+                          ? "bg-green-100"
+                          : "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                      }`}
+                    >
+                      {getPaymentIcon(method)}
+                    </div>
+                    <div>
+                      <p className="font-medium">{method.name}</p>
+                      <p className="text-sm text-gray-500">
+                        {method.type === "COD"
+                          ? "Pay when you receive your order"
+                          : method.environment === "sandbox"
+                            ? "Test Mode - No real charges"
+                            : "Secure SSL/TLS encrypted payment"}
+                      </p>
+                    </div>
                   </div>
-                  {p.type === "COD" && (
-                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                      Cash on Delivery
+                  {method.type === "COD" && (
+                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                      COD
                     </span>
                   )}
+                  {method.environment === "sandbox" &&
+                    method.type !== "COD" && (
+                      <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                        Test
+                      </span>
+                    )}
                 </label>
               ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No payment methods available</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Please contact support for assistance
+              </p>
+            </div>
+          )}
+
+          {/* Payment Info Cards */}
+          {selectedPayment && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+              <h3 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                <Lock className="w-4 h-4" />
+                Payment Information
+              </h3>
+              {paymentMethods.find((p) => p.id === selectedPayment)?.type ===
+              "COD" ? (
+                <p className="text-xs text-blue-600">
+                  💰 Pay in cash when your order arrives. Our delivery partner
+                  will collect the payment.
+                </p>
+              ) : (
+                <p className="text-xs text-blue-600">
+                  🔒 You'll be redirected to a secure payment page. Your payment
+                  information is encrypted and safe.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -426,13 +671,18 @@ export default function CheckoutPage() {
         {/* Place Order Button */}
         <button
           onClick={handlePlaceOrder}
-          disabled={loading || cart.length === 0}
+          disabled={
+            loading || cart.length === 0 || !selectedPayment || !selectedAddress
+          }
           className="w-full mt-6 bg-primary text-white py-3 rounded-lg hover:bg-primary/90 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Placing Order...
+              {paymentMethods.find((p) => p.id === selectedPayment)?.type ===
+              "COD"
+                ? "Placing Order..."
+                : "Redirecting to Payment..."}
             </span>
           ) : (
             `Place Order (৳ ${(total - discount + shippingCost).toFixed(2)})`
@@ -440,9 +690,26 @@ export default function CheckoutPage() {
         </button>
 
         {/* Security Message */}
-        <p className="text-xs text-gray-500 text-center mt-4">
-          🔒 Secure checkout. Your payment information is encrypted.
+        <p className="text-xs text-gray-500 text-center mt-4 flex items-center justify-center gap-1">
+          <Lock className="w-3 h-3" />
+          Secure checkout. Your payment information is encrypted.
         </p>
+
+        {/* Payment Status Info */}
+        {selectedPayment && (
+          <p className="text-xs text-center mt-2">
+            {paymentMethods.find((p) => p.id === selectedPayment)?.type ===
+            "COD" ? (
+              <span className="text-green-600">
+                💰 You'll pay when you receive your order
+              </span>
+            ) : (
+              <span className="text-blue-600">
+                🔒 You'll be redirected to secure payment page
+              </span>
+            )}
+          </p>
+        )}
       </div>
     </div>
   );

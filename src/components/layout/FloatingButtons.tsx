@@ -10,6 +10,7 @@ import {
   FaArrowUp,
 } from "react-icons/fa";
 import { useThemeData } from "@/app/store/useThemeData";
+import { ChevronRight } from "lucide-react";
 
 // types/floating.types.ts
 export interface FloatingButton {
@@ -277,7 +278,8 @@ export default function FloatingButtons({
             }}
             aria-label="Back to top"
           >
-            <FaArrowUp className="w-5 h-5" />
+            {/* <FaArrowUp className="w-5 h-5" /> */}
+            <ChevronRight className="w-5 h-5 rotate-[-90deg]" />
             <div
               className={`absolute whitespace-nowrap bg-gray-900 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ${
                 tooltipPosition === "left"
@@ -302,7 +304,8 @@ export default function FloatingButtons({
           }}
           aria-label="Back to top"
         >
-          <FaArrowUp className="w-5 h-5" />
+          {/* <FaArrowUp className="w-5 h-5" /> */}
+          <ChevronRight className="w-5 h-5 rotate-[-90deg]" />
           <div
             className={`absolute whitespace-nowrap bg-gray-900 text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ${
               config.position === "right" ? "right-full mr-2" : "left-full ml-2"

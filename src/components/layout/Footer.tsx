@@ -591,7 +591,7 @@ export default function Footer() {
       </div>
 
       {/* Scroll to top button */}
-      <motion.button
+      {/* <motion.button
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.6 }}
@@ -600,7 +600,7 @@ export default function Footer() {
         aria-label="Scroll to top"
       >
         <ChevronRight className="w-5 h-5 rotate-[-90deg]" />
-      </motion.button>
+      </motion.button> */}
     </footer>
   );
 }
