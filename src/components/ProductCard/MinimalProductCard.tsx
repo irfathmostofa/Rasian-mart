@@ -1,4 +1,3 @@
-// components/ProductCard/MinimalProductCard.tsx
 "use client";
 
 import Image from "next/image";
@@ -58,6 +57,9 @@ interface CardConfig {
   image_aspect_ratio: "square" | "portrait" | "landscape";
   show_out_of_stock_badge: boolean;
   show_discount_badge: boolean;
+  show_bestseller_badge: boolean;
+  show_featured_badge: boolean;
+  show_inquiry: boolean;
   primary_button: "add_to_cart" | "buy_now" | "whatsapp" | "inquiry";
   button_position: "bottom" | "overlay" | "hover";
   button_size: "sm" | "md" | "lg";
@@ -115,8 +117,6 @@ function buildWhatsAppUrl(
   productName: string,
   sku: string,
 ): string {
-  // Use Bengali message if available and user might prefer it
-  // You could enhance this with language preference from user store
   const message = cfg.message_bn || cfg.message;
   const msg = message
     .replace("{product_name}", productName)
@@ -177,6 +177,9 @@ export function MinimalProductCard({
       "portrait",
     show_out_of_stock_badge: raw.show_out_of_stock_badge ?? true,
     show_discount_badge: raw.show_discount_badge ?? true,
+    show_bestseller_badge: raw.show_bestseller_badge ?? true,
+    show_featured_badge: raw.show_featured_badge ?? true,
+    show_inquiry: raw.show_inquiry ?? true,
     primary_button:
       (raw.primary_button as CardConfig["primary_button"]) ?? "add_to_cart",
     button_position:
@@ -231,6 +234,19 @@ export function MinimalProductCard({
     : 0;
   const sku = code ?? `${id}`;
 
+  // Determine badge to show based on config and product data
+  const getDisplayBadge = () => {
+    if (!badge) return null;
+
+    if (badge === "Best Seller" && !cfg.show_bestseller_badge) return null;
+    if (badge === "Featured" && !cfg.show_featured_badge) return null;
+    if (badge === "New" && !cfg.show_new_badge) return null;
+
+    return badge;
+  };
+
+  const displayBadge = getDisplayBadge();
+
   // Style shorthands derived from config
   const aspectClass = ASPECT[cfg.image_aspect_ratio] ?? ASPECT.portrait;
   const btnPad = TEXT_PAD[cfg.button_size] ?? TEXT_PAD.md;
@@ -270,6 +286,7 @@ export function MinimalProductCard({
   const handleAddToCart = async (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
+    if (!cfg.show_add_to_cart) return;
     if (!requireAuth("add items to cart")) return;
 
     try {
@@ -285,11 +302,9 @@ export function MinimalProductCard({
         user!.id,
       );
 
-      // Show success feedback
       setIsAddedToCart(true);
       showToast("Added to cart 🛒", "success");
 
-      // Reset after 2 seconds
       if (addedToCartTimer.current) {
         clearTimeout(addedToCartTimer.current);
       }
@@ -304,6 +319,7 @@ export function MinimalProductCard({
   const handleBuyNow = async (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
+    if (!cfg.show_buy_now) return;
     if (!requireAuth("buy now")) return;
 
     try {
@@ -327,6 +343,7 @@ export function MinimalProductCard({
   const handleToggleWishlist = async (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
+    if (!cfg.show_wishlist) return;
     if (!requireAuth("manage wishlist")) return;
 
     try {
@@ -353,6 +370,7 @@ export function MinimalProductCard({
   const handleWhatsApp = (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
+    if (!cfg.show_contact_whatsapp) return;
     const url = buildWhatsAppUrl(cfg.whatsapp, name, sku);
     if (cfg.whatsapp.open_in_new_tab) window.open(url, "_blank");
     else window.location.href = url;
@@ -361,14 +379,14 @@ export function MinimalProductCard({
   const handleQuickView = (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    // TODO: open quick-view modal
+    if (!cfg.quick_view) return;
     showToast("Quick view coming soon!", "info");
   };
 
   const handleInquiry = (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    // TODO: open inquiry modal
+    if (!cfg.show_inquiry) return;
     showToast("Inquiry coming soon!", "info");
   };
 
@@ -378,6 +396,16 @@ export function MinimalProductCard({
 
   // ── Primary CTA — renders based on primary_button + button_style config ──
   const PrimaryButton = ({ stretch = false }: { stretch?: boolean }) => {
+    // Don't render if primary button type is disabled
+    if (
+      (cfg.primary_button === "add_to_cart" && !cfg.show_add_to_cart) ||
+      (cfg.primary_button === "buy_now" && !cfg.show_buy_now) ||
+      (cfg.primary_button === "inquiry" && !cfg.show_inquiry) ||
+      (cfg.primary_button === "whatsapp" && !cfg.show_contact_whatsapp)
+    ) {
+      return null;
+    }
+
     // Out of stock state
     if (isOutOfStock) {
       return cfg.show_out_of_stock_badge ? (
@@ -523,7 +551,7 @@ export function MinimalProductCard({
               : "opacity-0 pointer-events-none"
           }`}
         >
-          {/* {cfg.show_wishlist && (
+          {cfg.show_wishlist && (
             <button
               onClick={handleToggleWishlist}
               disabled={wishlistLoading}
@@ -536,7 +564,7 @@ export function MinimalProductCard({
                 className={`w-4 h-4 sm:w-5 sm:h-5 ${isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"}`}
               />
             </button>
-          )} */}
+          )}
 
           {cfg.quick_view && (
             <button
@@ -550,6 +578,7 @@ export function MinimalProductCard({
 
           {cfg.show_compare && (
             <button
+              onClick={() => showToast("Compare feature coming soon!", "info")}
               className="w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-full shadow-md flex items-center justify-center hover:scale-110 transition-transform"
               aria-label="Compare"
             >
@@ -560,9 +589,9 @@ export function MinimalProductCard({
 
         {/* ── Badges (top-left) ── */}
         <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 flex flex-col gap-1 z-20 pointer-events-none">
-          {badge && (
+          {displayBadge && (
             <span className="px-1.5 py-0.5 sm:px-2 sm:py-0.5 bg-primary text-white text-[9px] sm:text-[10px] font-bold rounded-full whitespace-nowrap">
-              {badge}
+              {displayBadge}
             </span>
           )}
           {cfg.show_sale_badge && hasDiscount && (
@@ -570,7 +599,7 @@ export function MinimalProductCard({
               SALE
             </span>
           )}
-          {cfg.show_new_badge && !hasDiscount && !badge && (
+          {cfg.show_new_badge && !hasDiscount && !displayBadge && (
             <span className="px-1.5 py-0.5 sm:px-2 sm:py-0.5 bg-emerald-500 text-white text-[9px] sm:text-[10px] font-bold rounded-full">
               NEW
             </span>
@@ -656,7 +685,7 @@ export function MinimalProductCard({
           </p>
         )}
 
-        {/* Rating - Updated to handle null/0 ratings */}
+        {/* Rating */}
         {cfg.show_rating && (
           <div className="flex items-center gap-1 flex-wrap">
             <div className="flex">
@@ -707,8 +736,11 @@ export function MinimalProductCard({
             className="flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Primary CTA — grows to fill */}
-            {(cfg.show_add_to_cart || cfg.primary_button !== "add_to_cart") && (
+            {/* Primary CTA */}
+            {(cfg.show_add_to_cart ||
+              cfg.primary_button === "buy_now" ||
+              cfg.primary_button === "whatsapp" ||
+              cfg.primary_button === "inquiry") && (
               <div className="flex-1 min-w-0">
                 <PrimaryButton stretch />
               </div>
@@ -748,7 +780,7 @@ export function MinimalProductCard({
               </button>
             )}
 
-            {/* WhatsApp icon — only when show_contact_whatsapp is true */}
+            {/* WhatsApp icon */}
             {cfg.show_contact_whatsapp && !isOutOfStock && (
               <button
                 onClick={handleWhatsApp}

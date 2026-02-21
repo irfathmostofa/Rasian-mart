@@ -23,9 +23,9 @@ import {
 } from "lucide-react";
 import { useThemeData } from "@/app/store/useThemeData";
 import { useCategoryStore } from "@/app/store/useCatrgoryStore";
+import { useProductStore } from "@/app/store/useProductStore"; // Import the product store
 import { ProductCard } from "@/components/ProductCard";
 import { useSettings } from "@/app/store/useSettings";
-import api from "@/lib/api";
 
 // Import shadcn carousel
 import {
@@ -36,6 +36,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
+import api from "@/lib/api";
 
 // ==================== Types ====================
 interface ThemeColors {
@@ -140,9 +141,8 @@ interface Category {
   name: string;
   slug: string;
   image: string | null;
-  parent_id?: number | null; // Add this if your store has parent_id
+  parent_id?: number | null;
   children?: Category[];
-  // Add any other fields that exist in your store's Category type
 }
 
 // ==================== Icons Map ====================
@@ -234,7 +234,7 @@ const CategoryCard = memo(
           </h3>
 
           <p className="text-xs mt-1 text-gray-400">
-            {category?.children?.length} items
+            {category?.children?.length || 0} items
           </p>
         </div>
       </div>
@@ -472,6 +472,23 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
     loading: categoriesLoading,
   } = useCategoryStore();
 
+  // Use product store
+  const {
+    // Regular products
+    products: storeProducts,
+    loading: productsLoading,
+
+    // Recent products
+    recentProducts,
+    recentLoading,
+    fetchRecentProducts,
+
+    // Best selling products
+    bestSellingProducts,
+    bestSellingLoading,
+    fetchBestSellingProducts,
+  } = useProductStore();
+
   // Theme colors
   const themeColors = (useThemeData("colors") || {}) as Partial<ThemeColors>;
   const colors = useMemo(
@@ -490,9 +507,13 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
     [themeColors],
   );
 
-  // State
-  const [products, setProducts] = useState<Record<string, Product[]>>({});
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  // State for featured products (from API)
+  const [featuredProducts, setFeaturedProducts] = useState<
+    Record<string, Product[]>
+  >({});
+  const [featuredLoading, setFeaturedLoading] = useState<
+    Record<string, boolean>
+  >({});
   const [sectionCategories, setSectionCategories] = useState<
     Record<string, Category[]>
   >({});
@@ -517,7 +538,6 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
       const newCategories: Record<string, Category[]> = {};
       activeSections.forEach((section) => {
         if (section.type === "category_grid" && section.categoryids) {
-          // Use type assertion to tell TypeScript these are Category objects
           newCategories[section.id] = (categories as Category[]).filter(
             (cat: Category) => {
               if (!section.categoryids) return false;
@@ -530,43 +550,66 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
     }
   }, [categories, activeSections]);
 
-  // Fetch products for sections
+  // Fetch data for sections using the store
   useEffect(() => {
     const fetchSectionProducts = async () => {
-      const productSections = activeSections.filter((s) =>
-        ["featured_products", "recent_products", "best_sellers"].includes(
-          s.type,
-        ),
+      // Fetch recent products if there are any recent_products sections
+      const hasRecentSections = activeSections.some(
+        (s) => s.type === "recent_products",
       );
 
-      for (const section of productSections) {
-        setLoading((prev) => ({ ...prev, [section.id]: true }));
+      if (hasRecentSections) {
+        // Get the first recent section to use its days value
+        const recentSection = activeSections.find(
+          (s) => s.type === "recent_products",
+        );
+        const days = recentSection?.days || 30;
+        const limit = recentSection?.products_count || 20;
+
+        await fetchRecentProducts(1, limit, days);
+      }
+
+      // Fetch best selling products if there are any best_sellers sections
+      const hasBestSellingSections = activeSections.some(
+        (s) => s.type === "best_sellers",
+      );
+
+      if (hasBestSellingSections) {
+        const bestSellingSection = activeSections.find(
+          (s) => s.type === "best_sellers",
+        );
+        const limit = bestSellingSection?.products_count || 20;
+
+        await fetchBestSellingProducts(1, limit);
+      }
+
+      // Handle featured products (still need API call for category-specific products)
+      const featuredSections = activeSections.filter(
+        (s) => s.type === "featured_products" && s.categoryids?.length,
+      );
+
+      for (const section of featuredSections) {
+        setFeaturedLoading((prev) => ({ ...prev, [section.id]: true }));
 
         try {
-          let response;
-          const params: any = {
-            page: 1,
-            limit: section.products_count || 8,
-          };
-
-          if (section.type === "recent_products" && section.days) {
-            params.days = section.days;
-            response = await api.post("/product/recent-products", params);
-          } else if (section.type === "best_sellers") {
-            response = await api.post("/product/best-sellers", params);
-          } else if (section.categoryids?.length) {
-            params.category_ids = section.categoryids;
-            params.category_match_type = "ANY";
-            response = await api.post("/product/get-all-products-with-cat", {
-              params,
-            });
-          }
+          // You might want to add this to your store as well if used frequently
+          const response = await api.post(
+            "/product/get-all-products-with-cat",
+            {
+              params: {
+                page: 1,
+                limit: section.products_count || 8,
+                category_ids: section.categoryids,
+                category_match_type: "ANY",
+              },
+            },
+          );
 
           if (
             response?.data?.data?.data &&
             Array.isArray(response.data.data.data)
           ) {
-            setProducts((prev) => ({
+            setFeaturedProducts((prev) => ({
               ...prev,
               [section.id]: response.data.data.data,
             }));
@@ -574,30 +617,35 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
             response?.data?.data &&
             Array.isArray(response.data.data)
           ) {
-            setProducts((prev) => ({
+            setFeaturedProducts((prev) => ({
               ...prev,
               [section.id]: response.data.data,
             }));
           } else {
-            setProducts((prev) => ({
+            setFeaturedProducts((prev) => ({
               ...prev,
               [section.id]: [],
             }));
           }
         } catch (error) {
-          console.error(`Error fetching section ${section.id}:`, error);
-          setProducts((prev) => ({
+          console.error(
+            `Error fetching featured section ${section.id}:`,
+            error,
+          );
+          setFeaturedProducts((prev) => ({
             ...prev,
             [section.id]: [],
           }));
         } finally {
-          setLoading((prev) => ({ ...prev, [section.id]: false }));
+          setFeaturedLoading((prev) => ({ ...prev, [section.id]: false }));
         }
       }
     };
 
-    fetchSectionProducts();
-  }, [activeSections]);
+    if (activeSections.length > 0) {
+      fetchSectionProducts();
+    }
+  }, [activeSections, fetchRecentProducts, fetchBestSellingProducts]);
 
   // ==================== Loading Skeleton ====================
   const LoadingSkeleton = useCallback(
@@ -758,9 +806,22 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
   // ==================== Product Section ====================
   const renderProductSection = useCallback(
     (section: Section, badge?: string, badgeIcon?: string) => {
-      const prods = products[section.id] || [];
       const cols = section.columns || 4;
-      const isLoading = loading[section.id];
+
+      // Get products based on section type
+      let prods: Product[] = [];
+      let isLoading = false;
+
+      if (section.type === "recent_products") {
+        prods = recentProducts;
+        isLoading = recentLoading;
+      } else if (section.type === "best_sellers") {
+        prods = bestSellingProducts;
+        isLoading = bestSellingLoading;
+      } else if (section.type === "featured_products") {
+        prods = featuredProducts[section.id] || [];
+        isLoading = featuredLoading[section.id] || false;
+      }
 
       const productsArray = Array.isArray(prods) ? prods : [];
 
@@ -781,10 +842,14 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
         return colors[colorKey as keyof typeof colors] || colors.primary;
       };
 
+      // Limit products based on section products_count
+      const limit = section.products_count || 8;
+      const displayProducts = productsArray.slice(0, limit);
+
       if (section.layout === "slider") {
         return (
           <ProductSlider
-            products={productsArray.slice(0, section.products_count || 8)}
+            products={displayProducts}
             badge={badge}
             badgeIcon={badgeIcon || badgeStyles[badge || ""]?.icon}
             badgeColor={getBadgeColor()}
@@ -796,7 +861,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
 
       return (
         <div className={`grid ${getColumnClass(cols)} gap-4`}>
-          {productsArray.slice(0, cols).map((product) => (
+          {displayProducts.slice(0, cols).map((product) => (
             <ProductCard
               key={product.id}
               {...product}
@@ -809,7 +874,18 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
         </div>
       );
     },
-    [products, loading, LoadingSkeleton, EmptyState, colors, productCardStyle],
+    [
+      recentProducts,
+      recentLoading,
+      bestSellingProducts,
+      bestSellingLoading,
+      featuredProducts,
+      featuredLoading,
+      LoadingSkeleton,
+      EmptyState,
+      colors,
+      productCardStyle,
+    ],
   );
 
   // ==================== Banner Section ====================
