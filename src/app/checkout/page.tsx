@@ -50,6 +50,15 @@ interface PaymentConfig {
   };
 }
 
+interface PaymentMethod {
+  id: number;
+  code: string;
+  name: string;
+  type: string;
+  provider: string;
+  status: string;
+}
+
 export default function CheckoutPage() {
   const { user: authUser } = useUserStore();
   const { cart, clearCart, initializeCart, isLoading: cartLoading } = useCart();
@@ -57,16 +66,14 @@ export default function CheckoutPage() {
 
   const [selectedAddress, setSelectedAddress] = useState<number | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<number | null>(null);
-  const [selectedGateway, setSelectedGateway] = useState<string | null>(null);
   const [coupon, setCoupon] = useState("");
   const [discount, setDiscount] = useState(0);
   const [freeShipping, setFreeShipping] = useState(false);
   const [loading, setLoading] = useState(false);
   const [addressList, setAddressList] = useState<any[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
   // Get the current user
   const currentUser = authUser;
@@ -81,12 +88,6 @@ export default function CheckoutPage() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingCost = freeShipping || total > 1000 ? 0 : 50;
-
-  // Check if payment methods are available based on config
-  const hasOnlinePayment = paymentConfig?.online_payment?.status ?? false;
-  const hasCashOnDelivery = paymentConfig?.cash_on_delivery?.status ?? false;
-  const activeGateways =
-    paymentConfig?.online_payment?.gateways?.filter((g) => g.status) || [];
 
   // 🔹 Fetch Addresses only
   const fetchAddresses = async () => {
@@ -116,13 +117,13 @@ export default function CheckoutPage() {
 
       // Filter based on payment config
       if (paymentConfig) {
-        methods = methods.filter((method: any) => {
+        methods = methods.filter((method: PaymentMethod) => {
           if (method.type === "COD") {
             return paymentConfig.cash_on_delivery?.status === true;
-          } else if (method.type === "ONLINE") {
+          } else {
+            // For non-COD methods (MOBILE, ONLINE, etc.), check if online payment is enabled
             return paymentConfig.online_payment?.status === true;
           }
-          return true;
         });
       }
 
@@ -140,13 +141,13 @@ export default function CheckoutPage() {
   };
 
   // Get payment method icon
-  const getPaymentIcon = (method: any) => {
+  const getPaymentIcon = (method: PaymentMethod) => {
     if (method.type === "COD") {
       return <Truck className="w-5 h-5" />;
     }
 
     const icons: Record<string, any> = {
-      SSLCommerz: Landmark,
+      SSLCOMMERZ: Landmark,
       Stripe: CreditCard,
       PayPal: Wallet,
       bKash: Smartphone,
@@ -176,7 +177,7 @@ export default function CheckoutPage() {
   };
 
   // Handle online payment redirect
-  const handleOnlinePayment = async (paymentMethod: any) => {
+  const handleOnlinePayment = async (paymentMethod: PaymentMethod) => {
     const token = localStorage.getItem("token");
 
     try {
@@ -206,42 +207,20 @@ export default function CheckoutPage() {
         throw new Error(orderRes.data.message || "Failed to create order");
       }
 
-      const orderId = orderRes.data.data.order_id;
-
-      // Find the matching gateway from config
-      const gateway = activeGateways.find(
-        (g) => g.name.toLowerCase() === paymentMethod.name.toLowerCase(),
-      );
-
-      if (!gateway) {
-        throw new Error("Payment gateway not configured");
-      }
-
-      // Initialize payment based on gateway
-      const paymentData = {
-        order_id: orderId,
-        amount: total - discount + shippingCost,
-        gateway: paymentMethod.name,
-        success_url: paymentConfig.online_payment.success_url,
-        fail_url: paymentConfig.online_payment.fail_url,
-        cancel_url: paymentConfig.online_payment.cancel_url,
-        ipn_url: paymentConfig.online_payment.ipn_url,
-        customer: {
-          name: currentUser?.full_name,
-          email: currentUser?.email,
-          phone: currentUser?.phone,
-        },
-      };
-
-      const paymentRes = await api.post("/payment/initiate", paymentData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (paymentRes.data.success && paymentRes.data.payment_url) {
+      // Check if the response contains payment URL
+      if (
+        orderRes.data.data?.requiresPayment &&
+        orderRes.data.data?.paymentUrl
+      ) {
         // Redirect to payment gateway
-        window.location.href = paymentRes.data.payment_url;
+        window.location.href = orderRes.data.data.paymentUrl;
       } else {
-        throw new Error("Failed to initialize payment");
+        // If no payment URL but order created successfully
+        setOrderId(
+          orderRes.data.data.order?.code || orderRes.data.data.order?.id,
+        );
+        setOrderPlaced(true);
+        clearCart(currentUser!.id);
       }
     } catch (err: any) {
       console.error("Payment failed:", err);
@@ -252,7 +231,7 @@ export default function CheckoutPage() {
   };
 
   // Handle COD order
-  const handleCODOrder = async (paymentMethod: any) => {
+  const handleCODOrder = async (paymentMethod: PaymentMethod) => {
     const token = localStorage.getItem("token");
 
     try {
@@ -278,7 +257,7 @@ export default function CheckoutPage() {
       });
 
       if (res.data.success) {
-        setOrderId(res.data.data.order_id);
+        setOrderId(res.data.data.order?.code || res.data.data.order?.id);
         setOrderPlaced(true);
         clearCart(currentUser!.id);
       } else {
@@ -526,9 +505,7 @@ export default function CheckoutPage() {
                       <p className="text-sm text-gray-500">
                         {method.type === "COD"
                           ? "Pay when you receive your order"
-                          : method.environment === "sandbox"
-                            ? "Test Mode - No real charges"
-                            : "Secure SSL/TLS encrypted payment"}
+                          : "Secure online payment"}
                       </p>
                     </div>
                   </div>
@@ -537,12 +514,6 @@ export default function CheckoutPage() {
                       COD
                     </span>
                   )}
-                  {method.environment === "sandbox" &&
-                    method.type !== "COD" && (
-                      <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                        Test
-                      </span>
-                    )}
                 </label>
               ))}
             </div>
@@ -688,28 +659,6 @@ export default function CheckoutPage() {
             `Place Order (৳ ${(total - discount + shippingCost).toFixed(2)})`
           )}
         </button>
-
-        {/* Security Message */}
-        <p className="text-xs text-gray-500 text-center mt-4 flex items-center justify-center gap-1">
-          <Lock className="w-3 h-3" />
-          Secure checkout. Your payment information is encrypted.
-        </p>
-
-        {/* Payment Status Info */}
-        {selectedPayment && (
-          <p className="text-xs text-center mt-2">
-            {paymentMethods.find((p) => p.id === selectedPayment)?.type ===
-            "COD" ? (
-              <span className="text-green-600">
-                💰 You'll pay when you receive your order
-              </span>
-            ) : (
-              <span className="text-blue-600">
-                🔒 You'll be redirected to secure payment page
-              </span>
-            )}
-          </p>
-        )}
       </div>
     </div>
   );

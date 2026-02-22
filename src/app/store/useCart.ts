@@ -10,6 +10,7 @@ interface CartItem {
   name: string;
   price: number;
   image: string;
+  weight: string;
   quantity: number;
   dbId?: number; // Database ID for server operations
 }
@@ -91,6 +92,7 @@ export const useCart = create<CartState>((set, get) => ({
             name: item.product_name || `Product ${item.product_variant_id}`,
             price: parseFloat(item.unit_price) || 0,
             image: item.product_image || "",
+            weight: item.weight,
             quantity: item.quantity || 1,
             dbId: item.id,
           }));
