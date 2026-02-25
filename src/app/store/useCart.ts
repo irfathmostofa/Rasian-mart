@@ -91,8 +91,8 @@ export const useCart = create<CartState>((set, get) => ({
             primary_variant_id: item.product_variant_id,
             name: item.product_name || `Product ${item.product_variant_id}`,
             price: parseFloat(item.unit_price) || 0,
-            image: item.product_image || "",
-            weight: item.weight,
+            image: item.image || "",
+            weight: item.variant_weight,
             quantity: item.quantity || 1,
             dbId: item.id,
           }));
