@@ -15,8 +15,8 @@ interface Tab {
 }
 
 interface ProfileSidebarProps {
-  onTabChange?: (tab: TabType) => void;
-  activeTab?: TabType;
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
 }
 
 export default function ProfileSidebar({
@@ -24,7 +24,7 @@ export default function ProfileSidebar({
   onTabChange,
 }: ProfileSidebarProps) {
   const router = useRouter();
-  const { user, clearSession } = useUserStore();
+  const { clearSession } = useUserStore();
   const [currentTab, setCurrentTab] = useState<TabType>(activeTab);
 
   const tabs: Tab[] = [

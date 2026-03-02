@@ -91,10 +91,6 @@ export const useWishlist = create<WishlistState>((set, get) => ({
       }
     } catch (error: any) {
       console.error("Failed to initialize wishlist:", error);
-      set({
-        error: error.response?.data?.message || "Failed to load wishlist",
-        items: [],
-      });
     } finally {
       set({ isLoading: false });
     }
@@ -119,7 +115,7 @@ export const useWishlist = create<WishlistState>((set, get) => ({
         "/order/add-customer-item",
         {
           customer_id: customerId,
-          product_variant_id: item.id,
+          product_variant_id: item.primary_variant_id,
           item_type: "WISHLIST",
           quantity: 1,
           unit_price: item.price,

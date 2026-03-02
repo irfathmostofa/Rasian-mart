@@ -286,6 +286,7 @@ export function MinimalProductCard({
   const handleAddToCart = async (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
+    console.log(e, "ed");
     if (!cfg.show_add_to_cart) return;
     if (!requireAuth("add items to cart")) return;
 
@@ -298,6 +299,7 @@ export function MinimalProductCard({
           price: sellingPrice,
           image: imageUrl || "",
           quantity: 1,
+          weight: "0", // Add weight property here - adjust based on your product data
         },
         user!.id,
       );
@@ -331,6 +333,7 @@ export function MinimalProductCard({
           price: sellingPrice,
           image: imageUrl || "",
           quantity: 1,
+          weight: "0", // Add weight property here
         },
         user!.id,
       );

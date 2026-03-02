@@ -1,15 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import ProductCarousel from "@/components/layout/ProductCarousel";
 import Hero from "@/components/layout/HeroSection";
 import { useProductStore } from "@/app/store/useProductStore";
-import { PremiumProductCard } from "@/components/ProductCard/PremiumProductCard";
 import { useSettings } from "./store/useSettings";
-import { ProductCard } from "@/components/ProductCard";
-import { useThemeData, useThemeStore } from "./store/useThemeData";
+import { useThemeData } from "./store/useThemeData";
 import DynamicSectionRenderer from "@/components/layout/DynamicSectionRenderer";
 
 export default function HomePage() {

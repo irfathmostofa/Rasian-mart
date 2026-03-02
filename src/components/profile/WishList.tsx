@@ -6,21 +6,50 @@ import { Trash2, ShoppingCart, ArrowLeft, ImageOff } from "lucide-react";
 import { useCart } from "@/app/store/useCart";
 import { useToastStore } from "@/app/store/useToastStore";
 import { useWishlist } from "@/app/store/useWishlist";
+import { useUserStore } from "@/app/store/useUserStore"; // Import user store
 
 export default function Wishlist() {
   const { items, removeFromWishlist, clearWishlist } = useWishlist();
   const { addToCart } = useCart();
   const { showToast } = useToastStore();
+  const { user } = useUserStore(); // Get user
+
+  const handleAddToCart = (item: any) => {
+    if (!user) {
+      showToast("Please login to add items to cart", "error");
+      return;
+    }
+
+    addToCart(
+      {
+        id: item.id,
+        primary_variant_id: item.primary_variant_id,
+        name: item.name,
+        price: Number(item.price) || 0,
+        image: item.image,
+        quantity: 1,
+        weight: "0", // You might want to get actual weight from somewhere
+      },
+      user.id,
+    );
+    showToast("Added to cart 🛒", "success");
+  };
+
+  const handleRemoveFromWishlist = (itemId: number) => {
+    if (!user) return;
+    removeFromWishlist(itemId, user.id);
+  };
+
+  const handleClearWishlist = () => {
+    if (!user) return;
+    if (confirm("Clear all items from wishlist?")) {
+      clearWishlist(user.id);
+    }
+  };
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        {/* <Image
-          src="/empty-wishlist.svg"
-          alt="empty wishlist"
-          width={250}
-          height={250}
-          className="mb-6 opacity-80"
-        /> */}
         <h2 className="text-2xl font-semibold text-gray-700">
           Your Wishlist is Empty 💔
         </h2>
@@ -45,7 +74,7 @@ export default function Wishlist() {
           <h1 className="text-3xl font-bold text-gray-800">My Wishlist 💖</h1>
         </div>
         <button
-          onClick={clearWishlist}
+          onClick={handleClearWishlist}
           className="text-sm text-gray-500 hover:text-red-500 flex items-center gap-1"
         >
           <Trash2 className="w-4 h-4" /> Clear All
@@ -79,7 +108,7 @@ export default function Wishlist() {
               )}
 
               <button
-                onClick={() => removeFromWishlist(item.id)}
+                onClick={() => handleRemoveFromWishlist(item.id)}
                 className="absolute top-2 right-2 bg-white/90 p-2 rounded-full shadow hover:bg-red-100 transition"
               >
                 <Trash2 className="w-4 h-4 text-red-500" />
@@ -96,17 +125,7 @@ export default function Wishlist() {
 
               {item.stock > 0 ? (
                 <button
-                  onClick={() => {
-                    addToCart({
-                      id: item.id,
-                      primary_variant_id: item.primary_variant_id,
-                      name: item.name,
-                      price: Number(item.price) || 0,
-                      image: item.image,
-                      quantity: 1,
-                    });
-                    showToast("Added to cart 🛒", "success");
-                  }}
+                  onClick={() => handleAddToCart(item)}
                   className="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary/90 flex items-center justify-center gap-2 mt-3"
                 >
                   <ShoppingCart className="w-4 h-4" /> Add to Cart

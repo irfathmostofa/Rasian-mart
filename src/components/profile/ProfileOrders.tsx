@@ -111,13 +111,6 @@ export default function ProfileOrders() {
   if (!orders.length) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        {/* <Image
-          src="/empty-wishlist.svg"
-          alt="empty wishlist"
-          width={250}
-          height={250}
-          className="mb-6 opacity-80"
-        /> */}
         <h2 className="text-2xl font-semibold text-gray-700">
           No orders found yet. 💔
         </h2>
@@ -235,9 +228,12 @@ export default function ProfileOrders() {
 
             {/* Action Buttons */}
             <div className="flex gap-2 flex-wrap">
-              <button className="flex items-center gap-1 px-3 py-1 text-sm rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+              <Link
+                href={`/track-order?orderId=${order.code}`}
+                className="flex items-center gap-1 px-3 py-1 text-sm rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+              >
                 <Truck className="w-4 h-4" /> Track
-              </button>
+              </Link>
               <button className="flex items-center gap-1 px-3 py-1 text-sm rounded-md bg-red-50 text-red-700 hover:bg-red-100">
                 <XCircle className="w-4 h-4" /> Cancel
               </button>

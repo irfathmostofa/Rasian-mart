@@ -8,7 +8,6 @@ import { Heart, ShoppingCart, Star, X } from "lucide-react";
 import ImageMagnifier from "@/components/ui/ImageMagnifier";
 import api from "@/lib/api";
 import { useProductStore } from "@/app/store/useProductStore";
-import { PremiumProductCard } from "@/components/ProductCard/PremiumProductCard";
 import { useToastStore } from "@/app/store/useToastStore";
 import { useWishlist } from "@/app/store/useWishlist";
 import { ProductCard } from "@/components/ProductCard";
@@ -112,14 +111,13 @@ export default function ProductDetailsPage() {
         {
           id: getProductId(),
           primary_variant_id: getPrimaryVariantId(),
-          name:
-            product.name +
-            (selectedVariant ? ` - ${selectedVariant.name}` : ""),
-          price: price || 0,
-          image: getImageUrl(),
+          name: product.name,
+          price: price,
+          image: getImageUrl() || "",
           quantity: quantity,
+          weight: "0",
         },
-        user.id,
+        user!.id,
       );
       showToast("Added to cart 🛒", "success");
       setShowBottomCart(true); // Show bottom cart after adding

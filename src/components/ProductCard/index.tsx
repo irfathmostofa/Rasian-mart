@@ -5,7 +5,7 @@ import { MinimalProductCard } from "./MinimalProductCard";
 import { ProductCardProps } from "@/types/ProductCard";
 
 export function ProductCard(props: ProductCardProps & { cardStyle?: number }) {
-  return <MinimalProductCard {...props} />; // Added return statement
+  return <MinimalProductCard {...props} />;
 }
 
 export { MinimalProductCard };

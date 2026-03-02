@@ -81,17 +81,6 @@ interface Address {
   email?: string;
 }
 
-interface CartItem {
-  id: string;
-  product_id?: number;
-  primary_variant_id: number;
-  name: string;
-  price: number;
-  quantity: number;
-  image?: string;
-  weight?: string | number;
-}
-
 interface RedxArea {
   id: number;
   name: string;
@@ -208,8 +197,6 @@ export default function CheckoutPage() {
     if (!postCode || !baseUrl || !accessToken) return;
 
     try {
-      console.log("Fetching areas for postcode:", postCode);
-
       const response = await fetch(`${baseUrl}/areas?post_code=${postCode}`, {
         headers: {
           "API-ACCESS-TOKEN": `Bearer ${accessToken}`,
@@ -217,12 +204,7 @@ export default function CheckoutPage() {
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
-      console.log("Areas response:", data);
 
       // Handle different response structures
       if (data.areas && Array.isArray(data.areas) && data.areas.length > 0) {
@@ -235,7 +217,6 @@ export default function CheckoutPage() {
         setSelectedRedxArea(data[0].id);
         setDeliveryAreaId(data[0].id);
       } else {
-        console.warn("No areas found for postcode:", postCode);
         setRedxAreas([]);
       }
     } catch (error) {
@@ -279,13 +260,6 @@ export default function CheckoutPage() {
             weight: Math.ceil(totalWeight).toString(), // Round up to nearest gram
           });
 
-          console.log("Calculating shipping with params:", {
-            delivery_area_id: deliveryAreaId,
-            pickup_area_id: pickupAreaId,
-            cash_collection_amount: subtotal,
-            weight: totalWeight,
-          });
-
           const response = await fetch(
             `${baseUrl}/charge/charge_calculator?${params}`,
             {
@@ -296,12 +270,7 @@ export default function CheckoutPage() {
             },
           );
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-
           const data = await response.json();
-          console.log("Shipping calculation response:", data);
 
           // According to the documentation, response has deliveryCharge and codCharge
           if (data.deliveryCharge !== undefined) {
@@ -316,15 +285,11 @@ export default function CheckoutPage() {
 
             setShippingCost(totalCharge);
           } else {
-            // Fallback if response structure is different
-            console.warn("Unexpected response structure:", data);
             setShippingCost(subtotal > 1000 ? 0 : 50);
             setShippingCalculation(null);
           }
         }
       } catch (error) {
-        console.error("Failed to calculate shipping:", error);
-        // Fallback to default shipping cost
         setShippingCost(subtotal > 1000 ? 0 : 50);
         setShippingCalculation(null);
       } finally {
@@ -739,16 +704,7 @@ export default function CheckoutPage() {
                         .filter(Boolean)
                         .join(", ")}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-gray-400" />
-                      {addr.phone}
-                    </p>
-                    {addr.full_name && (
-                      <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-400" />
-                        {addr.full_name}
-                      </p>
-                    )}
+
                     {addr.email && (
                       <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
                         <Mail className="w-4 h-4 text-gray-400" />
@@ -897,16 +853,6 @@ export default function CheckoutPage() {
                 <p className="text-sm text-gray-500">
                   Qty: {item.quantity} × ৳{item.price.toFixed(2)}
                 </p>
-                {item.weight && (
-                  <p className="text-xs text-gray-400">
-                    Weight:{" "}
-                    {(
-                      (parseFloat(item.weight.toString()) * item.quantity) /
-                      1000
-                    ).toFixed(2)}{" "}
-                    kg
-                  </p>
-                )}
               </div>
               <p className="font-semibold text-nowrap">
                 ৳{(item.price * item.quantity).toFixed(2)}
@@ -914,18 +860,6 @@ export default function CheckoutPage() {
             </div>
           ))}
         </div>
-
-        {/* Weight Summary */}
-        {totalWeight > 0 && (
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">
-            <div className="flex justify-between text-gray-600">
-              <span>Total Weight:</span>
-              <span className="font-medium">
-                {(totalWeight / 1000).toFixed(2)} kg
-              </span>
-            </div>
-          </div>
-        )}
 
         {/* Coupon Section */}
         <div className="mb-6">
@@ -1084,15 +1018,6 @@ export default function CheckoutPage() {
                 : `৳ ${shippingCost.toFixed(2)}`}
             </span>
           </div>
-
-          {shippingCalculation?.codCharge
-            ? shippingCalculation.codCharge > 0 && (
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>COD Charge</span>
-                  <span>৳ {shippingCalculation.codCharge.toFixed(2)}</span>
-                </div>
-              )
-            : null}
 
           <div className="border-t pt-3">
             <div className="flex justify-between text-lg font-bold">

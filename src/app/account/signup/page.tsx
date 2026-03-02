@@ -161,7 +161,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="flex items-center justify-center ">
+    <div className="flex items-center justify-center py-6">
       {" "}
       <motion.div
         initial={{ opacity: 0, y: 40 }}

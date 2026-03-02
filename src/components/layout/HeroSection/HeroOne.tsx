@@ -246,7 +246,6 @@ function SideMenu({
                       background: isHovered
                         ? hexToRgba(colors.primary, 0.04)
                         : "transparent",
-                      cursor: "pointer",
                     }}
                     onMouseEnter={() => setHoveredId(cat.id)}
                     onMouseLeave={() => setHoveredId(null)}
@@ -263,15 +262,9 @@ function SideMenu({
                       }}
                     />
 
-                    {/* Link */}
+                    {/* Link - now only navigates, doesn't toggle */}
                     <Link
                       href={`/category/${cat.id}/${cat.slug}`}
-                      onClick={(e) => {
-                        if (hasChildren) {
-                          e.preventDefault();
-                          toggleExpand(cat.id);
-                        }
-                      }}
                       style={{
                         flex: 1,
                         display: "flex",
@@ -326,12 +319,16 @@ function SideMenu({
                       </span>
                     </Link>
 
-                    {/* Chevron */}
+                    {/* Chevron button - now only toggles, doesn't navigate */}
                     {hasChildren && (
                       <button
-                        onClick={() => toggleExpand(cat.id)}
+                        onClick={(e) => {
+                          e.preventDefault(); // Prevent any potential parent navigation
+                          e.stopPropagation(); // Stop event bubbling
+                          toggleExpand(cat.id);
+                        }}
                         style={{
-                          padding: "4px",
+                          padding: "8px", // Slightly larger hit area
                           background: "none",
                           border: "none",
                           cursor: "pointer",
@@ -342,12 +339,25 @@ function SideMenu({
                             : hexToRgba(colors.text, 0.35),
                           transition: "all 0.2s ease",
                           flexShrink: 0,
+                          borderRadius: "4px",
                         }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = hexToRgba(
+                            accent,
+                            0.1,
+                          );
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "none";
+                        }}
+                        aria-label={
+                          isExpanded ? "Collapse category" : "Expand category"
+                        }
                       >
                         <ChevronDown
                           style={{
-                            width: "14px",
-                            height: "14px",
+                            width: "16px", // Slightly larger
+                            height: "16px",
                             transform: isExpanded
                               ? "rotate(180deg)"
                               : "rotate(0deg)",

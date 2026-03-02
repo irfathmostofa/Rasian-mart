@@ -118,7 +118,7 @@ export const useCart = create<CartState>((set, get) => ({
       set({ error: "User must be logged in to add to cart" });
       return;
     }
-
+    console.log(item, "ty");
     set({ isLoading: true, error: null });
     try {
       // Check if item already exists in cart
@@ -137,7 +137,7 @@ export const useCart = create<CartState>((set, get) => ({
           "/order/add-customer-item",
           {
             customer_id: customerId,
-            product_variant_id: item.id,
+            product_variant_id: item.primary_variant_id,
             item_type: "CART",
             quantity: item.quantity,
             unit_price: item.price,
@@ -145,7 +145,7 @@ export const useCart = create<CartState>((set, get) => ({
           },
           { headers: { Authorization: `Bearer ${token}` } },
         );
-
+        console.log(response);
         if (response.data.success) {
           // Add to local state with dbId
           const newItem = {

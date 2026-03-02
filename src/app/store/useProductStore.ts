@@ -178,7 +178,6 @@ export const useProductStore = create<ProductStore>((set, get) => ({
         limit,
         days,
       });
-
       const payload = response?.data?.data || {};
       const fetched = payload.data || [];
       const pagination = payload.pagination || {};

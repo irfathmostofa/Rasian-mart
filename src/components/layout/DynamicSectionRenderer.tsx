@@ -802,11 +802,10 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
       colors.primary,
     ],
   );
-
   // ==================== Product Section ====================
   const renderProductSection = useCallback(
     (section: Section, badge?: string, badgeIcon?: string) => {
-      const cols = section.columns || 4;
+      const cols = section.columns;
 
       // Get products based on section type
       let prods: Product[] = [];
@@ -845,11 +844,15 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
       // Limit products based on section products_count
       const limit = section.products_count || 8;
       const displayProducts = productsArray.slice(0, limit);
+      const productsWithVariantId = displayProducts.map((product) => ({
+        ...product,
+        primary_variant_id: product.primary_variant_id,
+      }));
 
       if (section.layout === "slider") {
         return (
           <ProductSlider
-            products={displayProducts}
+            products={productsWithVariantId}
             badge={badge}
             badgeIcon={badgeIcon || badgeStyles[badge || ""]?.icon}
             badgeColor={getBadgeColor()}
@@ -861,7 +864,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
 
       return (
         <div className={`grid ${getColumnClass(cols)} gap-4`}>
-          {displayProducts.slice(0, cols).map((product) => (
+          {productsWithVariantId.slice(0, cols).map((product) => (
             <ProductCard
               key={product.id}
               {...product}
