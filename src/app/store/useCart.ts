@@ -118,7 +118,6 @@ export const useCart = create<CartState>((set, get) => ({
       set({ error: "User must be logged in to add to cart" });
       return;
     }
-    console.log(item, "ty");
     set({ isLoading: true, error: null });
     try {
       // Check if item already exists in cart
@@ -145,7 +144,6 @@ export const useCart = create<CartState>((set, get) => ({
           },
           { headers: { Authorization: `Bearer ${token}` } },
         );
-        console.log(response);
         if (response.data.success) {
           // Add to local state with dbId
           const newItem = {

@@ -716,7 +716,7 @@ export default function CheckoutPage() {
               ))}
               <div className="mt-4">
                 <Link
-                  href="/profile"
+                  href="/profile?tab=addresses"
                   className="text-primary hover:underline text-sm flex items-center gap-1"
                 >
                   <span>+</span> Add New Address

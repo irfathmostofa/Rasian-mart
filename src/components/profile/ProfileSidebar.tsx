@@ -1,12 +1,12 @@
 "use client";
-import { User, LogOut, Settings, Heart, Package, MapPin } from "lucide-react";
-import { useState } from "react";
+import { User, LogOut, Heart, Package, MapPin, Star } from "lucide-react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { useUserStore } from "@/app/store/useUserStore";
 
-type TabType = "profile" | "orders" | "wishlist" | "settings" | "addresses";
+type TabType = "profile" | "orders" | "wishlist" | "reviews" | "addresses";
 
 interface Tab {
   id: TabType;
@@ -20,12 +20,11 @@ interface ProfileSidebarProps {
 }
 
 export default function ProfileSidebar({
-  activeTab = "profile",
+  activeTab,
   onTabChange,
 }: ProfileSidebarProps) {
   const router = useRouter();
-  const { clearSession } = useUserStore();
-  const [currentTab, setCurrentTab] = useState<TabType>(activeTab);
+  const { user, clearSession } = useUserStore();
 
   const tabs: Tab[] = [
     { id: "profile", label: "Profile", icon: <User className="w-5 h-5" /> },
@@ -37,15 +36,14 @@ export default function ProfileSidebar({
       icon: <MapPin className="w-5 h-5" />,
     },
     {
-      id: "settings",
-      label: "Settings",
-      icon: <Settings className="w-5 h-5" />,
+      id: "reviews",
+      label: "Reviews",
+      icon: <Star className="w-5 h-5" />,
     },
   ];
 
   const handleTabClick = (tab: TabType) => {
-    setCurrentTab(tab);
-    onTabChange?.(tab);
+    onTabChange(tab);
   };
 
   const handleLogout = () => {
@@ -54,21 +52,44 @@ export default function ProfileSidebar({
   };
 
   return (
-    <div className="flex flex-col gap-4 md:w-1/4">
+    <div className="flex flex-col gap-4">
+      {/* User Info Card */}
+      <Card className="p-4 rounded-xl shadow-sm border border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+            <User className="w-6 h-6 text-indigo-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-900 truncate">
+              {user?.full_name || "User"}
+            </h3>
+            <p className="text-sm text-gray-500 truncate">
+              {user?.email || "user@example.com"}
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* Tabs Menu */}
-      <Card className="p-0 overflow-hidden rounded-xl shadow-sm border border-gray-100">
-        <div className="flex flex-col">
+      <Card className="p-2 overflow-hidden rounded-xl shadow-sm border border-gray-100">
+        <div className="flex flex-col gap-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTabClick(tab.id)}
-              className={`flex items-center gap-3 px-4 py-3 text-left transition-all duration-200 border-l-4 ${
-                currentTab === tab.id
-                  ? "bg-indigo-50 border-l-gray-500 text-gray-600 font-medium"
-                  : "bg-white border-l-transparent text-gray-700 hover:bg-gray-50 hover:text-gray-600"
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all duration-200 ${
+                activeTab === tab.id
+                  ? "bg-indigo-50 text-indigo-700 font-medium"
+                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
               }`}
             >
-              {tab.icon}
+              <span
+                className={
+                  activeTab === tab.id ? "text-indigo-600" : "text-gray-500"
+                }
+              >
+                {tab.icon}
+              </span>
               <span className="text-sm">{tab.label}</span>
             </button>
           ))}
@@ -76,13 +97,14 @@ export default function ProfileSidebar({
       </Card>
 
       {/* Logout Button */}
-      <Card className="p-4 flex flex-col rounded-xl shadow-sm border border-gray-100">
+      <Card className="p-4 rounded-xl shadow-sm border border-gray-100">
         <Button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
           variant="outline"
+          className="w-full flex items-center justify-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
         >
-          <LogOut className="w-5 h-5" /> Logout
+          <LogOut className="w-4 h-4" />
+          <span>Logout</span>
         </Button>
       </Card>
     </div>

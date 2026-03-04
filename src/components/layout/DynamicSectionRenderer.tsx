@@ -488,7 +488,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
     bestSellingLoading,
     fetchBestSellingProducts,
   } = useProductStore();
-
+  console.log(bestSellingProducts, "bestSellingProducts");
   // Theme colors
   const themeColors = (useThemeData("colors") || {}) as Partial<ThemeColors>;
   const colors = useMemo(
