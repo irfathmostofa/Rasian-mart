@@ -432,13 +432,13 @@ export default function ProductReviews() {
                     )}
 
                     {/* Helpful Button */}
-                    <button
+                    {/* <button
                       onClick={() => handleMarkHelpful(review.id)}
                       className="flex items-center gap-2 mt-4 text-sm text-gray-500 hover:text-indigo-600 transition"
                     >
                       <ThumbsUp className="w-4 h-4" />
                       <span>Helpful ({review.helpful_count})</span>
-                    </button>
+                    </button> */}
 
                     {/* Order Info */}
                     <div className="mt-2 text-xs text-gray-400">

@@ -1,7 +1,7 @@
 export const getImageUrl = (
   images?:
     | { id: number; url: string; alt_text: string; is_primary: boolean }[]
-    | null
+    | null,
 ): string => {
   if (!images || images.length === 0) return "";
   const primary = images.find((img) => img.is_primary);
@@ -17,7 +17,7 @@ export const getCategoryName = (
     code: string;
     image: string | null;
     is_primary: boolean;
-  }[]
+  }[],
 ): string => {
   if (!categories || categories.length === 0) return "Uncategorized";
   const primary = categories.find((cat) => cat.is_primary);
@@ -42,7 +42,7 @@ export async function uploadImageToCloudinary(file: File): Promise<string> {
     {
       method: "POST",
       body: formData,
-    }
+    },
   );
 
   if (!res.ok) {
@@ -54,4 +54,18 @@ export async function uploadImageToCloudinary(file: File): Promise<string> {
   const data = await res.json();
   return data.secure_url as string;
 }
+export const formatDate = (date: Date, formatStr: string): string => {
+  const options: Intl.DateTimeFormatOptions = {};
 
+  if (formatStr.includes("PPP")) {
+    options.year = "numeric";
+    options.month = "long";
+    options.day = "numeric";
+  } else if (formatStr.includes("MM/dd/yyyy")) {
+    options.year = "numeric";
+    options.month = "2-digit";
+    options.day = "2-digit";
+  }
+
+  return new Intl.DateTimeFormat("en-US", options).format(date);
+};
