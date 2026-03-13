@@ -1212,7 +1212,7 @@ export default function HeroOne() {
     <section style={{ padding: isDesktop ? "16px 0" : "12px 0" }}>
       <div
         style={{
-          maxWidth: "1280px",
+          maxWidth: "100%",
           margin: "0 auto",
           // padding: isDesktop ? "0 16px" : "0 12px",
         }}
