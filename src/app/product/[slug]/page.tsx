@@ -13,7 +13,6 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import ImageMagnifier from "@/components/ui/ImageMagnifier";
 import api from "@/lib/api";
 import { useProductStore } from "@/app/store/useProductStore";
 import { useToastStore } from "@/app/store/useToastStore";
@@ -22,6 +21,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { useSettings } from "@/app/store/useSettings";
 import { useUserStore } from "@/app/store/useUserStore";
 import { formatDate } from "@/components/helper";
+import { ImageMagnifier } from "@/components/ui/ImageMagnifier";
 
 // Review interface based on your response
 interface Review {
@@ -332,13 +332,14 @@ export default function ProductDetailsPage() {
       <div className="grid md:grid-cols-2 gap-10">
         {/* Product Image Gallery */}
         <div className="space-y-4">
-          <div className="relative w-full h-96 rounded-xl overflow-hidden shadow-md">
+          <div className="relative w-full h-100 rounded-xl overflow-hidden shadow-md">
             <ImageMagnifier
               src={mainImage}
               alt={product.name}
               magnifierHeight={200}
               magnifierWidth={200}
               zoomLevel={2.5}
+              className="aspect-square object-contain block rounded-xl bg-gray-50"
             />
           </div>
 
