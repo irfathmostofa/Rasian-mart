@@ -217,7 +217,7 @@ const CategoryCard = memo(
               className="object-cover group-hover:scale-110 transition-transform duration-700"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-gray-50 to-gray-100">
               <span className="text-5xl opacity-30">📦</span>
             </div>
           )}
@@ -248,7 +248,7 @@ const BrandCard = memo(
   ({ brand, primaryColor }: { brand: Brand; primaryColor: string }) => (
     <Link href={brand.link || "/brands"} className="group block h-full">
       <div className="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-500 p-6 text-center border border-gray-100 h-full flex flex-col justify-center">
-        <div className="relative h-24 w-24 mx-auto mb-4 flex-shrink-0">
+        <div className="relative h-24 w-24 mx-auto mb-4 shrink-0">
           <Image
             src={brand.logo}
             alt={brand.name}
@@ -488,7 +488,6 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
     bestSellingLoading,
     fetchBestSellingProducts,
   } = useProductStore();
-  console.log(bestSellingProducts, "bestSellingProducts");
   // Theme colors
   const themeColors = (useThemeData("colors") || {}) as Partial<ThemeColors>;
   const colors = useMemo(
@@ -864,7 +863,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
 
       return (
         <div className={`grid ${getColumnClass(cols)} gap-4`}>
-          {productsWithVariantId.slice(0, cols).map((product) => (
+          {productsWithVariantId.map((product) => (
             <ProductCard
               key={product.id}
               {...product}
@@ -897,14 +896,14 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
 
     if (banners.length === 0 && section.banner_image) {
       return (
-        <div className="relative rounded-xl overflow-hidden shadow-2xl h-[300px] md:h-[400px] group">
+        <div className="relative rounded-xl overflow-hidden shadow-2xl h-75 md:h-100 group">
           <Image
             src={section.banner_image}
             alt={section.title}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-1000"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex flex-col items-center justify-center text-white p-6">
+          <div className="absolute inset-0 bg-linear-to-r from-black/60 to-black/30 flex flex-col items-center justify-center text-white p-6">
             <h3 className="text-3xl md:text-4xl font-bold mb-2 text-center">
               {section.title}
             </h3>
@@ -928,7 +927,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             viewport={{ once: true }}
-            className={`${getBannerSizeClass(banner.size)} relative rounded-xl overflow-hidden shadow-lg h-[250px] md:h-[300px] group`}
+            className={`${getBannerSizeClass(banner.size)} relative rounded-xl overflow-hidden shadow-lg h-62.5 md:h-75 group`}
           >
             <Image
               src={banner.image}
