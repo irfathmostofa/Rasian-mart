@@ -1,11 +1,10 @@
 // components/sections/DynamicSectionRenderer.tsx
 "use client";
-import React from "react";
-import {
+
+import React, {
   useState,
   useEffect,
   useCallback,
-  useRef,
   useMemo,
   memo,
   type JSX,
@@ -13,21 +12,11 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import {
-  ChevronRight,
-  ChevronLeft,
-  TrendingUp,
-  Clock,
-  Star,
-  Sparkles,
-} from "lucide-react";
+import { ChevronRight, TrendingUp, Clock, Star, Sparkles } from "lucide-react";
 import { useThemeData } from "@/app/store/useThemeData";
-import { useCategoryStore } from "@/app/store/useCatrgoryStore";
-import { useProductStore } from "@/app/store/useProductStore"; // Import the product store
+import { useProductStore } from "@/app/store/useProductStore";
 import { ProductCard } from "@/components/ProductCard";
 import { useSettings } from "@/app/store/useSettings";
-
-// Import shadcn carousel
 import {
   Carousel,
   CarouselContent,
@@ -36,9 +25,10 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
-import api from "@/lib/api";
+import { useCategoryStore } from "@/app/store/useCatrgoryStore";
 
-// ==================== Types ====================
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface ThemeColors {
   primary: string;
   secondary: string;
@@ -77,7 +67,7 @@ interface Brand {
   link: string;
 }
 
-interface Section {
+export interface Section {
   id: string;
   type:
     | "category_grid"
@@ -126,14 +116,8 @@ interface Product {
   total_stock?: string | number;
   rating?: number | null;
   images?:
-    | {
-        id: number;
-        url: string;
-        alt_text: string;
-        is_primary: boolean;
-      }[]
+    | { id: number; url: string; alt_text: string; is_primary: boolean }[]
     | null;
-  type?: "card" | "contact";
 }
 
 interface Category {
@@ -145,8 +129,9 @@ interface Category {
   children?: Category[];
 }
 
-// ==================== Icons Map ====================
-const typeIcons: Record<string, JSX.Element | null> = {
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TYPE_ICONS: Record<string, JSX.Element | null> = {
   best_sellers: <TrendingUp className="w-5 h-5" />,
   recent_products: <Clock className="w-5 h-5" />,
   featured_brands: <Star className="w-5 h-5" />,
@@ -155,7 +140,7 @@ const typeIcons: Record<string, JSX.Element | null> = {
   banner: null,
 };
 
-const badgeStyles: Record<
+const BADGE_STYLES: Record<
   string,
   { icon: string; colorKey: keyof ThemeColors }
 > = {
@@ -166,8 +151,22 @@ const badgeStyles: Record<
   Discount: { icon: "💥", colorKey: "discount_badge" },
 };
 
-// ==================== Utility Functions ====================
-const getColumnClass = (cols: number = 4) => {
+const BANNER_SIZE_CLASS: Record<string, string> = {
+  full: "col-span-12",
+  half: "col-span-12 md:col-span-6",
+  third: "col-span-12 md:col-span-4",
+  quarter: "col-span-12 md:col-span-6 lg:col-span-3",
+};
+
+const TEXT_POSITION_CLASS: Record<string, string> = {
+  left: "items-start text-left",
+  center: "items-center text-center",
+  right: "items-end text-right",
+};
+
+// ─── Layout helpers ───────────────────────────────────────────────────────────
+
+function getColumnClass(cols = 4): string {
   const map: Record<number, string> = {
     1: "grid-cols-1",
     2: "grid-cols-2",
@@ -177,9 +176,9 @@ const getColumnClass = (cols: number = 4) => {
     6: "grid-cols-2 md:grid-cols-3 lg:grid-cols-6",
   };
   return map[cols] || "grid-cols-2 md:grid-cols-4";
-};
+}
 
-const getCarouselItemClass = (cols: number = 4) => {
+function getCarouselItemClass(cols = 4): string {
   const map: Record<number, string> = {
     1: "basis-full",
     2: "basis-1/2",
@@ -189,11 +188,15 @@ const getCarouselItemClass = (cols: number = 4) => {
     6: "basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/6",
   };
   return map[cols] || "basis-1/2 sm:basis-1/3 md:basis-1/4";
-};
+}
 
-// ==================== Memoized Sub-Components ====================
+// Build a stable cache key for featured product fetches
+function featuredKey(categoryIds: number[], limit: number): string {
+  return `feat_${[...categoryIds].sort().join("_")}_l${limit}`;
+}
 
-// Memoized Category Card
+// ─── Pure sub-components ──────────────────────────────────────────────────────
+
 const CategoryCard = memo(
   ({
     category,
@@ -217,22 +220,19 @@ const CategoryCard = memo(
               className="object-cover group-hover:scale-110 transition-transform duration-700"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-gray-50 to-gray-100">
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
               <span className="text-5xl opacity-30">📦</span>
             </div>
           )}
-
           <div
             className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500"
             style={{ backgroundColor: primaryColor }}
           />
         </div>
-
         <div className="p-4 text-center">
           <h3 className="text-sm font-medium group-hover:text-primary transition-colors line-clamp-2">
             {category.name}
           </h3>
-
           <p className="text-xs mt-1 text-gray-400">
             {category?.children?.length || 0} items
           </p>
@@ -243,7 +243,6 @@ const CategoryCard = memo(
 );
 CategoryCard.displayName = "CategoryCard";
 
-// Memoized Brand Card
 const BrandCard = memo(
   ({ brand, primaryColor }: { brand: Brand; primaryColor: string }) => (
     <Link href={brand.link || "/brands"} className="group block h-full">
@@ -271,7 +270,11 @@ const BrandCard = memo(
 );
 BrandCard.displayName = "BrandCard";
 
-// Memoized Product Slider using shadcn Carousel
+// Shared autoplay factory
+function makeAutoplay(delay: number) {
+  return Autoplay({ delay, stopOnInteraction: false, stopOnMouseEnter: true });
+}
+
 const ProductSlider = memo(
   ({
     products,
@@ -288,29 +291,13 @@ const ProductSlider = memo(
     cardStyle: any;
     columns?: number;
   }) => {
-    const autoplayPlugin = useMemo(
-      () =>
-        Autoplay({
-          delay: 3000,
-          stopOnInteraction: false,
-          stopOnMouseEnter: true,
-        }),
-      [],
-    );
-
-    if (products.length === 0) return null;
-
-    const itemClass = getCarouselItemClass(columns);
-
+    const plugin = useMemo(() => makeAutoplay(3000), []);
+    if (!products.length) return null;
     return (
       <div className="relative w-full py-2">
         <Carousel
-          opts={{
-            align: "start",
-            loop: true,
-            dragFree: true,
-          }}
-          plugins={[autoplayPlugin]}
+          opts={{ align: "start", loop: true, dragFree: true }}
+          plugins={[plugin]}
           className="relative"
         >
           <div className="hidden md:flex absolute top-1/2 left-0 -translate-y-1/2 z-10">
@@ -319,13 +306,15 @@ const ProductSlider = memo(
           <div className="hidden md:flex absolute top-1/2 right-0 -translate-y-1/2 z-10">
             <CarouselNext />
           </div>
-
           <CarouselContent className="flex flex-nowrap pb-2">
-            {products.map((product) => (
-              <CarouselItem key={product.id} className={itemClass}>
+            {products.map((p) => (
+              <CarouselItem
+                key={p.id}
+                className={getCarouselItemClass(columns)}
+              >
                 <div className="h-full">
                   <ProductCard
-                    {...product}
+                    {...p}
                     cardStyle={cardStyle}
                     badge={badge}
                     badgeIcon={badgeIcon}
@@ -342,7 +331,6 @@ const ProductSlider = memo(
 );
 ProductSlider.displayName = "ProductSlider";
 
-// Memoized Brand Slider
 const BrandSlider = memo(
   ({
     brands,
@@ -353,29 +341,13 @@ const BrandSlider = memo(
     primaryColor: string;
     columns?: number;
   }) => {
-    const autoplayPlugin = useMemo(
-      () =>
-        Autoplay({
-          delay: 4000,
-          stopOnInteraction: false,
-          stopOnMouseEnter: true,
-        }),
-      [],
-    );
-
-    if (brands.length === 0) return null;
-
-    const itemClass = getCarouselItemClass(columns);
-
+    const plugin = useMemo(() => makeAutoplay(4000), []);
+    if (!brands.length) return null;
     return (
       <div className="relative w-full py-2">
         <Carousel
-          opts={{
-            align: "start",
-            loop: true,
-            dragFree: true,
-          }}
-          plugins={[autoplayPlugin]}
+          opts={{ align: "start", loop: true, dragFree: true }}
+          plugins={[plugin]}
           className="relative"
         >
           <div className="hidden md:flex absolute top-1/2 left-0 -translate-y-1/2 z-10">
@@ -384,12 +356,11 @@ const BrandSlider = memo(
           <div className="hidden md:flex absolute top-1/2 right-0 -translate-y-1/2 z-10">
             <CarouselNext />
           </div>
-
           <CarouselContent className="flex flex-nowrap pb-2">
-            {brands.map((brand, index) => (
-              <CarouselItem key={index} className={itemClass}>
+            {brands.map((b, i) => (
+              <CarouselItem key={i} className={getCarouselItemClass(columns)}>
                 <div className="h-full">
-                  <BrandCard brand={brand} primaryColor={primaryColor} />
+                  <BrandCard brand={b} primaryColor={primaryColor} />
                 </div>
               </CarouselItem>
             ))}
@@ -401,7 +372,6 @@ const BrandSlider = memo(
 );
 BrandSlider.displayName = "BrandSlider";
 
-// Memoized Category Slider
 const CategorySlider = memo(
   ({
     categories,
@@ -412,29 +382,13 @@ const CategorySlider = memo(
     primaryColor: string;
     columns?: number;
   }) => {
-    const autoplayPlugin = useMemo(
-      () =>
-        Autoplay({
-          delay: 4000,
-          stopOnInteraction: false,
-          stopOnMouseEnter: true,
-        }),
-      [],
-    );
-
-    if (categories.length === 0) return null;
-
-    const itemClass = getCarouselItemClass(columns);
-
+    const plugin = useMemo(() => makeAutoplay(4000), []);
+    if (!categories.length) return null;
     return (
       <div className="relative w-full py-2">
         <Carousel
-          opts={{
-            align: "start",
-            loop: true,
-            dragFree: true,
-          }}
-          plugins={[autoplayPlugin]}
+          opts={{ align: "start", loop: true, dragFree: true }}
+          plugins={[plugin]}
           className="relative"
         >
           <div className="hidden md:flex absolute top-1/2 left-0 -translate-y-1/2 z-10">
@@ -443,15 +397,14 @@ const CategorySlider = memo(
           <div className="hidden md:flex absolute top-1/2 right-0 -translate-y-1/2 z-10">
             <CarouselNext />
           </div>
-
           <CarouselContent className="flex flex-nowrap pb-2">
-            {categories.map((category) => (
-              <CarouselItem key={category.id} className={itemClass}>
+            {categories.map((cat) => (
+              <CarouselItem
+                key={cat.id}
+                className={getCarouselItemClass(columns)}
+              >
                 <div className="h-full">
-                  <CategoryCard
-                    category={category}
-                    primaryColor={primaryColor}
-                  />
+                  <CategoryCard category={cat} primaryColor={primaryColor} />
                 </div>
               </CarouselItem>
             ))}
@@ -463,7 +416,54 @@ const CategorySlider = memo(
 );
 CategorySlider.displayName = "CategorySlider";
 
-// ==================== Main Component ====================
+// ─── Skeleton + Empty ─────────────────────────────────────────────────────────
+
+const LoadingSkeleton = memo(
+  ({ count = 4, type = "product" }: { count?: number; type?: string }) => (
+    <div className={`grid ${getColumnClass(count)} gap-2 md:gap-4`}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="animate-pulse">
+          {type === "category" ? (
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="bg-gray-100 aspect-square w-full" />
+              <div className="p-4">
+                <div className="h-4 bg-gray-100 rounded w-3/4 mx-auto" />
+              </div>
+            </div>
+          ) : type === "brand" ? (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full" />
+              <div className="h-4 bg-gray-100 rounded w-20 mx-auto mt-4" />
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="bg-gray-100 aspect-square w-full" />
+              <div className="p-4 space-y-2">
+                <div className="h-4 bg-gray-100 rounded w-3/4" />
+                <div className="h-4 bg-gray-100 rounded w-1/2" />
+                <div className="h-8 bg-gray-100 rounded w-full mt-4" />
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  ),
+);
+LoadingSkeleton.displayName = "LoadingSkeleton";
+
+const EmptyState = memo(
+  ({ message, icon }: { message: string; icon?: string }) => (
+    <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+      <span className="text-4xl mb-3 block opacity-50">{icon || "📦"}</span>
+      <p className="text-gray-500">{message}</p>
+    </div>
+  ),
+);
+EmptyState.displayName = "EmptyState";
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
   const { productCardStyle } = useSettings();
   const {
@@ -471,24 +471,17 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
     fetchCategories,
     loading: categoriesLoading,
   } = useCategoryStore();
-
-  // Use product store
   const {
-    // Regular products
-    products: storeProducts,
-    loading: productsLoading,
-
-    // Recent products
     recentProducts,
     recentLoading,
     fetchRecentProducts,
-
-    // Best selling products
     bestSellingProducts,
     bestSellingLoading,
     fetchBestSellingProducts,
+    featured,
+    fetchFeaturedProducts,
   } = useProductStore();
-  // Theme colors
+
   const themeColors = (useThemeData("colors") || {}) as Partial<ThemeColors>;
   const colors = useMemo(
     () => ({
@@ -506,261 +499,66 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
     [themeColors],
   );
 
-  // State for featured products (from API)
-  const [featuredProducts, setFeaturedProducts] = useState<
-    Record<string, Product[]>
-  >({});
-  const [featuredLoading, setFeaturedLoading] = useState<
-    Record<string, boolean>
-  >({});
-  const [sectionCategories, setSectionCategories] = useState<
-    Record<string, Category[]>
-  >({});
-
-  // Active sections
+  // Only process sections that are active
   const activeSections = useMemo(
     () => sections.filter((s) => s.status),
     [sections],
   );
 
-  // Fetch categories on mount
+  // ── One-shot data fetching ──────────────────────────────────────────────────
+  // Each fetch function internally checks its TTL — safe to call on every mount,
+  // will no-op if data is still fresh.
   useEffect(() => {
-    const hasCategorySections = activeSections.some(
-      (s) => s.type === "category_grid" && s.categoryids?.length,
-    );
-    if (hasCategorySections) fetchCategories();
-  }, [activeSections, fetchCategories]);
+    if (!activeSections.length) return;
 
-  // Filter categories for each section
-  useEffect(() => {
-    if (categories.length > 0) {
-      const newCategories: Record<string, Category[]> = {};
-      activeSections.forEach((section) => {
-        if (section.type === "category_grid" && section.categoryids) {
-          newCategories[section.id] = (categories as Category[]).filter(
-            (cat: Category) => {
-              if (!section.categoryids) return false;
-              return section.categoryids.includes(cat.id);
-            },
-          );
-        }
-      });
-      setSectionCategories(newCategories);
+    const types = new Set(activeSections.map((s) => s.type));
+
+    if (types.has("category_grid")) fetchCategories();
+
+    if (types.has("recent_products")) {
+      const s = activeSections.find((s) => s.type === "recent_products")!;
+      fetchRecentProducts(1, s.products_count || 20, s.days || 30);
     }
+
+    if (types.has("best_sellers")) {
+      const s = activeSections.find((s) => s.type === "best_sellers")!;
+      fetchBestSellingProducts(1, s.products_count || 20);
+    }
+
+    // Featured: one fetch per unique (categoryIds + limit) combination
+    activeSections
+      .filter((s) => s.type === "featured_products" && s.categoryids?.length)
+      .forEach((s) => {
+        const limit = s.products_count || 8;
+        const key = featuredKey(s.categoryids!, limit);
+        fetchFeaturedProducts(key, s.categoryids!, limit);
+      });
+  }, [
+    activeSections,
+    fetchCategories,
+    fetchRecentProducts,
+    fetchBestSellingProducts,
+    fetchFeaturedProducts,
+  ]);
+
+  // ── Derived: categories per section ────────────────────────────────────────
+  // Computed from already-cached store data — no extra state needed
+  const sectionCategories = useMemo(() => {
+    const map: Record<string, Category[]> = {};
+    activeSections.forEach((s) => {
+      if (s.type === "category_grid" && s.categoryids?.length) {
+        map[s.id] = (categories as Category[]).filter((c) =>
+          s.categoryids!.includes(c.id),
+        );
+      }
+    });
+    return map;
   }, [categories, activeSections]);
 
-  // Fetch data for sections using the store
-  useEffect(() => {
-    const fetchSectionProducts = async () => {
-      // Fetch recent products if there are any recent_products sections
-      const hasRecentSections = activeSections.some(
-        (s) => s.type === "recent_products",
-      );
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Section renderers
+  // ─────────────────────────────────────────────────────────────────────────────
 
-      if (hasRecentSections) {
-        // Get the first recent section to use its days value
-        const recentSection = activeSections.find(
-          (s) => s.type === "recent_products",
-        );
-        const days = recentSection?.days || 30;
-        const limit = recentSection?.products_count || 20;
-
-        await fetchRecentProducts(1, limit, days);
-      }
-
-      // Fetch best selling products if there are any best_sellers sections
-      const hasBestSellingSections = activeSections.some(
-        (s) => s.type === "best_sellers",
-      );
-
-      if (hasBestSellingSections) {
-        const bestSellingSection = activeSections.find(
-          (s) => s.type === "best_sellers",
-        );
-        const limit = bestSellingSection?.products_count || 20;
-
-        await fetchBestSellingProducts(1, limit);
-      }
-
-      // Handle featured products (still need API call for category-specific products)
-      const featuredSections = activeSections.filter(
-        (s) => s.type === "featured_products" && s.categoryids?.length,
-      );
-
-      for (const section of featuredSections) {
-        setFeaturedLoading((prev) => ({ ...prev, [section.id]: true }));
-
-        try {
-          // You might want to add this to your store as well if used frequently
-          const response = await api.post(
-            "/product/get-all-products-with-cat",
-            {
-              params: {
-                page: 1,
-                limit: section.products_count || 8,
-                category_ids: section.categoryids,
-                category_match_type: "ANY",
-              },
-            },
-          );
-
-          if (
-            response?.data?.data?.data &&
-            Array.isArray(response.data.data.data)
-          ) {
-            setFeaturedProducts((prev) => ({
-              ...prev,
-              [section.id]: response.data.data.data,
-            }));
-          } else if (
-            response?.data?.data &&
-            Array.isArray(response.data.data)
-          ) {
-            setFeaturedProducts((prev) => ({
-              ...prev,
-              [section.id]: response.data.data,
-            }));
-          } else {
-            setFeaturedProducts((prev) => ({
-              ...prev,
-              [section.id]: [],
-            }));
-          }
-        } catch (error) {
-          console.error(
-            `Error fetching featured section ${section.id}:`,
-            error,
-          );
-          setFeaturedProducts((prev) => ({
-            ...prev,
-            [section.id]: [],
-          }));
-        } finally {
-          setFeaturedLoading((prev) => ({ ...prev, [section.id]: false }));
-        }
-      }
-    };
-
-    if (activeSections.length > 0) {
-      fetchSectionProducts();
-    }
-  }, [activeSections, fetchRecentProducts, fetchBestSellingProducts]);
-
-  // ==================== Loading Skeleton ====================
-  const LoadingSkeleton = useCallback(
-    ({ count = 4, type = "product" }: { count?: number; type?: string }) => (
-      <div className={`grid ${getColumnClass(count)} gap-4`}>
-        {Array.from({ length: count }).map((_, i) => (
-          <div key={i} className="animate-pulse">
-            {type === "category" ? (
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="bg-gray-100 aspect-square w-full" />
-                <div className="p-4">
-                  <div className="h-4 bg-gray-100 rounded w-3/4 mx-auto" />
-                </div>
-              </div>
-            ) : type === "brand" ? (
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full" />
-                <div className="h-4 bg-gray-100 rounded w-20 mx-auto mt-4" />
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="bg-gray-100 aspect-square w-full" />
-                <div className="p-4 space-y-2">
-                  <div className="h-4 bg-gray-100 rounded w-3/4" />
-                  <div className="h-4 bg-gray-100 rounded w-1/2" />
-                  <div className="h-8 bg-gray-100 rounded w-full mt-4" />
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    ),
-    [],
-  );
-
-  // ==================== Empty State ====================
-  const EmptyState = useCallback(
-    ({ message, icon }: { message: string; icon?: string }) => (
-      <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-        <span className="text-4xl mb-3 block opacity-50">{icon || "📦"}</span>
-        <p className="text-gray-500">{message}</p>
-      </div>
-    ),
-    [],
-  );
-
-  // ==================== Section Header ====================
-  const SectionHeader = useCallback(
-    ({ section, showViewAll }: { section: Section; showViewAll?: boolean }) => (
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl" style={{ color: colors.primary }}>
-            {typeIcons[section.type]}
-          </span>
-          <div>
-            <h2
-              className="text-xl md:text-2xl font-bold tracking-tight"
-              style={{ color: colors.heading }}
-            >
-              {section.title}
-            </h2>
-            {section.title_bn && (
-              <p className="text-sm text-gray-500 mt-0.5">{section.title_bn}</p>
-            )}
-          </div>
-        </div>
-
-        {showViewAll &&
-          section.categoryids &&
-          section.categoryids.length > 0 && (
-            <Link
-              href={`/categories?ids=${section.categoryids.join(",")}`}
-              className="group flex items-center gap-1 text-sm font-medium transition-colors hover:gap-2"
-              style={{ color: colors.primary }}
-            >
-              View All
-              <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          )}
-      </div>
-    ),
-    [colors],
-  );
-
-  // ==================== Section Container ====================
-  const SectionContainer = useCallback(
-    ({
-      section,
-      children,
-    }: {
-      section: Section;
-      children: React.ReactNode;
-    }) => {
-      const style = {
-        backgroundColor: section.bg_color || colors.background,
-        color: section.text_color || colors.text,
-      };
-
-      const classes = [
-        section.padding || "p-6",
-        section.margin || "mb-8",
-        section.border_radius || "rounded-lg",
-        "transition-all duration-300",
-      ].join(" ");
-
-      return (
-        <div style={style} className={classes}>
-          {children}
-        </div>
-      );
-    },
-    [colors],
-  );
-
-  // ==================== Category Grid Section ====================
   const renderCategoryGrid = useCallback(
     (section: Section) => {
       const cats = sectionCategories[section.id] || [];
@@ -768,7 +566,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
 
       if (categoriesLoading)
         return <LoadingSkeleton count={cols} type="category" />;
-      if (cats.length === 0)
+      if (!cats.length)
         return <EmptyState message="No categories available" icon="📦" />;
 
       if (section.layout === "slider") {
@@ -780,9 +578,8 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
           />
         );
       }
-
       return (
-        <div className={`grid ${getColumnClass(cols)} gap-4`}>
+        <div className={`grid ${getColumnClass(cols)} gap-2 md:gap-4`}>
           {cats.map((cat) => (
             <CategoryCard
               key={cat.id}
@@ -793,38 +590,38 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
         </div>
       );
     },
-    [
-      sectionCategories,
-      categoriesLoading,
-      LoadingSkeleton,
-      EmptyState,
-      colors.primary,
-    ],
+    [sectionCategories, categoriesLoading, colors.primary],
   );
-  // ==================== Product Section ====================
+
   const renderProductSection = useCallback(
     (section: Section, badge?: string, badgeIcon?: string) => {
-      const cols = section.columns;
+      const cols = section.columns || 4;
+      const limit = section.products_count || 8;
 
-      // Get products based on section type
-      let prods: Product[] = [];
+      let products: Product[] = [];
       let isLoading = false;
 
       if (section.type === "recent_products") {
-        prods = recentProducts;
+        products = recentProducts;
         isLoading = recentLoading;
       } else if (section.type === "best_sellers") {
-        prods = bestSellingProducts;
+        products = bestSellingProducts;
         isLoading = bestSellingLoading;
-      } else if (section.type === "featured_products") {
-        prods = featuredProducts[section.id] || [];
-        isLoading = featuredLoading[section.id] || false;
+      } else if (
+        section.type === "featured_products" &&
+        section.categoryids?.length
+      ) {
+        const key = featuredKey(section.categoryids, limit);
+        const entry = featured[key];
+        products = entry?.products ?? [];
+        isLoading = entry?.loading ?? false;
       }
 
-      const productsArray = Array.isArray(prods) ? prods : [];
+      const display = products.slice(0, limit);
 
-      if (isLoading) return <LoadingSkeleton count={cols} type="product" />;
-      if (productsArray.length === 0)
+      if (isLoading && !display.length)
+        return <LoadingSkeleton count={cols} type="product" />;
+      if (!display.length)
         return (
           <EmptyState
             message={`No ${badge?.toLowerCase() || "products"} available`}
@@ -832,29 +629,23 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
           />
         );
 
-      const getBadgeColor = () => {
+      const badgeColor = (() => {
         if (!badge) return undefined;
-        const style = badgeStyles[badge];
-        if (!style) return colors.primary;
-        const colorKey = style.colorKey;
-        return colors[colorKey as keyof typeof colors] || colors.primary;
-      };
+        const style = BADGE_STYLES[badge];
+        return style
+          ? colors[style.colorKey as keyof typeof colors] || colors.primary
+          : colors.primary;
+      })();
 
-      // Limit products based on section products_count
-      const limit = section.products_count || 8;
-      const displayProducts = productsArray.slice(0, limit);
-      const productsWithVariantId = displayProducts.map((product) => ({
-        ...product,
-        primary_variant_id: product.primary_variant_id,
-      }));
+      const resolvedBadgeIcon = badgeIcon || BADGE_STYLES[badge || ""]?.icon;
 
       if (section.layout === "slider") {
         return (
           <ProductSlider
-            products={productsWithVariantId}
+            products={display}
             badge={badge}
-            badgeIcon={badgeIcon || badgeStyles[badge || ""]?.icon}
-            badgeColor={getBadgeColor()}
+            badgeIcon={resolvedBadgeIcon}
+            badgeColor={badgeColor}
             cardStyle={productCardStyle}
             columns={cols}
           />
@@ -862,15 +653,15 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
       }
 
       return (
-        <div className={`grid ${getColumnClass(cols)} gap-4`}>
-          {productsWithVariantId.map((product) => (
+        <div className={`grid ${getColumnClass(cols)} gap-2 md:gap-4`}>
+          {display.map((p) => (
             <ProductCard
-              key={product.id}
-              {...product}
+              key={p.id}
+              {...p}
               cardStyle={productCardStyle}
               badge={badge}
-              badgeIcon={badgeIcon || badgeStyles[badge || ""]?.icon}
-              badgeColor={getBadgeColor()}
+              badgeIcon={resolvedBadgeIcon}
+              badgeColor={badgeColor}
             />
           ))}
         </div>
@@ -881,20 +672,42 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
       recentLoading,
       bestSellingProducts,
       bestSellingLoading,
-      featuredProducts,
-      featuredLoading,
-      LoadingSkeleton,
-      EmptyState,
+      featured,
       colors,
       productCardStyle,
     ],
   );
 
-  // ==================== Banner Section ====================
+  const renderBrands = useCallback(
+    (section: Section) => {
+      const brands = section.brands || [];
+      const cols = section.columns || 4;
+      if (!brands.length)
+        return <EmptyState message="No brands available" icon="🏢" />;
+      if (section.layout === "slider") {
+        return (
+          <BrandSlider
+            brands={brands}
+            primaryColor={colors.primary}
+            columns={cols}
+          />
+        );
+      }
+      return (
+        <div className={`grid ${getColumnClass(cols)} gap-2 md:gap-4`}>
+          {brands.map((b, i) => (
+            <BrandCard key={i} brand={b} primaryColor={colors.primary} />
+          ))}
+        </div>
+      );
+    },
+    [colors.primary],
+  );
+
   const renderBanner = useCallback((section: Section) => {
     const banners = section.banners || [];
 
-    if (banners.length === 0 && section.banner_image) {
+    if (!banners.length && section.banner_image) {
       return (
         <div className="relative rounded-xl overflow-hidden shadow-2xl h-75 md:h-100 group">
           <Image
@@ -903,7 +716,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-1000"
           />
-          <div className="absolute inset-0 bg-linear-to-r from-black/60 to-black/30 flex flex-col items-center justify-center text-white p-6">
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex flex-col items-center justify-center text-white p-6">
             <h3 className="text-3xl md:text-4xl font-bold mb-2 text-center">
               {section.title}
             </h3>
@@ -919,15 +732,15 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
     }
 
     return (
-      <div className="grid grid-cols-12 gap-4">
-        {banners.map((banner, index) => (
+      <div className="grid grid-cols-12 gap-2 md:gap-4">
+        {banners.map((banner, i) => (
           <motion.div
-            key={index}
+            key={i}
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+            transition={{ delay: i * 0.1 }}
             viewport={{ once: true }}
-            className={`${getBannerSizeClass(banner.size)} relative rounded-xl overflow-hidden shadow-lg h-62.5 md:h-75 group`}
+            className={`${BANNER_SIZE_CLASS[banner.size] || "col-span-12"} relative rounded-xl overflow-hidden shadow-lg h-[250px] md:h-[300px] group`}
           >
             <Image
               src={banner.image}
@@ -935,21 +748,21 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
               fill
               className="object-cover group-hover:scale-110 transition-transform duration-1000"
             />
-
             <div
               className="absolute inset-0 flex flex-col justify-center p-6 md:p-8"
               style={{
                 backgroundColor: `rgba(0,0,0,${banner.overlay_opacity / 100})`,
               }}
             >
-              <div className={getTextPositionClass(banner.text_position)}>
+              <div
+                className={`flex flex-col ${TEXT_POSITION_CLASS[banner.text_position] || "items-center text-center"}`}
+              >
                 <h3
                   className="text-xl md:text-2xl font-bold mb-2 drop-shadow-lg"
                   style={{ color: banner.text_color }}
                 >
                   {banner.title}
                 </h3>
-
                 {banner.subtitle && (
                   <p
                     className="text-sm mb-4 drop-shadow-md"
@@ -958,7 +771,6 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
                     {banner.subtitle}
                   </p>
                 )}
-
                 <Link
                   href={banner.link || "/shop"}
                   className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold hover:opacity-90 transition-all hover:scale-105 text-sm"
@@ -978,74 +790,67 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
     );
   }, []);
 
-  // ==================== Brand Section ====================
-  const renderBrands = useCallback(
-    (section: Section) => {
-      const brands = section.brands || [];
-      const cols = section.columns || 4;
+  // ─────────────────────────────────────────────────────────────────────────────
 
-      if (brands.length === 0)
-        return <EmptyState message="No brands available" icon="🏢" />;
-
-      if (section.layout === "slider") {
-        return (
-          <BrandSlider
-            brands={brands}
-            primaryColor={colors.primary}
-            columns={cols}
-          />
-        );
-      }
-
-      return (
-        <div className={`grid ${getColumnClass(cols)} gap-4`}>
-          {brands.map((brand, index) => (
-            <BrandCard
-              key={index}
-              brand={brand}
-              primaryColor={colors.primary}
-            />
-          ))}
-        </div>
-      );
-    },
-    [EmptyState, colors.primary],
-  );
-
-  // ==================== Banner Size Class Helper ====================
-  const getBannerSizeClass = useCallback((size: string = "full") => {
-    const map: Record<string, string> = {
-      full: "col-span-12",
-      half: "col-span-12 md:col-span-6",
-      third: "col-span-12 md:col-span-4",
-      quarter: "col-span-12 md:col-span-6 lg:col-span-3",
-    };
-    return map[size] || "col-span-12";
-  }, []);
-
-  const getTextPositionClass = useCallback((position: string = "center") => {
-    const map = {
-      left: "items-start text-left",
-      center: "items-center text-center",
-      right: "items-end text-right",
-    };
-    return map[position as keyof typeof map] || map.center;
-  }, []);
-
-  // ==================== Main Render ====================
-  if (activeSections.length === 0) return null;
+  if (!activeSections.length) return null;
 
   return (
     <>
       {activeSections.map((section) => {
-        const showViewAll = ["category_grid", "featured_products"].includes(
-          section.type,
-        );
+        const showViewAll =
+          ["category_grid", "featured_products"].includes(section.type) &&
+          !!section.categoryids?.length;
+
+        const sectionStyle = {
+          backgroundColor: section.bg_color || colors.background,
+          color: section.text_color || colors.text,
+        };
 
         return (
-          <SectionContainer key={section.id} section={section}>
-            <SectionHeader section={section} showViewAll={showViewAll} />
+          <div
+            key={section.id}
+            style={sectionStyle}
+            className={[
+              section.padding,
+              section.margin,
+              !section.bg_color ? "" : section.border_radius || "rounded-lg",
+              "transition-all duration-300",
+            ].join(" ")}
+          >
+            {/* Section header */}
+            <div className="flex items-center justify-between mb-4 md:mb-6">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl" style={{ color: colors.primary }}>
+                  {TYPE_ICONS[section.type]}
+                </span>
+                <div>
+                  <h2
+                    className="text-xl md:text-2xl font-bold tracking-tight"
+                    style={{ color: colors.heading }}
+                  >
+                    {section.title}
+                  </h2>
+                  {section.title_bn && (
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {section.title_bn}
+                    </p>
+                  )}
+                </div>
+              </div>
 
+              {showViewAll && (
+                <Link
+                  href={`/categories?ids=${section.categoryids!.join(",")}`}
+                  className="group flex items-center gap-1 text-sm font-medium transition-colors hover:gap-2"
+                  style={{ color: colors.primary }}
+                >
+                  View All
+                  <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              )}
+            </div>
+
+            {/* Section body */}
             {section.type === "category_grid" && renderCategoryGrid(section)}
             {section.type === "featured_products" &&
               renderProductSection(section)}
@@ -1055,12 +860,11 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
               renderProductSection(section, "Best Seller", "🔥")}
             {section.type === "banner" && renderBanner(section)}
             {section.type === "featured_brands" && renderBrands(section)}
-          </SectionContainer>
+          </div>
         );
       })}
     </>
   );
 }
 
-// Memoize the entire component to prevent unnecessary re-renders
 export default memo(DynamicSectionRenderer);
