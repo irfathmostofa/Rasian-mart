@@ -1,81 +1,41 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+// app/store/useCategoryStore.ts
+"use client";
+import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 
-// Categories change rarely — 10 min in-session, persisted across refreshes
-const CACHE_TTL = 10 * 60 * 1000;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-function isStale(fetchedAt: number | null): boolean {
-  if (!fetchedAt) return true;
-  return Date.now() - fetchedAt > CACHE_TTL;
-}
-
-interface Category {
+export interface Category {
   id: number;
   name: string;
   slug: string;
+  image?: string | null;
   parent_id?: number | null;
   children?: Category[];
 }
 
-interface CategoryState {
-  categories: Category[];
-  loading: boolean;
-  hydrated: boolean;
-  fetchedAt: number | null;
+// ─── Fetcher ──────────────────────────────────────────────────────────────────
 
-  setHydrated: (state: boolean) => void;
-  setCategories: (categories: Category[]) => void;
-  fetchCategories: () => Promise<void>;
-  invalidate: () => void;
+async function fetchCategories(): Promise<Category[]> {
+  const response = await api.get("/product/get-product-cat");
+  return response.data?.data ?? [];
 }
 
-export const useCategoryStore = create<CategoryState>()(
-  persist(
-    (set, get) => ({
-      categories: [],
-      loading: false,
-      hydrated: false,
-      fetchedAt: null,
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
-      setHydrated: (state) => set({ hydrated: state }),
+export function useCategoryStore() {
+  const { data, isLoading, error } = useQuery<Category[]>({
+    queryKey: ["categories"],
+    queryFn: fetchCategories,
+    staleTime: 10 * 60 * 1000, // categories change rarely — 10 min
+  });
 
-      setCategories: (categories) => set({ categories, fetchedAt: Date.now() }),
-
-      fetchCategories: async () => {
-        const { loading, fetchedAt } = get();
-        if (loading) return; // already in-flight
-        if (!isStale(fetchedAt)) return; // data is fresh — skip
-
-        set({ loading: true });
-        try {
-          const response = await api.get("/product/get-product-cat");
-          set({
-            categories: response.data.data,
-            fetchedAt: Date.now(),
-          });
-        } catch (error) {
-          console.error("[useCategoryStore] fetchCategories:", error);
-        } finally {
-          set({ loading: false });
-        }
-      },
-
-      // Force a re-fetch on next call (e.g. after admin updates categories)
-      invalidate: () => set({ fetchedAt: null }),
-    }),
-    {
-      name: "category-storage",
-      storage: createJSONStorage(() => localStorage),
-      // Persist data + timestamp — so even a hard refresh uses cached data
-      // until TTL expires
-      partialize: (state) => ({
-        categories: state.categories,
-        fetchedAt: state.fetchedAt,
-      }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHydrated(true);
-      },
-    },
-  ),
-);
+  return {
+    categories: data ?? [],
+    loading: isLoading,
+    error: error ? "Failed to load categories" : null,
+    // kept for components that call fetchCategories() manually — no-op now,
+    // React Query handles deduplication automatically
+    fetchCategories: () => {},
+  };
+}

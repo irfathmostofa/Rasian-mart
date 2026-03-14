@@ -45,7 +45,7 @@ interface Product {
 }
 
 export default function ProductCarousel() {
-  const { products, loading, error, fetchProducts } = useProductStore();
+  const { products, loading, fetchProducts } = useProductStore();
   const { productCardStyle } = useSettings();
   // Fetch once on mount
   useEffect(() => {
@@ -60,13 +60,6 @@ export default function ProductCarousel() {
     );
   }
 
-  if (error || products.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">{error || "No products available"}</p>
-      </div>
-    );
-  }
 
   return (
     <div className="relative w-full mx-auto py-6">

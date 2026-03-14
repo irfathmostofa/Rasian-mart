@@ -1,401 +1,174 @@
+// app/store/useProductStore.ts
 "use client";
-
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import api from "@/lib/api";
-
-// ─── TTL ──────────────────────────────────────────────────────────────────────
-const PRODUCT_TTL = 5 * 60 * 1000; // general / recent / best-selling
-const FEATURED_TTL = 5 * 60 * 1000; // per-section featured products
-
-function isStale(fetchedAt: number | null, ttl = PRODUCT_TTL): boolean {
-  if (!fetchedAt) return true;
-  return Date.now() - fetchedAt > ttl;
-}
+import { ProductCardProps } from "@/types/ProductCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface Product {
-  id: number;
-  code: string;
-  slug: string;
-  name: string;
-  description: string;
-  cost_price: number;
-  selling_price: number;
-  regular_price: number;
-  status: string;
-  uom_name: string;
-  categories: Array<{
-    id: number;
-    name: string;
-    slug?: string;
-    code: string;
-    image: string | null;
-    is_primary: boolean;
-  }>;
-  images: Array<{
-    id: number;
-    url: string;
-    alt_text: string;
-    is_primary: boolean;
-  }>;
-  total_stock: number;
-  badge: string | null;
-  rating: number | null;
-  review_count: number | null;
-  total_sales: number;
-  primary_variant_id: number;
+
+
+interface PaginatedResponse {
+  data: ProductCardProps[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+    total: number;
+  };
 }
 
-interface FeaturedEntry {
-  products: Product[];
-  fetchedAt: number | null;
-  loading: boolean;
+// ─── Query keys — centralised so invalidation is easy ────────────────────────
+
+export const productKeys = {
+  all: ["products"] as const,
+  list: (page: number, limit: number) =>
+    ["products", "list", page, limit] as const,
+  recent: (page: number, limit: number, days: number) =>
+    ["products", "recent", page, limit, days] as const,
+  bestSelling: (page: number, limit: number) =>
+    ["products", "best-selling", page, limit] as const,
+  featured: (categoryIds: number[], limit: number) =>
+    ["products", "featured", [...categoryIds].sort().join(","), limit] as const,
+};
+
+// ─── Fetchers ─────────────────────────────────────────────────────────────────
+
+async function fetchProducts(
+  page: number,
+  limit: number,
+): Promise<PaginatedResponse> {
+  const res = await api.post("/product/get-all-products", { page, limit });
+  return res.data?.data;
 }
 
-interface ProductStore {
-  // ── General products ────────────────────────────────────────────────────────
-  products: Product[];
-  currentPage: number;
-  totalPages: number;
-  limit: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-  loading: boolean;
-  error: string | null;
-  productsFetchedAt: number | null;
-
-  fetchProducts: (
-    page?: number,
-    limit?: number,
-    append?: boolean,
-  ) => Promise<void>;
-  loadMore: () => Promise<void>;
-  clearProducts: () => void;
-
-  // ── Recent products ─────────────────────────────────────────────────────────
-  recentProducts: Product[];
-  recentCurrentPage: number;
-  recentTotalPages: number;
-  recentHasNextPage: boolean;
-  recentLoading: boolean;
-  recentError: string | null;
-  recentFetchedAt: number | null;
-
-  fetchRecentProducts: (
-    page?: number,
-    limit?: number,
-    days?: number,
-    append?: boolean,
-  ) => Promise<void>;
-  loadMoreRecent: () => Promise<void>;
-  clearRecentProducts: () => void;
-
-  // ── Best-selling products ───────────────────────────────────────────────────
-  bestSellingProducts: Product[];
-  bestSellingCurrentPage: number;
-  bestSellingTotalPages: number;
-  bestSellingHasNextPage: boolean;
-  bestSellingLoading: boolean;
-  bestSellingError: string | null;
-  bestSellingFetchedAt: number | null;
-
-  fetchBestSellingProducts: (
-    page?: number,
-    limit?: number,
-    append?: boolean,
-  ) => Promise<void>;
-  loadMoreBestSelling: () => Promise<void>;
-  clearBestSellingProducts: () => void;
-
-  // ── Featured products (keyed by section/category combo) ────────────────────
-  // key = "feat_<sortedCatIds>_l<limit>", e.g. "feat_2_5_8_l8"
-  featured: Record<string, FeaturedEntry>;
-  fetchFeaturedProducts: (
-    key: string,
-    categoryIds: number[],
-    limit?: number,
-  ) => Promise<void>;
-
-  // ── Global invalidation ─────────────────────────────────────────────────────
-  invalidateAll: () => void;
+async function fetchRecentProducts(
+  page: number,
+  limit: number,
+  days: number,
+): Promise<PaginatedResponse> {
+  const res = await api.post("/product/get-recent-product", {
+    page,
+    limit,
+    days,
+  });
+  return res.data?.data;
 }
 
-// ─── Store ────────────────────────────────────────────────────────────────────
+async function fetchBestSellingProducts(
+  page: number,
+  limit: number,
+): Promise<PaginatedResponse> {
+  const res = await api.post("/product/get-best-selling-product", {
+    page,
+    limit,
+  });
+  return res.data?.data;
+}
 
-export const useProductStore = create<ProductStore>()(
-  persist(
-    (set, get) => ({
-      // ── General ─────────────────────────────────────────────────────────────
-      products: [],
-      currentPage: 1,
-      totalPages: 1,
-      limit: 12,
-      hasNextPage: true,
-      hasPrevPage: false,
-      loading: false,
-      error: null,
-      productsFetchedAt: null,
+async function fetchFeaturedProducts(
+  categoryIds: number[],
+  limit: number,
+): Promise<ProductCardProps[]> {
+  const res = await api.post("/product/get-all-products-with-cat", {
+    page: 1,
+    limit,
+    category_ids: categoryIds,
+    category_match_type: "ANY",
+  });
+  return res.data?.data?.data ?? res.data?.data ?? [];
+}
 
-      fetchProducts: async (page = 1, limit = 12, append = false) => {
-        const { loading, productsFetchedAt } = get();
-        // For paginated appends we always fetch; for page-1 fresh loads use TTL
-        if (loading) return;
-        if (page === 1 && !append && !isStale(productsFetchedAt)) return;
+// ─── Hooks ────────────────────────────────────────────────────────────────────
 
-        try {
-          set({ loading: true, error: null });
-          const response = await api.post("/product/get-all-products", {
-            page,
-            limit,
-          });
-          const payload = response?.data?.data || {};
-          const fetched = payload.data || [];
-          const pagination = payload.pagination || {};
+/** General paginated product list with client-side load-more */
+export function useProductList(initialLimit = 12) {
+  const [page, setPage] = useState(1);
+  const limit = initialLimit;
 
-          set((state) => ({
-            products: append ? [...state.products, ...fetched] : fetched,
-            currentPage: pagination.currentPage || page,
-            totalPages: pagination.totalPages || 1,
-            hasNextPage: pagination.hasNextPage ?? false,
-            hasPrevPage: pagination.hasPrevPage ?? false,
-            productsFetchedAt: append ? state.productsFetchedAt : Date.now(),
-          }));
-        } catch (err) {
-          console.error("[useProductStore] fetchProducts:", err);
-          set({ error: "Failed to load products" });
-        } finally {
-          set({ loading: false });
-        }
-      },
+  const { data, isLoading, error } = useQuery({
+    queryKey: productKeys.list(page, limit),
+    queryFn: () => fetchProducts(page, limit),
+  });
 
-      loadMore: async () => {
-        const { currentPage, hasNextPage, loading, fetchProducts, limit } =
-          get();
-        if (loading || !hasNextPage) return;
-        await fetchProducts(currentPage + 1, limit, true);
-      },
+  return {
+    products: data?.data ?? [],
+    currentPage: data?.pagination.currentPage ?? page,
+    totalPages: data?.pagination.totalPages ?? 1,
+    hasNextPage: data?.pagination.hasNextPage ?? false,
+    hasPrevPage: data?.pagination.hasPrevPage ?? false,
+    loading: isLoading,
+    error: error ? "Failed to load products" : null,
+    loadMore: () => setPage((p) => p + 1),
+  };
+}
 
-      clearProducts: () =>
-        set({
-          products: [],
-          currentPage: 1,
-          hasNextPage: true,
-          productsFetchedAt: null,
-        }),
+/** Recent products — used by DynamicSectionRenderer */
+export function useRecentProducts(limit = 20, days = 30) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: productKeys.recent(1, limit, days),
+    queryFn: () => fetchRecentProducts(1, limit, days),
+    staleTime: 5 * 60 * 1000,
+  });
 
-      // ── Recent ───────────────────────────────────────────────────────────────
-      recentProducts: [],
-      recentCurrentPage: 1,
-      recentTotalPages: 1,
-      recentHasNextPage: true,
-      recentLoading: false,
-      recentError: null,
-      recentFetchedAt: null,
+  return {
+    recentProducts: data?.data ?? [],
+    recentLoading: isLoading,
+    recentError: error ? "Failed to load recent products" : null,
+  };
+}
 
-      fetchRecentProducts: async (
-        page = 1,
-        limit = 20,
-        days = 30,
-        append = false,
-      ) => {
-        const { recentLoading, recentFetchedAt } = get();
-        if (recentLoading) return;
-        if (page === 1 && !append && !isStale(recentFetchedAt)) return;
+/** Best-selling products — used by DynamicSectionRenderer */
+export function useBestSellingProducts(limit = 20) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: productKeys.bestSelling(1, limit),
+    queryFn: () => fetchBestSellingProducts(1, limit),
+    staleTime: 5 * 60 * 1000,
+  });
 
-        try {
-          set({ recentLoading: true, recentError: null });
-          const response = await api.post("/product/get-recent-product", {
-            page,
-            limit,
-            days,
-          });
-          const payload = response?.data?.data || {};
-          const fetched = payload.data || [];
-          const pagination = payload.pagination || {};
+  return {
+    bestSellingProducts: data?.data ?? [],
+    bestSellingLoading: isLoading,
+    bestSellingError: error ? "Failed to load best-selling products" : null,
+  };
+}
 
-          set((state) => ({
-            recentProducts: append
-              ? [...state.recentProducts, ...fetched]
-              : fetched,
-            recentCurrentPage: pagination.currentPage || page,
-            recentTotalPages: pagination.totalPages || 1,
-            recentHasNextPage: pagination.hasNextPage ?? false,
-            recentFetchedAt: append ? state.recentFetchedAt : Date.now(),
-          }));
-        } catch (err) {
-          console.error("[useProductStore] fetchRecentProducts:", err);
-          set({ recentError: "Failed to load recent products" });
-        } finally {
-          set({ recentLoading: false });
-        }
-      },
+/** Featured products per section — used by DynamicSectionRenderer */
+export function useFeaturedProducts(categoryIds: number[], limit = 8) {
+  const enabled = categoryIds.length > 0;
 
-      loadMoreRecent: async () => {
-        const {
-          recentCurrentPage,
-          recentHasNextPage,
-          recentLoading,
-          fetchRecentProducts,
-        } = get();
-        if (recentLoading || !recentHasNextPage) return;
-        await fetchRecentProducts(recentCurrentPage + 1, 20, 30, true);
-      },
+  const { data, isLoading, error } = useQuery({
+    queryKey: productKeys.featured(categoryIds, limit),
+    queryFn: () => fetchFeaturedProducts(categoryIds, limit),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
 
-      clearRecentProducts: () =>
-        set({
-          recentProducts: [],
-          recentCurrentPage: 1,
-          recentHasNextPage: true,
-          recentError: null,
-          recentFetchedAt: null,
-        }),
+  return {
+    products: data ?? [],
+    loading: isLoading && enabled,
+    error: error ? "Failed to load featured products" : null,
+  };
+}
 
-      // ── Best-selling ─────────────────────────────────────────────────────────
-      bestSellingProducts: [],
-      bestSellingCurrentPage: 1,
-      bestSellingTotalPages: 1,
-      bestSellingHasNextPage: true,
-      bestSellingLoading: false,
-      bestSellingError: null,
-      bestSellingFetchedAt: null,
+/**
+ * Backwards-compatible hook used by Header search and other components
+ * that called useProductStore() expecting { products, fetchProducts }
+ */
+export function useProductStore() {
+  const { products, loading, loadMore } = useProductList(20);
+  return {
+    products,
+    loading,
+    fetchProducts: () => {}, // no-op — React Query fetches on mount automatically
+    loadMore,
+  };
+}
 
-      fetchBestSellingProducts: async (
-        page = 1,
-        limit = 20,
-        append = false,
-      ) => {
-        const { bestSellingLoading, bestSellingFetchedAt } = get();
-        if (bestSellingLoading) return;
-        if (page === 1 && !append && !isStale(bestSellingFetchedAt)) return;
-
-        try {
-          set({ bestSellingLoading: true, bestSellingError: null });
-          const response = await api.post("/product/get-best-selling-product", {
-            page,
-            limit,
-          });
-          const payload = response?.data?.data || {};
-          const fetched = payload.data || [];
-          const pagination = payload.pagination || {};
-
-          set((state) => ({
-            bestSellingProducts: append
-              ? [...state.bestSellingProducts, ...fetched]
-              : fetched,
-            bestSellingCurrentPage: pagination.currentPage || page,
-            bestSellingTotalPages: pagination.totalPages || 1,
-            bestSellingHasNextPage: pagination.hasNextPage ?? false,
-            bestSellingFetchedAt: append
-              ? state.bestSellingFetchedAt
-              : Date.now(),
-          }));
-        } catch (err) {
-          console.error("[useProductStore] fetchBestSellingProducts:", err);
-          set({ bestSellingError: "Failed to load best-selling products" });
-        } finally {
-          set({ bestSellingLoading: false });
-        }
-      },
-
-      loadMoreBestSelling: async () => {
-        const {
-          bestSellingCurrentPage,
-          bestSellingHasNextPage,
-          bestSellingLoading,
-          fetchBestSellingProducts,
-        } = get();
-        if (bestSellingLoading || !bestSellingHasNextPage) return;
-        await fetchBestSellingProducts(bestSellingCurrentPage + 1, 20, true);
-      },
-
-      clearBestSellingProducts: () =>
-        set({
-          bestSellingProducts: [],
-          bestSellingCurrentPage: 1,
-          bestSellingHasNextPage: true,
-          bestSellingError: null,
-          bestSellingFetchedAt: null,
-        }),
-
-      // ── Featured ─────────────────────────────────────────────────────────────
-      featured: {},
-
-      fetchFeaturedProducts: async (key, categoryIds, limit = 8) => {
-        const existing = get().featured[key];
-        if (existing?.loading) return;
-        if (existing && !isStale(existing.fetchedAt, FEATURED_TTL)) return;
-
-        // Keep stale products visible while re-fetching (no flash of empty)
-        set((s) => ({
-          featured: {
-            ...s.featured,
-            [key]: {
-              products: existing?.products ?? [],
-              fetchedAt: existing?.fetchedAt ?? null,
-              loading: true,
-            },
-          },
-        }));
-
-        try {
-          const response = await api.post(
-            "/product/get-all-products-with-cat",
-            {
-              page: 1,
-              limit,
-              category_ids: categoryIds,
-              category_match_type: "ANY",
-            },
-          );
-          const data: Product[] =
-            response?.data?.data?.data ?? response?.data?.data ?? [];
-
-          set((s) => ({
-            featured: {
-              ...s.featured,
-              [key]: { products: data, fetchedAt: Date.now(), loading: false },
-            },
-          }));
-        } catch (err) {
-          console.error("[useProductStore] fetchFeaturedProducts:", err);
-          // On error: keep existing products, clear loading
-          set((s) => ({
-            featured: {
-              ...s.featured,
-              [key]: {
-                products: existing?.products ?? [],
-                fetchedAt: existing?.fetchedAt ?? null,
-                loading: false,
-              },
-            },
-          }));
-        }
-      },
-
-      // ── Invalidation ─────────────────────────────────────────────────────────
-      invalidateAll: () =>
-        set({
-          productsFetchedAt: null,
-          recentFetchedAt: null,
-          bestSellingFetchedAt: null,
-          featured: {},
-        }),
-    }),
-    {
-      name: "product-store",
-      storage: createJSONStorage(() => localStorage),
-      // Only persist the data arrays + timestamps, not loading/error flags
-      partialize: (state) => ({
-        products: state.products,
-        productsFetchedAt: state.productsFetchedAt,
-        recentProducts: state.recentProducts,
-        recentFetchedAt: state.recentFetchedAt,
-        bestSellingProducts: state.bestSellingProducts,
-        bestSellingFetchedAt: state.bestSellingFetchedAt,
-        featured: state.featured,
-      }),
-    },
-  ),
-);
+/** Invalidate all product queries (call after admin edits) */
+export function useInvalidateProducts() {
+  const qc = useQueryClient();
+  return () => qc.invalidateQueries({ queryKey: productKeys.all });
+}

@@ -120,8 +120,6 @@ export default function ProductReviews() {
 
     try {
       setLoading(true);
-
-      // Using POST with body parameters as per your API
       const response = await api.post<ApiResponse>(
         `/product/get-customer-reviews`,
         {
@@ -137,7 +135,6 @@ export default function ProductReviews() {
         setPage(response.data.pagination.currentPage);
       }
     } catch (error: any) {
-      console.error("Failed to fetch reviews:", error);
       showToast(
         error?.response?.data?.message || "Failed to load reviews",
         "error",
@@ -150,28 +147,6 @@ export default function ProductReviews() {
   useEffect(() => {
     fetchReviews(1);
   }, [user?.id, filterRating, sortBy]);
-
-  const handleMarkHelpful = async (reviewId: number) => {
-    try {
-      const response = await api.post(`/product/reviews/${reviewId}/helpful`);
-      if (response.data.success) {
-        setReviews(
-          reviews.map((review) =>
-            review.id === reviewId
-              ? { ...review, helpful_count: review.helpful_count + 1 }
-              : review,
-          ),
-        );
-        showToast("Thanks for your feedback!", "success");
-      }
-    } catch (error: any) {
-      console.error("Failed to mark as helpful:", error);
-      showToast(
-        error?.response?.data?.message || "Failed to mark as helpful",
-        "error",
-      );
-    }
-  };
 
   const renderStars = (rating: string | number, size: "sm" | "md" = "md") => {
     const numRating = typeof rating === "string" ? parseFloat(rating) : rating;
@@ -222,7 +197,7 @@ export default function ProductReviews() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl"
+            className="bg-linear-to-br from-blue-50 to-blue-100 p-4 rounded-xl"
           >
             <p className="text-sm text-blue-600 font-medium">Total Reviews</p>
             <p className="text-2xl font-bold text-blue-900">
@@ -234,7 +209,7 @@ export default function ProductReviews() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-xl"
+            className="bg-linear-to-br from-yellow-50 to-yellow-100 p-4 rounded-xl"
           >
             <p className="text-sm text-yellow-600 font-medium">Avg. Rating</p>
             <div className="flex items-center gap-2">
@@ -249,7 +224,7 @@ export default function ProductReviews() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl"
+            className="bg-linear-to-br from-green-50 to-green-100 p-4 rounded-xl"
           >
             <p className="text-sm text-green-600 font-medium">
               Products Reviewed
@@ -263,7 +238,7 @@ export default function ProductReviews() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl"
+            className="bg-linear-to-br from-purple-50 to-purple-100 p-4 rounded-xl"
           >
             <p className="text-sm text-purple-600 font-medium">Last Review</p>
             <p className="text-lg font-bold text-purple-900">
@@ -272,61 +247,6 @@ export default function ProductReviews() {
           </motion.div>
         </div>
       )}
-
-      {/* Filters */}
-      <div className="bg-gray-50 rounded-xl p-4">
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 lg:hidden"
-        >
-          <Filter className="w-4 h-4" />
-          {showFilters ? "Hide Filters" : "Show Filters"}
-        </button>
-
-        <div className={`${showFilters ? "block" : "hidden lg:block"}`}>
-          <div className="flex flex-wrap gap-3 items-center">
-            <select
-              value={sortBy}
-              onChange={(e) => handleSortChange(e.target.value as any)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="highest">Highest Rated</option>
-              <option value="lowest">Lowest Rated</option>
-            </select>
-
-            <div className="flex gap-2">
-              {[5, 4, 3, 2, 1].map((rating) => (
-                <button
-                  key={rating}
-                  onClick={() =>
-                    handleFilterChange(filterRating === rating ? null : rating)
-                  }
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    filterRating === rating
-                      ? "bg-indigo-600 text-white"
-                      : "bg-white border border-gray-200 hover:border-indigo-500"
-                  }`}
-                >
-                  {rating} ★
-                </button>
-              ))}
-            </div>
-
-            {filterRating && (
-              <button
-                onClick={() => handleFilterChange(null)}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-              >
-                <X className="w-4 h-4" />
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Reviews List */}
       {loading ? (
         <div className="flex justify-center py-12">
@@ -359,7 +279,7 @@ export default function ProductReviews() {
                     href={`/product/${review.product_slug}`}
                     className="md:w-24"
                   >
-                    <div className="relative w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
+                    <div className="relative w-24 h-24 bg-linear-to-br from-gray-100 to-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
                       <Package className="w-8 h-8 text-gray-400" />
                     </div>
                   </Link>
@@ -430,15 +350,6 @@ export default function ProductReviews() {
                         ))}
                       </div>
                     )}
-
-                    {/* Helpful Button */}
-                    {/* <button
-                      onClick={() => handleMarkHelpful(review.id)}
-                      className="flex items-center gap-2 mt-4 text-sm text-gray-500 hover:text-indigo-600 transition"
-                    >
-                      <ThumbsUp className="w-4 h-4" />
-                      <span>Helpful ({review.helpful_count})</span>
-                    </button> */}
 
                     {/* Order Info */}
                     <div className="mt-2 text-xs text-gray-400">

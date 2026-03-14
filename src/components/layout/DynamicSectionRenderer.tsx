@@ -1,20 +1,17 @@
 // components/sections/DynamicSectionRenderer.tsx
 "use client";
 
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  memo,
-  type JSX,
-} from "react";
+import React, { useCallback, useMemo, memo, type JSX } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { ChevronRight, TrendingUp, Clock, Star, Sparkles } from "lucide-react";
 import { useThemeData } from "@/app/store/useThemeData";
-import { useProductStore } from "@/app/store/useProductStore";
+import {
+  useRecentProducts,
+  useBestSellingProducts,
+  useFeaturedProducts,
+} from "@/app/store/useProductStore";
 import { ProductCard } from "@/components/ProductCard";
 import { useSettings } from "@/app/store/useSettings";
 import {
@@ -190,11 +187,6 @@ function getCarouselItemClass(cols = 4): string {
   return map[cols] || "basis-1/2 sm:basis-1/3 md:basis-1/4";
 }
 
-// Build a stable cache key for featured product fetches
-function featuredKey(categoryIds: number[], limit: number): string {
-  return `feat_${[...categoryIds].sort().join("_")}_l${limit}`;
-}
-
 // ─── Pure sub-components ──────────────────────────────────────────────────────
 
 const CategoryCard = memo(
@@ -220,7 +212,7 @@ const CategoryCard = memo(
               className="object-cover group-hover:scale-110 transition-transform duration-700"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-gray-50 to-gray-100">
               <span className="text-5xl opacity-30">📦</span>
             </div>
           )}
@@ -464,23 +456,52 @@ EmptyState.displayName = "EmptyState";
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// ─── FeaturedSection — own React Query hook per section ──────────────────────
+// Pulled out so the hook is called unconditionally at component level
+
+function FeaturedSection({
+  section,
+  colors,
+  productCardStyle,
+}: {
+  section: Section;
+  colors: Record<string, string>;
+  productCardStyle: any;
+}) {
+  const limit = section.products_count || 8;
+  const { products, loading } = useFeaturedProducts(
+    section.categoryids ?? [],
+    limit,
+  );
+  const cols = section.columns || 4;
+  const display = products.slice(0, limit);
+
+  if (loading && !display.length)
+    return <LoadingSkeleton count={cols} type="product" />;
+  if (!display.length)
+    return <EmptyState message="No products available" icon="🛍️" />;
+
+  if (section.layout === "slider") {
+    return (
+      <ProductSlider
+        products={display}
+        cardStyle={productCardStyle}
+        columns={cols}
+      />
+    );
+  }
+  return (
+    <div className={`grid ${getColumnClass(cols)} gap-2 md:gap-4`}>
+      {display.map((p) => (
+        <ProductCard key={p.id} {...p} cardStyle={productCardStyle} />
+      ))}
+    </div>
+  );
+}
+
 function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
   const { productCardStyle } = useSettings();
-  const {
-    categories,
-    fetchCategories,
-    loading: categoriesLoading,
-  } = useCategoryStore();
-  const {
-    recentProducts,
-    recentLoading,
-    fetchRecentProducts,
-    bestSellingProducts,
-    bestSellingLoading,
-    fetchBestSellingProducts,
-    featured,
-    fetchFeaturedProducts,
-  } = useProductStore();
+  const { categories, loading: categoriesLoading } = useCategoryStore();
 
   const themeColors = (useThemeData("colors") || {}) as Partial<ThemeColors>;
   const colors = useMemo(
@@ -500,46 +521,30 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
   );
 
   // Only process sections that are active
-  const activeSections = useMemo(
-    () => sections.filter((s) => s.status),
-    [sections],
+  const activeSections = useMemo(() => {
+    if (!sections) return [];
+    // sections may arrive as an object (keyed by index) instead of an array
+    const arr = Array.isArray(sections)
+      ? sections
+      : Object.values(sections as Record<string, Section>);
+    return arr.filter((s) => s?.status);
+  }, [sections]);
+
+  // React Query hooks — each fetches independently, results cached in memory
+  const recentSection = activeSections.find(
+    (s) => s.type === "recent_products",
+  );
+  const bestSellerSection = activeSections.find(
+    (s) => s.type === "best_sellers",
   );
 
-  // ── One-shot data fetching ──────────────────────────────────────────────────
-  // Each fetch function internally checks its TTL — safe to call on every mount,
-  // will no-op if data is still fresh.
-  useEffect(() => {
-    if (!activeSections.length) return;
-
-    const types = new Set(activeSections.map((s) => s.type));
-
-    if (types.has("category_grid")) fetchCategories();
-
-    if (types.has("recent_products")) {
-      const s = activeSections.find((s) => s.type === "recent_products")!;
-      fetchRecentProducts(1, s.products_count || 20, s.days || 30);
-    }
-
-    if (types.has("best_sellers")) {
-      const s = activeSections.find((s) => s.type === "best_sellers")!;
-      fetchBestSellingProducts(1, s.products_count || 20);
-    }
-
-    // Featured: one fetch per unique (categoryIds + limit) combination
-    activeSections
-      .filter((s) => s.type === "featured_products" && s.categoryids?.length)
-      .forEach((s) => {
-        const limit = s.products_count || 8;
-        const key = featuredKey(s.categoryids!, limit);
-        fetchFeaturedProducts(key, s.categoryids!, limit);
-      });
-  }, [
-    activeSections,
-    fetchCategories,
-    fetchRecentProducts,
-    fetchBestSellingProducts,
-    fetchFeaturedProducts,
-  ]);
+  const { recentProducts, recentLoading } = useRecentProducts(
+    recentSection?.products_count || 20,
+    recentSection?.days || 30,
+  );
+  const { bestSellingProducts, bestSellingLoading } = useBestSellingProducts(
+    bestSellerSection?.products_count || 20,
+  );
 
   // ── Derived: categories per section ────────────────────────────────────────
   // Computed from already-cached store data — no extra state needed
@@ -611,10 +616,8 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
         section.type === "featured_products" &&
         section.categoryids?.length
       ) {
-        const key = featuredKey(section.categoryids, limit);
-        const entry = featured[key];
-        products = entry?.products ?? [];
-        isLoading = entry?.loading ?? false;
+        // useFeaturedProducts is called per-section via FeaturedSection wrapper below
+        // This branch is handled by renderFeaturedSection — should not reach here
       }
 
       const display = products.slice(0, limit);
@@ -672,7 +675,6 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
       recentLoading,
       bestSellingProducts,
       bestSellingLoading,
-      featured,
       colors,
       productCardStyle,
     ],
@@ -716,7 +718,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-1000"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30 flex flex-col items-center justify-center text-white p-6">
+          <div className="absolute inset-0 bg-linear-to-r from-black/60 to-black/30 flex flex-col items-center justify-center text-white p-6">
             <h3 className="text-3xl md:text-4xl font-bold mb-2 text-center">
               {section.title}
             </h3>
@@ -811,8 +813,8 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
             key={section.id}
             style={sectionStyle}
             className={[
-              section.padding,
-              section.margin,
+              section.padding || "px-3 py-4 md:px-6 md:py-6",
+              section.margin || "mb-4 md:mb-8",
               !section.bg_color ? "" : section.border_radius || "rounded-lg",
               "transition-all duration-300",
             ].join(" ")}
@@ -852,8 +854,13 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
 
             {/* Section body */}
             {section.type === "category_grid" && renderCategoryGrid(section)}
-            {section.type === "featured_products" &&
-              renderProductSection(section)}
+            {section.type === "featured_products" && (
+              <FeaturedSection
+                section={section}
+                colors={colors}
+                productCardStyle={productCardStyle}
+              />
+            )}
             {section.type === "recent_products" &&
               renderProductSection(section, "Recent", "🆕")}
             {section.type === "best_sellers" &&

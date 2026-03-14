@@ -373,7 +373,7 @@ export default function CategoriesPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto py-6">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
           <span

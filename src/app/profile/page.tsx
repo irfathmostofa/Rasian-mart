@@ -17,22 +17,19 @@ import {
   Star,
   MapPin,
   User,
-  Menu,
-  X,
 } from "lucide-react";
 
 type TabType = "profile" | "orders" | "wishlist" | "reviews" | "addresses";
 
-// Define TAB_CONFIG here
 const TAB_CONFIG = {
   profile: {
-    label: "Profile Info",
+    label: "Profile",
     icon: User,
     component: ProfileInfo,
     description: "Manage your personal information",
   },
   orders: {
-    label: "My Orders",
+    label: "Orders",
     icon: ShoppingBag,
     component: ProfileOrders,
     description: "Track and manage your orders",
@@ -44,7 +41,7 @@ const TAB_CONFIG = {
     description: "Your saved items",
   },
   reviews: {
-    label: "My Reviews",
+    label: "Reviews",
     icon: Star,
     component: ProductReviews,
     description: "Reviews you've written",
@@ -57,183 +54,139 @@ const TAB_CONFIG = {
   },
 } as const;
 
+const TABS = Object.entries(TAB_CONFIG) as [
+  TabType,
+  (typeof TAB_CONFIG)[TabType],
+][];
+
 export default function UserProfile() {
   useRequireAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Get tab from URL or default to "profile"
   const [activeTab, setActiveTab] = useState<TabType>(() => {
-    const tabFromUrl = searchParams.get("tab") as TabType;
-    return tabFromUrl && tabFromUrl in TAB_CONFIG ? tabFromUrl : "profile";
+    const t = searchParams.get("tab") as TabType;
+    return t && t in TAB_CONFIG ? t : "profile";
   });
 
-  // Update URL when tab changes
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
-    setIsMobileMenuOpen(false);
     const params = new URLSearchParams(searchParams.toString());
     params.set("tab", tab);
     router.push(`/profile?${params.toString()}`, { scroll: false });
   };
 
-  // Sync tab state with URL params
   useEffect(() => {
-    const tabFromUrl = searchParams.get("tab") as TabType;
-    if (tabFromUrl && tabFromUrl !== activeTab && tabFromUrl in TAB_CONFIG) {
-      setActiveTab(tabFromUrl);
-    }
+    const t = searchParams.get("tab") as TabType;
+    if (t && t !== activeTab && t in TAB_CONFIG) setActiveTab(t);
   }, [searchParams]);
 
-  // Close mobile menu on escape key
+  // Scroll active tab pill into view on mobile
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsMobileMenuOpen(false);
-      }
-    };
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, []);
-
-  // Prevent body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isMobileMenuOpen]);
-
-  // if (isLoading) {
-  //   return (
-  //     <div className="min-h-screen flex items-center justify-center">
-  //       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
-  //     </div>
-  //   );
-  // }
+    const el = document.getElementById(`tab-pill-${activeTab}`);
+    el?.scrollIntoView({
+      inline: "center",
+      behavior: "smooth",
+      block: "nearest",
+    });
+  }, [activeTab]);
 
   const ActiveComponent = TAB_CONFIG[activeTab].component;
+  const ActiveIcon = TAB_CONFIG[activeTab].icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Breadcrumb Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-sm">
-              <Home className="w-4 h-4 text-gray-400" />
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-600">Profile</span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-              <span className="font-medium text-indigo-600">
-                {TAB_CONFIG[activeTab].label}
-              </span>
-            </div>
-
-            {/* Mobile menu toggle */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
-              aria-label="Toggle menu"
-            >
-              {isMobileMenuOpen ? (
-                <X className="w-5 h-5 text-gray-600" />
-              ) : (
-                <Menu className="w-5 h-5 text-gray-600" />
-              )}
-            </button>
+    <div className="min-h-screen bg-gray-50">
+      {/* ── Breadcrumb (desktop only) ──────────────────────────────────────── */}
+      <div className="hidden lg:block bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-3">
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Home className="w-3.5 h-3.5" />
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span>Profile</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+            <span className="font-medium text-primary">
+              {TAB_CONFIG[activeTab].label}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar - Desktop */}
-          <div className="hidden lg:block lg:w-80">
+      {/* ── Mobile: sticky scrollable tab bar ─────────────────────────────── */}
+      <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+        <div
+          className="flex overflow-x-auto gap-1 px-3 py-2"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {TABS.map(([key, cfg]) => {
+            const Icon = cfg.icon;
+            const isActive = activeTab === key;
+            return (
+              <button
+                key={key}
+                id={`tab-pill-${key}`}
+                onClick={() => handleTabChange(key)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all duration-200 ${
+                  isActive
+                    ? "bg-primary text-white shadow-sm shadow-primary/30 scale-[1.03]"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {cfg.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Page layout ────────────────────────────────────────────────────── */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 lg:py-8">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+          {/* Sidebar — desktop only */}
+          <aside className="hidden lg:block lg:w-72 xl:w-80 shrink-0">
             <div className="sticky top-20">
               <ProfileSidebar
                 activeTab={activeTab}
                 onTabChange={handleTabChange}
               />
             </div>
-          </div>
+          </aside>
 
-          {/* Mobile Menu Overlay */}
-          <AnimatePresence>
-            {isMobileMenuOpen && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-                />
-                <motion.div
-                  initial={{ x: "-100%" }}
-                  animate={{ x: 0 }}
-                  exit={{ x: "-100%" }}
-                  transition={{ type: "tween", duration: 0.3 }}
-                  className="fixed top-0 left-0 bottom-0 w-80 bg-white z-50 lg:hidden overflow-y-auto"
-                >
-                  <div className="p-4">
-                    <div className="flex justify-end mb-4">
-                      <button
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="p-2 rounded-lg hover:bg-gray-100"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+          {/* Content area */}
+          <main className="flex-1 min-w-0">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2 }}
+              >
+                {/* Content card */}
+                <div className="bg-white rounded-xl lg:rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                  {/* Card header */}
+                  <div className="flex items-center gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50/60">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <ActiveIcon className="w-4 h-4 text-primary" />
                     </div>
-                    <ProfileSidebar
-                      activeTab={activeTab}
-                      onTabChange={handleTabChange}
-                    />
+                    <div className="min-w-0">
+                      <h1 className="text-base sm:text-lg font-semibold text-gray-900 leading-tight">
+                        {TAB_CONFIG[activeTab].label}
+                      </h1>
+                      <p className="text-xs sm:text-sm text-gray-500 truncate hidden sm:block">
+                        {TAB_CONFIG[activeTab].description}
+                      </p>
+                    </div>
                   </div>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
 
-          {/* Main Content Area */}
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex-1"
-          >
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              {/* Tab Header - Desktop */}
-              <div className="hidden lg:block border-b border-gray-200 bg-gray-50/50 px-6 py-4">
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const Icon = TAB_CONFIG[activeTab].icon;
-                    return <Icon className="w-6 h-6 text-indigo-600" />;
-                  })()}
-                  <div>
-                    <h1 className="text-xl font-semibold text-gray-900">
-                      {TAB_CONFIG[activeTab].label}
-                    </h1>
-                    <p className="text-sm text-gray-500">
-                      {TAB_CONFIG[activeTab].description}
-                    </p>
+                  {/* Content */}
+                  <div className="p-3 sm:p-5 lg:p-6">
+                    <ActiveComponent />
                   </div>
                 </div>
-              </div>
-
-              {/* Content */}
-              <div className="p-4 sm:p-6">
-                <ActiveComponent />
-              </div>
-            </div>
-          </motion.div>
+              </motion.div>
+            </AnimatePresence>
+          </main>
         </div>
       </div>
     </div>

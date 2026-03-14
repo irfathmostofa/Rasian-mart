@@ -121,7 +121,7 @@ export default function AddressManager() {
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="flex items-center gap-2 bg-primary hover:bg-primary/90">
-                <Plus className="w-4 h-4" /> Add Address
+                <Plus className="w-4 h-4" /> Add
               </Button>
             </DialogTrigger>
 
