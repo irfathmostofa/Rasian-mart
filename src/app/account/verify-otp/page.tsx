@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+
+import { useState, useEffect, useRef, Suspense } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,9 +13,41 @@ import {
   ArrowLeft,
   RefreshCw,
 } from "lucide-react";
-import api from "@/lib/api"; // ✅ centralized API import
+import api from "@/lib/api";
 
-export default function OTPVerifyPage() {
+// Loading component
+function OTPVerifyLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+          <div className="bg-primary/90 text-white text-center py-6">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-white/20 animate-pulse" />
+            </div>
+            <div className="h-8 w-48 bg-white/20 rounded-lg mx-auto animate-pulse" />
+            <div className="h-4 w-64 bg-white/20 rounded-lg mx-auto mt-2 animate-pulse" />
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="flex gap-2 justify-center">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-12 h-12 bg-gray-200 rounded-lg animate-pulse"
+                />
+              ))}
+            </div>
+            <div className="h-10 bg-gray-200 rounded-lg animate-pulse" />
+            <div className="h-10 bg-gray-200 rounded-lg animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main OTP verification form component
+function OTPVerifyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
@@ -25,17 +58,29 @@ export default function OTPVerifyPage() {
   const [canResend, setCanResend] = useState(false);
   const [email, setEmail] = useState("");
   const [verificationType, setVerificationType] = useState<"signup" | "forgot">(
-    "signup"
+    "signup",
   );
+  const [isClient, setIsClient] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Handle client-side mounting
   useEffect(() => {
-    const emailParam = searchParams.get("email");
-    const typeParam = searchParams.get("type");
-    setEmail(emailParam || "");
-    setVerificationType(typeParam === "forgot" ? "forgot" : "signup");
-    inputRefs.current[0]?.focus();
-  }, [searchParams]);
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      const emailParam = searchParams.get("email");
+      const typeParam = searchParams.get("type");
+      setEmail(emailParam || "");
+      setVerificationType(typeParam === "forgot" ? "forgot" : "signup");
+
+      // Focus first input after params are loaded
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
+    }
+  }, [searchParams, isClient]);
 
   useEffect(() => {
     if (timer > 0 && !success) {
@@ -43,6 +88,13 @@ export default function OTPVerifyPage() {
       return () => clearInterval(interval);
     } else if (timer === 0) setCanResend(true);
   }, [timer, success]);
+
+  // Redirect if no email on client side
+  useEffect(() => {
+    if (isClient && !email) {
+      router.push("/account/login");
+    }
+  }, [email, router, isClient]);
 
   const handleChange = (index: number, value: string) => {
     if (value && !/^\d$/.test(value)) return;
@@ -55,7 +107,7 @@ export default function OTPVerifyPage() {
 
   const handleKeyDown = (
     index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
+    e: React.KeyboardEvent<HTMLInputElement>,
   ) => {
     if (e.key === "Backspace" && !otp[index] && index > 0)
       inputRefs.current[index - 1]?.focus();
@@ -93,7 +145,9 @@ export default function OTPVerifyPage() {
 
       setTimeout(async () => {
         if (verificationType === "forgot") {
-          router.push(`/account/reset-password?email=${email}`);
+          router.push(
+            `/account/reset-password?email=${encodeURIComponent(email)}`,
+          );
         } else {
           // Get pending user data from sessionStorage
           const pendingUserRaw = sessionStorage.getItem("pendingUser");
@@ -133,7 +187,7 @@ export default function OTPVerifyPage() {
 
       const tempSuccess = document.createElement("div");
       tempSuccess.className =
-        "fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50";
+        "fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-2 duration-300";
       tempSuccess.textContent = "OTP resent successfully!";
       document.body.appendChild(tempSuccess);
       setTimeout(() => tempSuccess.remove(), 3000);
@@ -149,15 +203,31 @@ export default function OTPVerifyPage() {
   };
 
   const maskEmail = (email: string) => {
+    if (!email || !email.includes("@")) return email;
     const [localPart, domain] = email.split("@");
     if (!localPart || !domain) return email;
+
+    if (localPart.length <= 2) {
+      const maskedLocal = localPart[0] + "*".repeat(localPart.length - 1);
+      return `${maskedLocal}@${domain}`;
+    }
+
     const maskedLocal = localPart[0] + "***" + localPart[localPart.length - 1];
     return `${maskedLocal}@${domain}`;
   };
 
+  // Don't render anything until client-side hydration is complete
+  if (!isClient) {
+    return <OTPVerifyLoading />;
+  }
+
+  // Don't render form while redirecting
+  if (!email) {
+    return null;
+  }
+
   return (
-    <div className="flex items-center justify-center py-6">
-      {" "}
+    <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50 py-6">
       <motion.div
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -245,7 +315,7 @@ export default function OTPVerifyPage() {
 
                 <div className="text-center">
                   <p className="text-sm text-gray-600 mb-2">
-                    Didn’t receive the code?
+                    Didn't receive the code?
                   </p>
                   <Button
                     variant="ghost"
@@ -291,5 +361,14 @@ export default function OTPVerifyPage() {
         </Card>
       </motion.div>
     </div>
+  );
+}
+
+// Main page component with Suspense
+export default function OTPVerifyPage() {
+  return (
+    <Suspense fallback={<OTPVerifyLoading />}>
+      <OTPVerifyForm />
+    </Suspense>
   );
 }

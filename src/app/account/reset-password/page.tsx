@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, Suspense } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,10 +15,36 @@ interface FormErrors {
   confirmPassword?: string;
 }
 
-export default function ResetPasswordPage() {
+// Loading component
+function ResetPasswordLoading() {
+  return (
+    <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+          <div className="bg-primary/90 text-white text-center py-6">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-white/20 animate-pulse" />
+            </div>
+            <div className="h-8 w-48 bg-white/20 rounded-lg mx-auto animate-pulse" />
+            <div className="h-4 w-64 bg-white/20 rounded-lg mx-auto mt-2 animate-pulse" />
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="h-20 bg-gray-100 rounded-lg animate-pulse" />
+            <div className="h-20 bg-gray-100 rounded-lg animate-pulse" />
+            <div className="h-10 bg-gray-100 rounded-lg animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main component that uses useSearchParams
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get("email") || ""; // get email from query
+  const email = searchParams.get("email") || "";
+
   const [formData, setFormData] = useState({
     password: "",
     confirmPassword: "",
@@ -29,6 +56,19 @@ export default function ResetPasswordPage() {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [isClient, setIsClient] = useState(false);
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Redirect if no email is present
+  useEffect(() => {
+    if (isClient && !email) {
+      router.push("/account/forgot-password");
+    }
+  }, [email, router, isClient]);
 
   // Password strength calculation
   useEffect(() => {
@@ -44,17 +84,20 @@ export default function ResetPasswordPage() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!formData.password) newErrors.password = "Password is required";
-    else if (formData.password.length < 8)
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 8) {
       newErrors.password = "Password must be at least 8 characters";
-    else if (!/(?=.*[a-z])(?=.*[A-Z])/.test(formData.password))
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])/.test(formData.password)) {
       newErrors.password =
         "Password must contain uppercase and lowercase letters";
-    else if (!/(?=.*\d)/.test(formData.password))
+    } else if (!/(?=.*\d)/.test(formData.password)) {
       newErrors.password = "Password must contain at least one number";
+    }
 
-    if (formData.password !== formData.confirmPassword)
+    if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -83,8 +126,7 @@ export default function ResetPasswordPage() {
 
       if (response?.data?.success) {
         setSuccess(true);
-
-        // Redirect to login after 2s
+        // Redirect to login after 2 seconds
         setTimeout(() => {
           router.push("/account/login");
         }, 2000);
@@ -127,6 +169,16 @@ export default function ResetPasswordPage() {
     },
   ];
 
+  // Don't render anything until client-side hydration is complete
+  if (!isClient) {
+    return <ResetPasswordLoading />;
+  }
+
+  // Don't render form while redirecting
+  if (!email) {
+    return null;
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen px-4 bg-gray-50 py-6">
       <motion.div
@@ -150,7 +202,7 @@ export default function ResetPasswordPage() {
             <p className="text-sm text-white/80 mt-2">
               {success
                 ? "Your password has been changed successfully"
-                : "Create a strong and secure password"}
+                : `Creating new password for ${email}`}
             </p>
           </CardHeader>
 
@@ -357,5 +409,14 @@ export default function ResetPasswordPage() {
         </Card>
       </motion.div>
     </div>
+  );
+}
+
+// Main page component with Suspense
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordLoading />}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }

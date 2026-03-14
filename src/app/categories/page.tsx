@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Loader2,
@@ -59,6 +59,54 @@ const DEFAULT_SORT_OPTIONS = [
   { value: "popular", label: "Most Popular" },
   { value: "rating", label: "Top Rated" },
 ];
+
+// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+
+function CategoriesPageSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto py-6">
+        {/* Breadcrumb skeleton */}
+        <div className="flex items-center gap-1.5 mb-4">
+          <div className="h-4 w-12 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+        </div>
+
+        {/* Header skeleton */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+          <div>
+            <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2" />
+            <div className="h-4 w-64 bg-gray-200 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-32 bg-gray-200 rounded-lg animate-pulse" />
+        </div>
+
+        {/* Category strip skeleton */}
+        <div className="flex gap-2.5 overflow-hidden mb-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="shrink-0 h-9 w-24 rounded-full bg-gray-200 animate-pulse"
+            />
+          ))}
+        </div>
+
+        {/* Products grid skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="border rounded-lg p-4 animate-pulse">
+              <div className="bg-gray-200 h-52 rounded-lg mb-4" />
+              <div className="h-4 bg-gray-200 rounded mb-2" />
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
+              <div className="h-6 bg-gray-200 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Category Filter Strip ────────────────────────────────────────────────────
 
@@ -209,9 +257,9 @@ function CategoryFilterStrip({
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Categories Content ──────────────────────────────────────────────────
 
-export default function CategoriesPage() {
+function CategoriesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { productCardStyle } = useSettings();
@@ -220,6 +268,8 @@ export default function CategoriesPage() {
     fetchCategories,
     loading: categoriesLoading,
   } = useCategoryStore();
+
+  const [isClient, setIsClient] = useState(false);
 
   // Parse ?ids=2,1,3,4 from URL
   const categoryIds: number[] = (searchParams.get("ids") ?? "")
@@ -240,10 +290,15 @@ export default function CategoriesPage() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Handle client-side mounting
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Fetch categories from store
   useEffect(() => {
     if (!categories.length) fetchCategories();
-  }, []);
+  }, [categories.length, fetchCategories]);
 
   // The ids to actually request (single or all)
   const effectiveIds = activeFilterId !== null ? [activeFilterId] : categoryIds;
@@ -306,19 +361,19 @@ export default function CategoriesPage() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loading, sortBy, activeFilterId, categoryIds.join(",")],
+    [sortBy, activeFilterId, categoryIds.join(",")],
   );
 
   // Reset + refetch when ids, active filter, or sort changes
   useEffect(() => {
-    if (categoryIds.length) {
+    if (categoryIds.length && isClient) {
       setProducts([]);
       setPage(1);
       setHasMore(true);
       fetchProducts(1, true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilterId, sortBy, searchParams.get("ids")]);
+  }, [activeFilterId, sortBy, searchParams.get("ids"), isClient]);
 
   const handleSortChange = (value: string) => {
     setSortBy(value);
@@ -339,19 +394,10 @@ export default function CategoriesPage() {
         ? `${selectedCats[0].name} & more`
         : "Products";
 
-  // ── Skeleton ───────────────────────────────────────────────────────────────
-  const renderSkeleton = () => (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="border rounded-lg p-4 animate-pulse">
-          <div className="bg-gray-200 h-52 rounded-lg mb-4" />
-          <div className="h-4 bg-gray-200 rounded mb-2" />
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
-          <div className="h-6 bg-gray-200 rounded w-1/2" />
-        </div>
-      ))}
-    </div>
-  );
+  // Don't render anything until client-side hydration is complete
+  if (!isClient) {
+    return <CategoriesPageSkeleton />;
+  }
 
   // ── Guard: no IDs in URL ───────────────────────────────────────────────────
   if (!categoryIds.length) {
@@ -479,7 +525,16 @@ export default function CategoriesPage() {
 
         {/* Products */}
         {initialLoading ? (
-          renderSkeleton()
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="border rounded-lg p-4 animate-pulse">
+                <div className="bg-gray-200 h-52 rounded-lg mb-4" />
+                <div className="h-4 bg-gray-200 rounded mb-2" />
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-3" />
+                <div className="h-6 bg-gray-200 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
         ) : error && products.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <svg
@@ -588,5 +643,15 @@ export default function CategoriesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Main Page with Suspense ──────────────────────────────────────────────────
+
+export default function CategoriesPage() {
+  return (
+    <Suspense fallback={<CategoriesPageSkeleton />}>
+      <CategoriesContent />
+    </Suspense>
   );
 }

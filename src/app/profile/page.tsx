@@ -1,9 +1,10 @@
 "use client";
+
+import { Suspense, useState, useEffect } from "react";
 import ProfileSidebar from "@/components/profile/ProfileSidebar";
 import ProfileInfo from "@/components/profile/ProfileInfo";
 import AddressManager from "@/components/profile/AddressManager";
 import { useRequireAuth } from "@/lib/useRequireAuth";
-import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProfileOrders from "@/components/profile/ProfileOrders";
 import Wishlist from "@/components/profile/WishList";
@@ -17,6 +18,7 @@ import {
   Star,
   MapPin,
   User,
+  Loader2,
 } from "lucide-react";
 
 type TabType = "profile" | "orders" | "wishlist" | "reviews" | "addresses";
@@ -59,15 +61,95 @@ const TABS = Object.entries(TAB_CONFIG) as [
   (typeof TAB_CONFIG)[TabType],
 ][];
 
-export default function UserProfile() {
+// Loading skeleton component
+function ProfileSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Breadcrumb skeleton */}
+      <div className="hidden lg:block bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3.5 h-3.5 bg-gray-200 rounded animate-pulse" />
+            <div className="w-3.5 h-3.5 bg-gray-200 rounded animate-pulse" />
+            <div className="w-12 h-4 bg-gray-200 rounded animate-pulse" />
+            <div className="w-3.5 h-3.5 bg-gray-200 rounded animate-pulse" />
+            <div className="w-16 h-4 bg-gray-200 rounded animate-pulse" />
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile tab bar skeleton */}
+      <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
+        <div className="flex gap-1 px-3 py-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-8 w-16 bg-gray-200 rounded-full animate-pulse shrink-0"
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Page layout skeleton */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 lg:py-8">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+          {/* Sidebar skeleton */}
+          <aside className="hidden lg:block lg:w-72 xl:w-80 shrink-0">
+            <div className="sticky top-20">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3">
+                    <div className="w-5 h-5 bg-gray-200 rounded animate-pulse" />
+                    <div className="flex-1 h-5 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+
+          {/* Content skeleton */}
+          <main className="flex-1 min-w-0">
+            <div className="bg-white rounded-xl lg:rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-b border-gray-100 bg-gray-50/60">
+                <div className="w-8 h-8 rounded-lg bg-gray-200 animate-pulse" />
+                <div className="flex-1">
+                  <div className="h-5 w-24 bg-gray-200 rounded animate-pulse mb-1" />
+                  <div className="h-4 w-48 bg-gray-200 rounded animate-pulse hidden sm:block" />
+                </div>
+              </div>
+              <div className="p-3 sm:p-5 lg:p-6 space-y-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-12 bg-gray-100 rounded-lg animate-pulse"
+                  />
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main profile content component that uses useSearchParams
+function ProfileContent() {
   useRequireAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<TabType>(() => {
+  const [activeTab, setActiveTab] = useState<TabType>("profile");
+
+  // Handle client-side mounting and initial tab setup
+  useEffect(() => {
+    setIsClient(true);
     const t = searchParams.get("tab") as TabType;
-    return t && t in TAB_CONFIG ? t : "profile";
-  });
+    if (t && t in TAB_CONFIG) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -76,20 +158,30 @@ export default function UserProfile() {
     router.push(`/profile?${params.toString()}`, { scroll: false });
   };
 
+  // Sync tab with URL params
   useEffect(() => {
-    const t = searchParams.get("tab") as TabType;
-    if (t && t !== activeTab && t in TAB_CONFIG) setActiveTab(t);
-  }, [searchParams]);
+    if (isClient) {
+      const t = searchParams.get("tab") as TabType;
+      if (t && t !== activeTab && t in TAB_CONFIG) setActiveTab(t);
+    }
+  }, [searchParams, isClient, activeTab]);
 
   // Scroll active tab pill into view on mobile
   useEffect(() => {
-    const el = document.getElementById(`tab-pill-${activeTab}`);
-    el?.scrollIntoView({
-      inline: "center",
-      behavior: "smooth",
-      block: "nearest",
-    });
-  }, [activeTab]);
+    if (isClient) {
+      const el = document.getElementById(`tab-pill-${activeTab}`);
+      el?.scrollIntoView({
+        inline: "center",
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [activeTab, isClient]);
+
+  // Don't render anything until client-side hydration is complete
+  if (!isClient) {
+    return <ProfileSkeleton />;
+  }
 
   const ActiveComponent = TAB_CONFIG[activeTab].component;
   const ActiveIcon = TAB_CONFIG[activeTab].icon;
@@ -190,5 +282,14 @@ export default function UserProfile() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Main page component with Suspense
+export default function UserProfile() {
+  return (
+    <Suspense fallback={<ProfileSkeleton />}>
+      <ProfileContent />
+    </Suspense>
   );
 }
