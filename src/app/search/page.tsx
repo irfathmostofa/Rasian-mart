@@ -1,7 +1,7 @@
 // app/search/page.tsx
 "use client";
 
-import {  useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import {
   Filter,
@@ -16,7 +16,6 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import api from "@/lib/api";
-import { useSettings } from "../store/useSettings";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductCardProps } from "@/types/ProductCard";
 import { useCategoryStore } from "../store/useCatrgoryStore";
@@ -252,7 +251,6 @@ function SearchContent() {
   const router = useRouter();
   const query = params.get("q") || "";
   const categoryId = params.get("category_id");
-  const { productCardStyle } = useSettings();
   const { categories } = useCategoryStore();
   const [isClient, setIsClient] = useState(false);
 
@@ -979,11 +977,7 @@ function SearchContent() {
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                   {products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      {...product}
-                      cardStyle={productCardStyle}
-                    />
+                    <ProductCard key={product.id} {...product} />
                   ))}
                 </div>
 

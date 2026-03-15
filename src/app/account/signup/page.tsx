@@ -103,46 +103,51 @@ export default function SignUpPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!validateForm()) return;
+ // In SignUpPage, update the handleSubmit function
+const handleSubmit = async () => {
+  if (!validateForm()) return;
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    try {
-      const userData = {
-        full_name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        password_hash: formData.password,
-        needsVerification: true,
-      };
+  try {
+    const userData = {
+      full_name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      password_hash: formData.password,
+      needsVerification: true,
+    };
 
-      // Store temporarily (optional)
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("pendingUser", JSON.stringify(userData));
-      }
-
-      // Call backend OTP API
-      const response = await api.post("/auth/send-otp", {
-        email: formData.email,
-        type: "signup",
-      });
-
-      if (response.data?.success) {
-        router.push(
-          `/account/verify-otp?email=${encodeURIComponent(
-            formData.email
-          )}&type=signup`
-        );
-      } else {
-        alert(response.data?.message || "Failed to send OTP");
-      }
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Something went wrong");
-    } finally {
-      setIsSubmitting(false);
+    // Store in sessionStorage BEFORE API call
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("pendingUser", JSON.stringify(userData));
+      console.log("Stored pending user:", userData); // Debug log
     }
-  };
+
+    // Call backend OTP API
+    const response = await api.post("/auth/send-otp", {
+      email: formData.email,
+      phone: formData.phone,
+      name: formData.name,
+      type: "signup",
+    });
+
+    if (response.data?.success) {
+      router.push(
+        `/account/verify-otp?email=${encodeURIComponent(
+          formData.email,
+        )}&type=signup`,
+      );
+    } else {
+      alert(response.data?.message || "Failed to send OTP");
+    }
+  } catch (err: any) {
+    console.error("Signup error:", err);
+    alert(err.response?.data?.message || "Something went wrong");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const getStrengthColor = () => {
     if (passwordStrength === 0) return "bg-gray-200";

@@ -28,11 +28,6 @@ import { useToastStore } from "@/app/store/useToastStore";
 import { useUserStore } from "@/app/store/useUserStore";
 import { ASPECT, deriveCardValues, buildWhatsAppUrl } from "./Shared";
 
-/**
- * DETAILED layout — information-rich card. Shows category, SKU, rating,
- * stock badge, full button row, secondary actions. Best for marketplaces
- * where buyers compare specs before purchasing.
- */
 export function DetailedProductCard(
   props: ProductCardProps & { cfg: CardConfig; onQuickView?: () => void },
 ) {

@@ -13,7 +13,6 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import api from "@/lib/api";
 import { ProductCard } from "@/components/ProductCard";
-import { useSettings } from "@/app/store/useSettings";
 import { useCategoryStore } from "../store/useCatrgoryStore";
 import { ProductCardProps } from "@/types/ProductCard";
 
@@ -262,7 +261,6 @@ function CategoryFilterStrip({
 function CategoriesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { productCardStyle } = useSettings();
   const {
     categories,
     fetchCategories,
@@ -599,7 +597,7 @@ function CategoriesContent() {
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
               {products.map((p) => (
-                <ProductCard key={p.id} {...p} cardStyle={productCardStyle} />
+                <ProductCard key={p.id} {...p}  />
               ))}
             </div>
 

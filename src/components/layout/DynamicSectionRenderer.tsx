@@ -13,7 +13,6 @@ import {
   useFeaturedProducts,
 } from "@/app/store/useProductStore";
 import { ProductCard } from "@/components/ProductCard";
-import { useSettings } from "@/app/store/useSettings";
 import {
   Carousel,
   CarouselContent,
@@ -273,14 +272,12 @@ const ProductSlider = memo(
     badge,
     badgeIcon,
     badgeColor,
-    cardStyle,
     columns = 4,
   }: {
     products: Product[];
     badge?: string;
     badgeIcon?: string;
     badgeColor?: string;
-    cardStyle: any;
     columns?: number;
   }) => {
     const plugin = useMemo(() => makeAutoplay(3000), []);
@@ -307,7 +304,6 @@ const ProductSlider = memo(
                 <div className="h-full">
                   <ProductCard
                     {...p}
-                    cardStyle={cardStyle}
                     badge={badge}
                     badgeIcon={badgeIcon}
                     badgeColor={badgeColor}
@@ -462,11 +458,9 @@ EmptyState.displayName = "EmptyState";
 function FeaturedSection({
   section,
   colors,
-  productCardStyle,
 }: {
   section: Section;
   colors: Record<string, string>;
-  productCardStyle: any;
 }) {
   const limit = section.products_count || 8;
   const { products, loading } = useFeaturedProducts(
@@ -482,25 +476,18 @@ function FeaturedSection({
     return <EmptyState message="No products available" icon="🛍️" />;
 
   if (section.layout === "slider") {
-    return (
-      <ProductSlider
-        products={display}
-        cardStyle={productCardStyle}
-        columns={cols}
-      />
-    );
+    return <ProductSlider products={display} columns={cols} />;
   }
   return (
     <div className={`grid ${getColumnClass(cols)} gap-2 md:gap-4`}>
       {display.map((p) => (
-        <ProductCard key={p.id} {...p} cardStyle={productCardStyle} />
+        <ProductCard key={p.id} {...p} />
       ))}
     </div>
   );
 }
 
 function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
-  const { productCardStyle } = useSettings();
   const { categories, loading: categoriesLoading } = useCategoryStore();
 
   const themeColors = (useThemeData("colors") || {}) as Partial<ThemeColors>;
@@ -649,7 +636,6 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
             badge={badge}
             badgeIcon={resolvedBadgeIcon}
             badgeColor={badgeColor}
-            cardStyle={productCardStyle}
             columns={cols}
           />
         );
@@ -661,7 +647,6 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
             <ProductCard
               key={p.id}
               {...p}
-              cardStyle={productCardStyle}
               badge={badge}
               badgeIcon={resolvedBadgeIcon}
               badgeColor={badgeColor}
@@ -676,7 +661,6 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
       bestSellingProducts,
       bestSellingLoading,
       colors,
-      productCardStyle,
     ],
   );
 
@@ -855,11 +839,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
             {/* Section body */}
             {section.type === "category_grid" && renderCategoryGrid(section)}
             {section.type === "featured_products" && (
-              <FeaturedSection
-                section={section}
-                colors={colors}
-                productCardStyle={productCardStyle}
-              />
+              <FeaturedSection section={section} colors={colors} />
             )}
             {section.type === "recent_products" &&
               renderProductSection(section, "Recent", "🆕")}

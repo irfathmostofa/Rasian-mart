@@ -12,14 +12,14 @@ interface CartItem {
   image: string;
   weight: string;
   quantity: number;
-  dbId?: number; // Database ID for server operations
+  dbId?: number;
 }
 
 interface CartState {
   cart: CartItem[];
   isLoading: boolean;
-  token: string | null;
   error: string | null;
+
   initializeCart: (customerId: number) => Promise<void>;
   addToCart: (
     item: Omit<CartItem, "dbId">,
@@ -36,53 +36,53 @@ interface CartState {
   ) => Promise<void>;
   clearCart: (customerId: number) => Promise<void>;
   resetCart: () => void;
-  setToken: (token: string | null) => void;
 }
+
+// ─── Helper: always read token fresh — never stale ────────────────────────────
+function getAuthHeaders() {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+}
+
+// ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useCart = create<CartState>((set, get) => ({
   cart: [],
   isLoading: false,
   error: null,
-  token: typeof window !== "undefined" ? localStorage.getItem("token") : null,
 
-  setToken: (token) => {
-    if (token) {
-      localStorage.setItem("token", token);
-      set({ token });
-    } else {
-      localStorage.removeItem("token");
-      set({ token: null, cart: [] });
-    }
-  },
-
-  // Helper function to get headers with token
-  getAuthHeaders: () => {
-    const token = get().token;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  },
-
-  initializeCart: async (customerId: number) => {
+  // ── Initialize ─────────────────────────────────────────────────────────────
+  initializeCart: async (customerId) => {
     if (!customerId) {
       set({ error: "Customer ID is required", cart: [] });
       return;
     }
 
-    const token = get().token;
+    const token = getToken();
     if (!token) {
       set({ error: "Authentication required", cart: [] });
       return;
     }
 
+    // Skip if already loaded
+    if (get().cart.length > 0) return;
+
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post(
+      const res = await api.post(
         "/order/get-customer-item",
-        { customerId: customerId },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { customerId },
+        { headers: getAuthHeaders() },
       );
 
-      if (response.data.success) {
-        const cartItems = response.data.data
+      if (res.data.success) {
+        const cartItems: CartItem[] = res.data.data
           .filter(
             (item: any) => item.item_type === "CART" && item.status === "A",
           )
@@ -92,19 +92,18 @@ export const useCart = create<CartState>((set, get) => ({
             name: item.product_name || `Product ${item.product_variant_id}`,
             price: parseFloat(item.unit_price) || 0,
             image: item.image || "",
-            weight: item.variant_weight,
+            weight: item.variant_weight || "0",
             quantity: item.quantity || 1,
             dbId: item.id,
           }));
-
         set({ cart: cartItems });
       } else {
-        set({ error: "Failed to fetch cart items" });
+        set({ error: "Failed to fetch cart" });
       }
-    } catch (error: any) {
-      console.error("Failed to initialize cart:", error);
+    } catch (err: any) {
+      console.error("[useCart] initializeCart:", err);
       set({
-        error: error.response?.data?.message || "Failed to load cart",
+        error: err?.response?.data?.message || "Failed to load cart",
         cart: [],
       });
     } finally {
@@ -112,150 +111,146 @@ export const useCart = create<CartState>((set, get) => ({
     }
   },
 
-  addToCart: async (item: Omit<CartItem, "dbId">, customerId: number) => {
-    const token = get().token;
+  // ── Add ────────────────────────────────────────────────────────────────────
+  addToCart: async (item, customerId) => {
+    const token = getToken();
     if (!customerId || !token) {
-      set({ error: "User must be logged in to add to cart" });
+      set({ error: "Login required" });
       return;
     }
+
     set({ isLoading: true, error: null });
     try {
-      // Check if item already exists in cart
-      const existingItem = get().cart.find((i) => i.id === item.id);
+      const existing = get().cart.find((i) => i.id === item.id);
 
-      if (existingItem) {
-        // Update quantity if item exists
+      if (existing) {
+        // Delegate to updateQuantity
         await get().updateQuantity(
           item.id,
-          existingItem.quantity + item.quantity,
+          existing.quantity + item.quantity,
           customerId,
         );
+        return;
+      }
+
+      // Optimistic add
+      const optimistic: CartItem = { ...item, dbId: undefined };
+      set((s) => ({ cart: [...s.cart, optimistic] }));
+
+      const res = await api.post(
+        "/order/add-customer-item",
+        {
+          customer_id: customerId,
+          product_variant_id: item.primary_variant_id,
+          item_type: "CART",
+          quantity: item.quantity,
+          unit_price: item.price,
+          status: "A",
+        },
+        { headers: getAuthHeaders() },
+      );
+
+      if (res.data.success) {
+        // Patch dbId onto the optimistic item
+        set((s) => ({
+          cart: s.cart.map((i) =>
+            i.id === item.id && !i.dbId ? { ...i, dbId: res.data.data.id } : i,
+          ),
+        }));
       } else {
-        // Add new item to server
-        const response = await api.post(
-          "/order/add-customer-item",
-          {
-            customer_id: customerId,
-            product_variant_id: item.primary_variant_id,
-            item_type: "CART",
-            quantity: item.quantity,
-            unit_price: item.price,
-            status: "A",
-          },
-          { headers: { Authorization: `Bearer ${token}` } },
+        // Rollback
+        set((s) => ({ cart: s.cart.filter((i) => i.id !== item.id) }));
+      }
+    } catch (err: any) {
+      console.error("[useCart] addToCart:", err);
+      set((s) => ({
+        cart: s.cart.filter((i) => i.id !== item.id),
+        error: err?.response?.data?.message || "Failed to add to cart",
+      }));
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // ── Remove ─────────────────────────────────────────────────────────────────
+  removeFromCart: async (productVariantId, customerId) => {
+    const token = getToken();
+    if (!customerId || !token) {
+      set({ error: "Login required" });
+      return;
+    }
+
+    const item = get().cart.find((i) => i.id === productVariantId);
+
+    // Optimistic remove
+    set((s) => ({ cart: s.cart.filter((i) => i.id !== productVariantId) }));
+
+    try {
+      if (item?.dbId) {
+        await api.post(
+          "/order/delete-customer-item",
+          { id: item.dbId },
+          { headers: getAuthHeaders() },
         );
-        if (response.data.success) {
-          // Add to local state with dbId
-          const newItem = {
-            ...item,
-            dbId: response.data.data.id,
-          };
-          set((state) => ({
-            cart: [...state.cart, newItem],
+      } else {
+        // dbId unknown — refetch then retry
+        await get().initializeCart(customerId);
+        const refreshed = get().cart.find((i) => i.id === productVariantId);
+        if (refreshed?.dbId) {
+          await api.post(
+            "/order/delete-customer-item",
+            { id: refreshed.dbId },
+            { headers: getAuthHeaders() },
+          );
+          set((s) => ({
+            cart: s.cart.filter((i) => i.id !== productVariantId),
           }));
         }
       }
-    } catch (error: any) {
-      console.error("Failed to add to cart:", error);
-      set({
-        error: error.response?.data?.message || "Failed to add item to cart",
-      });
-    } finally {
-      set({ isLoading: false });
+    } catch (err: any) {
+      console.error("[useCart] removeFromCart:", err);
+      // Rollback
+      if (item) set((s) => ({ cart: [...s.cart, item] }));
+      set({ error: err?.response?.data?.message || "Failed to remove item" });
     }
   },
 
-  removeFromCart: async (productVariantId: number, customerId: number) => {
-    const token = get().token;
+  // ── Update quantity ────────────────────────────────────────────────────────
+  updateQuantity: async (productVariantId, quantity, customerId) => {
+    const token = getToken();
     if (!customerId || !token) {
-      set({ error: "User must be logged in to remove from cart" });
-      return;
-    }
-
-    set({ isLoading: true, error: null });
-    try {
-      // Find item in local state to get dbId
-      const itemToRemove = get().cart.find((i) => i.id === productVariantId);
-
-      if (itemToRemove?.dbId) {
-        // Delete from server using dbId
-        await api.post(
-          "/order/delete-customer-item",
-          {
-            id: itemToRemove.dbId,
-          },
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-
-        // Remove from local state
-        set((state) => ({
-          cart: state.cart.filter((item) => item.id !== productVariantId),
-        }));
-      } else {
-        // If no dbId, refetch from server first
-        await get().initializeCart(customerId);
-        // Try again after refetch
-        await get().removeFromCart(productVariantId, customerId);
-      }
-    } catch (error: any) {
-      console.error("Failed to remove from cart:", error);
-      set({
-        error:
-          error.response?.data?.message || "Failed to remove item from cart",
-      });
-    } finally {
-      set({ isLoading: false });
-    }
-  },
-
-  updateQuantity: async (
-    productVariantId: number,
-    quantity: number,
-    customerId: number,
-  ) => {
-    const token = get().token;
-    if (!customerId || !token) {
-      set({ error: "User must be logged in to update cart" });
+      set({ error: "Login required" });
       return;
     }
 
     if (quantity < 1) {
-      // If quantity is 0 or less, remove the item
       await get().removeFromCart(productVariantId, customerId);
       return;
     }
 
-    set({ isLoading: true, error: null });
+    const item = get().cart.find((i) => i.id === productVariantId);
+    if (!item) {
+      set({ error: "Item not found in cart" });
+      return;
+    }
+
+    // Optimistic update
+    const prevQty = item.quantity;
+    set((s) => ({
+      cart: s.cart.map((i) =>
+        i.id === productVariantId ? { ...i, quantity } : i,
+      ),
+    }));
+
     try {
-      const item = get().cart.find((i) => i.id === productVariantId);
-
-      if (!item) {
-        set({ error: "Item not found in cart" });
-        return;
-      }
-
       if (item.dbId) {
-        // Update on server
         await api.post(
           "/order/update-customer-item",
-          {
-            id: item.dbId,
-            quantity,
-            unit_price: item.price,
-            status: "A",
-          },
-          { headers: { Authorization: `Bearer ${token}` } },
+          { id: item.dbId, quantity, unit_price: item.price, status: "A" },
+          { headers: getAuthHeaders() },
         );
-
-        // Update local state
-        set((state) => ({
-          cart: state.cart.map((i) =>
-            i.id === productVariantId ? { ...i, quantity } : i,
-          ),
-        }));
       } else {
-        // If no dbId, item might not exist on server yet
-        const response = await api.post(
+        const res = await api.post(
           "/order/add-customer-item",
           {
             customer_id: customerId,
@@ -265,77 +260,69 @@ export const useCart = create<CartState>((set, get) => ({
             unit_price: item.price,
             status: "A",
           },
-          { headers: { Authorization: `Bearer ${token}` } },
+          { headers: getAuthHeaders() },
         );
-
-        if (response.data.success) {
-          // Update local state with dbId
-          set((state) => ({
-            cart: state.cart.map((i) =>
+        if (res.data.success) {
+          set((s) => ({
+            cart: s.cart.map((i) =>
               i.id === productVariantId
-                ? { ...i, quantity, dbId: response.data.data.id }
+                ? { ...i, quantity, dbId: res.data.data.id }
                 : i,
             ),
           }));
         }
       }
-    } catch (error: any) {
-      console.error("Failed to update quantity:", error);
-      set({
-        error: error.response?.data?.message || "Failed to update quantity",
-      });
-    } finally {
-      set({ isLoading: false });
+    } catch (err: any) {
+      console.error("[useCart] updateQuantity:", err);
+      // Rollback
+      set((s) => ({
+        cart: s.cart.map((i) =>
+          i.id === productVariantId ? { ...i, quantity: prevQty } : i,
+        ),
+        error: err?.response?.data?.message || "Failed to update quantity",
+      }));
     }
   },
 
-  clearCart: async (customerId: number) => {
-    const token = get().token;
+  // ── Clear ──────────────────────────────────────────────────────────────────
+  clearCart: async (customerId) => {
+    const token = getToken();
     if (!customerId || !token) {
-      set({ error: "User must be logged in to clear cart" });
+      set({ error: "Login required" });
       return;
     }
 
     set({ isLoading: true, error: null });
     try {
-      // Get all cart items for this customer
-      const response = await api.post(
+      const res = await api.post(
         "/order/get-customer-item",
         { customerId },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: getAuthHeaders() },
       );
 
-      if (response.data.success) {
-        const cartItems = response.data.data.filter(
+      if (res.data.success) {
+        const cartItems = res.data.data.filter(
           (item: any) => item.item_type === "CART",
         );
-
-        // Delete each cart item from server
-        for (const item of cartItems) {
-          await api.post(
-            "/order/delete-customer-item",
-            {
-              id: item.id,
-            },
-            { headers: { Authorization: `Bearer ${token}` } },
-          );
-        }
-
-        // Clear local state
+        await Promise.all(
+          cartItems.map((item: any) =>
+            api.post(
+              "/order/delete-customer-item",
+              { id: item.id },
+              { headers: getAuthHeaders() },
+            ),
+          ),
+        );
         set({ cart: [] });
       }
-    } catch (error: any) {
-      console.error("Failed to clear cart:", error);
-      set({
-        error: error.response?.data?.message || "Failed to clear cart",
-      });
+    } catch (err: any) {
+      console.error("[useCart] clearCart:", err);
+      set({ error: err?.response?.data?.message || "Failed to clear cart" });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  resetCart: () => {
-    // Clear cart when user logs out
-    set({ cart: [], error: null, isLoading: false });
-  },
+  // ── Reset (on logout) ──────────────────────────────────────────────────────
+  resetCart: () => set({ cart: [], error: null, isLoading: false }),
 }));

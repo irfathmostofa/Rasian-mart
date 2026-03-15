@@ -61,6 +61,7 @@ function OTPVerifyForm() {
     "signup",
   );
   const [isClient, setIsClient] = useState(false);
+  const [isLoadingParams, setIsLoadingParams] = useState(true);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Handle client-side mounting
@@ -68,33 +69,51 @@ function OTPVerifyForm() {
     setIsClient(true);
   }, []);
 
+  // Load email and type from URL parameters
   useEffect(() => {
     if (isClient) {
       const emailParam = searchParams.get("email");
       const typeParam = searchParams.get("type");
-      setEmail(emailParam || "");
-      setVerificationType(typeParam === "forgot" ? "forgot" : "signup");
 
-      // Focus first input after params are loaded
+      if (emailParam) {
+        setEmail(emailParam);
+        setVerificationType(typeParam === "forgot" ? "forgot" : "signup");
+        console.log("Email set from params:", emailParam); // Debug log
+      } else {
+        console.log("No email param found");
+      }
+
+      // Mark that we've finished loading params
+      setIsLoadingParams(false);
+    }
+  }, [searchParams, isClient]);
+
+  // Focus first input after params are loaded and email is set
+  useEffect(() => {
+    if (!isLoadingParams && email) {
       setTimeout(() => {
         inputRefs.current[0]?.focus();
       }, 100);
     }
-  }, [searchParams, isClient]);
+  }, [isLoadingParams, email]);
 
+  // Timer effect
   useEffect(() => {
     if (timer > 0 && !success) {
       const interval = setInterval(() => setTimer((prev) => prev - 1), 1000);
       return () => clearInterval(interval);
-    } else if (timer === 0) setCanResend(true);
+    } else if (timer === 0) {
+      setCanResend(true);
+    }
   }, [timer, success]);
 
-  // Redirect if no email on client side
+  // Redirect to login only after params are loaded and email is still empty
   useEffect(() => {
-    if (isClient && !email) {
+    if (isClient && !isLoadingParams && !email) {
+      console.log("No email found, redirecting to login");
       router.push("/account/login");
     }
-  }, [email, router, isClient]);
+  }, [email, router, isClient, isLoadingParams]);
 
   const handleChange = (index: number, value: string) => {
     if (value && !/^\d$/.test(value)) return;
@@ -109,9 +128,12 @@ function OTPVerifyForm() {
     index: number,
     e: React.KeyboardEvent<HTMLInputElement>,
   ) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0)
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
-    if (e.key === "Enter" && otp.every((digit) => digit !== "")) handleVerify();
+    }
+    if (e.key === "Enter" && otp.every((digit) => digit !== "")) {
+      handleVerify();
+    }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -135,6 +157,7 @@ function OTPVerifyForm() {
     setError("");
 
     try {
+      // First verify OTP
       await api.post("/auth/verify-otp", {
         email,
         otp: otpValue,
@@ -152,21 +175,51 @@ function OTPVerifyForm() {
           // Get pending user data from sessionStorage
           const pendingUserRaw = sessionStorage.getItem("pendingUser");
           if (pendingUserRaw) {
-            const pendingUser = JSON.parse(pendingUserRaw);
-            const payload = {
-              full_name: pendingUser.full_name,
-              email: pendingUser.email,
-              phone: pendingUser.phone,
-              password_hash: pendingUser.password_hash,
-            };
-            await api.post("/users/create-customer", payload);
-            // Remove pendingUser from sessionStorage
-            sessionStorage.removeItem("pendingUser");
+            try {
+              const pendingUser = JSON.parse(pendingUserRaw);
+              const payload = {
+                full_name: pendingUser.full_name,
+                email: pendingUser.email,
+                phone: pendingUser.phone,
+                password_hash: pendingUser.password_hash,
+              };
+
+              console.log("Creating user with payload:", {
+                ...payload,
+                password_hash: "[HIDDEN]",
+              }); // Debug log
+
+              const response = await api.post(
+                "/users/create-customer",
+                payload,
+              );
+              console.log("User creation response:", response.data); // Debug log
+
+              // Remove pendingUser from sessionStorage
+              sessionStorage.removeItem("pendingUser");
+
+              // If the API returns a token, store it
+              if (response.data?.token) {
+                localStorage.setItem("token", response.data.token);
+                // Set default authorization header
+                api.defaults.headers.common["Authorization"] =
+                  `Bearer ${response.data.token}`;
+              }
+
+              router.push("/profile");
+            } catch (createError: any) {
+              console.error("Error creating user:", createError);
+              // If user creation fails, still redirect to login
+              router.push("/account/login?error=creation_failed");
+            }
+          } else {
+            console.log("No pending user found, redirecting to login");
+            router.push("/account/login");
           }
-          router.push("/profile");
         }
       }, 1500);
     } catch (err: any) {
+      console.error("Verification error:", err);
       setError(err.response?.data?.message || "Invalid OTP. Please try again.");
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
@@ -185,6 +238,7 @@ function OTPVerifyForm() {
     try {
       await api.post("/auth/resend-otp", { email, type: verificationType });
 
+      // Show success toast
       const tempSuccess = document.createElement("div");
       tempSuccess.className =
         "fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-2 duration-300";
@@ -216,14 +270,14 @@ function OTPVerifyForm() {
     return `${maskedLocal}@${domain}`;
   };
 
-  // Don't render anything until client-side hydration is complete
-  if (!isClient) {
+  // Show loading while client-side hydration or params are loading
+  if (!isClient || isLoadingParams) {
     return <OTPVerifyLoading />;
   }
 
-  // Don't render form while redirecting
+  // If still no email after params are loaded, show loading (redirect will happen via useEffect)
   if (!email) {
-    return null;
+    return <OTPVerifyLoading />;
   }
 
   return (

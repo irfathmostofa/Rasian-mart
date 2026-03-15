@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import api from "@/lib/api";
 import { ProductCard } from "@/components/ProductCard";
-import { useSettings } from "@/app/store/useSettings";
 import { useThemeData } from "@/app/store/useThemeData";
 import { useCategoryStore } from "@/app/store/useCatrgoryStore";
 
@@ -293,7 +292,6 @@ function CategoryStrip({ currentId, categories, loading }: CategoryStripProps) {
 export default function CategoryPage() {
   const { id, slug } = useParams();
   const router = useRouter();
-  const { productCardStyle } = useSettings();
 
   // Categories from store
   const {
@@ -954,7 +952,7 @@ export default function CategoryPage() {
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
                   {products.map((p) => (
-                    <ProductCard key={p.id} {...p} cardStyle={productCardStyle} />
+                    <ProductCard key={p.id} {...p}  />
                   ))}
                 </div>
 

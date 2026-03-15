@@ -18,7 +18,6 @@ import { useProductStore } from "@/app/store/useProductStore";
 import { useToastStore } from "@/app/store/useToastStore";
 import { useWishlist } from "@/app/store/useWishlist";
 import { ProductCard } from "@/components/ProductCard";
-import { useSettings } from "@/app/store/useSettings";
 import { useUserStore } from "@/app/store/useUserStore";
 import { formatDate } from "@/components/helper";
 import { ImageMagnifier } from "@/components/ui/ImageMagnifier";
@@ -83,7 +82,6 @@ export default function ProductDetailsPage() {
     [],
   );
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const { productCardStyle } = useSettings();
   const [loading, setLoading] = useState(true);
   const [showBottomCart, setShowBottomCart] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
@@ -681,7 +679,7 @@ export default function ProductDetailsPage() {
           <h2 className="text-xl font-bold mb-6">Related Products</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
             {relatedProducts.map((p: any) => (
-              <ProductCard key={p.id} {...p} cardStyle={productCardStyle} />
+              <ProductCard key={p.id} {...p}  />
             ))}
           </div>
         </div>

@@ -10,15 +10,14 @@ interface WishlistItem {
   price: number;
   image: string;
   stock: number;
-  dbId?: number; // Database ID for server operations
+  dbId?: number;
 }
 
 interface WishlistState {
   items: WishlistItem[];
   isLoading: boolean;
-  token: string | null;
-  setToken: (token: string | null) => void;
   error: string | null;
+
   initializeWishlist: (customerId: number) => Promise<void>;
   addToWishlist: (
     item: Omit<WishlistItem, "dbId">,
@@ -37,41 +36,40 @@ interface WishlistState {
   resetWishlist: () => void;
 }
 
+// ─── Helper: always read token fresh from localStorage ────────────────────────
+// Never store it in Zustand state — avoids SSR crash and stale-token bugs.
+function getAuthHeaders() {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// ─── Store ────────────────────────────────────────────────────────────────────
+
 export const useWishlist = create<WishlistState>((set, get) => ({
   items: [],
   isLoading: false,
   error: null,
-  token: typeof window !== "undefined" ? localStorage.getItem("token") : null,
 
-  setToken: (token) => {
-    if (token) {
-      localStorage.setItem("token", token);
-      set({ token });
-    } else {
-      localStorage.removeItem("token");
-      set({ token: null, items: [] });
-    }
-  },
-  getAuthHeaders: () => {
-    const token = get().token;
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  },
-  initializeWishlist: async (customerId: number) => {
+  // ── Initialize ─────────────────────────────────────────────────────────────
+  initializeWishlist: async (customerId) => {
     if (!customerId) {
       set({ error: "Customer ID is required", items: [] });
       return;
     }
-    const token = get().token;
+
+    // Avoid re-fetching if already loaded
+    if (get().items.length > 0) return;
+
     set({ isLoading: true, error: null });
     try {
       const response = await api.post(
         "/order/get-customer-item",
-        { customerId: customerId },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { customerId },
+        { headers: getAuthHeaders() },
       );
-
       if (response.data.success) {
-        const wishlistItems = response.data.data
+        const wishlistItems: WishlistItem[] = response.data.data
           .filter(
             (item: any) => item.item_type === "WISHLIST" && item.status === "A",
           )
@@ -87,28 +85,24 @@ export const useWishlist = create<WishlistState>((set, get) => ({
 
         set({ items: wishlistItems });
       } else {
-        set({ error: "Failed to fetch wishlist items" });
+        set({ error: "Failed to fetch wishlist" });
       }
-    } catch (error: any) {
-      console.error("Failed to initialize wishlist:", error);
+    } catch (err: any) {
+      console.error("[useWishlist] initializeWishlist:", err);
+      set({ error: err?.response?.data?.message || "Failed to load wishlist" });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  addToWishlist: async (
-    item: Omit<WishlistItem, "dbId">,
-    customerId: number,
-  ) => {
+  // ── Add ────────────────────────────────────────────────────────────────────
+  addToWishlist: async (item, customerId) => {
     if (!customerId) {
-      set({ error: "User must be logged in to add to wishlist" });
+      set({ error: "Login required" });
       return;
     }
+    if (get().isInWishlist(item.id)) return;
 
-    if (get().isInWishlist(item.id)) {
-      return; // Already in wishlist
-    }
-    const token = get().token;
     set({ isLoading: true, error: null });
     try {
       const response = await api.post(
@@ -121,85 +115,78 @@ export const useWishlist = create<WishlistState>((set, get) => ({
           unit_price: item.price,
           status: "A",
         },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: getAuthHeaders() },
       );
 
       if (response.data.success) {
-        // Add to local state with dbId
-        const newItem = {
-          ...item,
-          dbId: response.data.data.id,
-        };
         set((state) => ({
-          items: [...state.items, newItem],
+          items: [...state.items, { ...item, dbId: response.data.data.id }],
         }));
       }
-    } catch (error: any) {
-      console.error("Failed to add to wishlist:", error);
+    } catch (err: any) {
+      console.error("[useWishlist] addToWishlist:", err);
       set({
-        error:
-          error.response?.data?.message || "Failed to add item to wishlist",
+        error: err?.response?.data?.message || "Failed to add to wishlist",
       });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  removeFromWishlist: async (productVariantId: number, customerId: number) => {
+  // ── Remove ─────────────────────────────────────────────────────────────────
+  removeFromWishlist: async (productVariantId, customerId) => {
     if (!customerId) {
-      set({ error: "User must be logged in to remove from wishlist" });
+      set({ error: "Login required" });
       return;
     }
 
-    set({ isLoading: true, error: null });
+    const item = get().items.find((i) => i.id === productVariantId);
+
+    // Optimistic update — remove immediately so UI feels instant
+    set((state) => ({
+      items: state.items.filter((i) => i.id !== productVariantId),
+    }));
+
     try {
-      // Find item in local state to get dbId
-      const itemToRemove = get().items.find((i) => i.id === productVariantId);
-      const token = get().token;
-      if (itemToRemove?.dbId) {
-        // Delete from server using dbId
+      if (item?.dbId) {
         await api.post(
           "/order/delete-customer-item",
-          {
-            id: itemToRemove.dbId,
-          },
-          { headers: { Authorization: `Bearer ${token}` } },
+          { id: item.dbId },
+          { headers: getAuthHeaders() },
         );
-
-        // Remove from local state
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== productVariantId),
-        }));
       } else {
-        // If no dbId, refetch from server first
+        // dbId unknown — refetch to get it, then retry
         await get().initializeWishlist(customerId);
-        // Try again after refetch
-        await get().removeFromWishlist(productVariantId, customerId);
+        const refreshed = get().items.find((i) => i.id === productVariantId);
+        if (refreshed?.dbId) {
+          await api.post(
+            "/order/delete-customer-item",
+            { id: refreshed.dbId },
+            { headers: getAuthHeaders() },
+          );
+          set((state) => ({
+            items: state.items.filter((i) => i.id !== productVariantId),
+          }));
+        }
       }
-    } catch (error: any) {
-      console.error("Failed to remove from wishlist:", error);
-      set({
-        error:
-          error.response?.data?.message ||
-          "Failed to remove item from wishlist",
-      });
-    } finally {
-      set({ isLoading: false });
+    } catch (err: any) {
+      console.error("[useWishlist] removeFromWishlist:", err);
+      // Rollback optimistic update on failure
+      if (item) {
+        set((state) => ({ items: [...state.items, item] }));
+      }
+      set({ error: err?.response?.data?.message || "Failed to remove item" });
     }
   },
 
-  toggleWishlist: async (
-    item: Omit<WishlistItem, "dbId">,
-    customerId: number,
-  ) => {
+  // ── Toggle ─────────────────────────────────────────────────────────────────
+  toggleWishlist: async (item, customerId) => {
     if (!customerId) {
-      set({ error: "User must be logged in to toggle wishlist" });
+      set({ error: "Login required" });
       return false;
     }
 
-    const isInWishlist = get().isInWishlist(item.id);
-
-    if (isInWishlist) {
+    if (get().isInWishlist(item.id)) {
       await get().removeFromWishlist(item.id, customerId);
       return false;
     } else {
@@ -208,54 +195,50 @@ export const useWishlist = create<WishlistState>((set, get) => ({
     }
   },
 
-  isInWishlist: (productVariantId: number) => {
-    return get().items.some((item) => item.id === productVariantId);
-  },
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  isInWishlist: (productVariantId) =>
+    get().items.some((item) => item.id === productVariantId),
 
-  clearWishlist: async (customerId: number) => {
+  // ── Clear ──────────────────────────────────────────────────────────────────
+  clearWishlist: async (customerId) => {
     if (!customerId) {
-      set({ error: "User must be logged in to clear wishlist" });
+      set({ error: "Login required" });
       return;
     }
-    const token = get().token;
+
     set({ isLoading: true, error: null });
     try {
-      // Get all wishlist items for this customer
       const response = await api.post(
         "/order/get-customer-item",
-        {
-          customerId,
-        },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { customerId },
+        { headers: getAuthHeaders() },
       );
 
       if (response.data.success) {
         const wishlistItems = response.data.data.filter(
           (item: any) => item.item_type === "WISHLIST",
         );
-
-        // Delete each wishlist item from server
-        for (const item of wishlistItems) {
-          await api.post("/order/delete-customer-item", {
-            id: item.id,
-          });
-        }
-
-        // Clear local state
+        await Promise.all(
+          wishlistItems.map((item: any) =>
+            api.post(
+              "/order/delete-customer-item",
+              { id: item.id },
+              { headers: getAuthHeaders() },
+            ),
+          ),
+        );
         set({ items: [] });
       }
-    } catch (error: any) {
-      console.error("Failed to clear wishlist:", error);
+    } catch (err: any) {
+      console.error("[useWishlist] clearWishlist:", err);
       set({
-        error: error.response?.data?.message || "Failed to clear wishlist",
+        error: err?.response?.data?.message || "Failed to clear wishlist",
       });
     } finally {
       set({ isLoading: false });
     }
   },
 
-  resetWishlist: () => {
-    // Clear wishlist when user logs out
-    set({ items: [], error: null, isLoading: false });
-  },
+  // ── Reset (on logout) ──────────────────────────────────────────────────────
+  resetWishlist: () => set({ items: [], error: null, isLoading: false }),
 }));

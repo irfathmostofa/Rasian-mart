@@ -12,7 +12,6 @@ import { useProductStore } from "@/app/store/useProductStore";
 import { useEffect } from "react";
 
 import { ProductCard } from "../ProductCard";
-import { useSettings } from "@/app/store/useSettings";
 
 interface Product {
   id: number;
@@ -46,7 +45,7 @@ interface Product {
 
 export default function ProductCarousel() {
   const { products, loading, fetchProducts } = useProductStore();
-  const { productCardStyle } = useSettings();
+
   // Fetch once on mount
   useEffect(() => {
     if (products.length === 0) fetchProducts();
@@ -92,7 +91,7 @@ export default function ProductCarousel() {
               <ProductCard
                 key={product.id}
                 {...product}
-                cardStyle={productCardStyle}
+         
               />
             </CarouselItem>
           ))}
