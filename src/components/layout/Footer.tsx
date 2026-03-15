@@ -22,6 +22,7 @@ import {
   Heart,
   Github,
 } from "lucide-react";
+import FooterSkeleton from "./Skeleton/FooterSkeleton";
 
 // ==================== Types ====================
 interface FooterBox {
@@ -429,7 +430,8 @@ const ContactInfo = ({
 export default function Footer() {
   const footerData = (useThemeData("footer_section") || {}) as FooterData;
   const colors = (useThemeData("colors") || {}) as any;
-
+  const isLoading = !footerData?.boxes;
+  if (isLoading) return <FooterSkeleton />;
   const activeBoxes = footerData?.boxes?.filter((box) => box.status) || [];
 
   const getGridCols = (count: number) => {
@@ -589,18 +591,6 @@ export default function Footer() {
             )}
         </motion.div>
       </div>
-
-      {/* Scroll to top button */}
-      {/* <motion.button
-        initial={{ opacity: 0, scale: 0 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.6 }}
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="fixed bottom-8 right-8 p-3 bg-primary/90 text-white rounded-full shadow-lg hover:bg-primary transition-all duration-300 hover:scale-105 z-50 backdrop-blur-sm"
-        aria-label="Scroll to top"
-      >
-        <ChevronRight className="w-5 h-5 rotate-[-90deg]" />
-      </motion.button> */}
     </footer>
   );
 }
