@@ -2,66 +2,23 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2, Filter, X, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Loader2,
+  Filter,
+  X,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 import api from "@/lib/api";
 import { ProductCard } from "@/components/ProductCard";
 import { useThemeData } from "@/app/store/useThemeData";
 import { useCategoryStore } from "@/app/store/useCatrgoryStore";
+import { ApiResponse, ProductCardProps } from "@/types/ProductCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Product {
-  id: number;
-  code: string;
-  name: string;
-  slug: string;
-  description: string;
-  cost_price: string | number;
-  selling_price: string | number;
-  regular_price: string | number;
-  status: string;
-  uom_name: string;
-  images: Array<{
-    id: number;
-    url: string;
-    alt_text: string;
-    is_primary: boolean;
-    variant_id: number;
-  }>;
-  categories: Array<{
-    id: number;
-    name: string;
-    slug: string;
-    code: string;
-    image: string | null;
-    is_primary: boolean;
-  }>;
-  total_stock: string | number;
-  badge: string | null;
-  rating: number | null;
-  review_count: number | null;
-  total_sales: string | number;
-  primary_variant_id: number;
-  discount_percentage?: number;
-}
-
-interface ApiResponse {
-  success: boolean;
-  message: string;
-  data: {
-    data: Product[];
-    pagination: {
-      currentPage: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-      hasNextPage: boolean;
-      hasPrevPage: boolean;
-    };
-  };
-}
 
 interface PriceRangeConfig {
   min: number;
@@ -109,7 +66,10 @@ interface Category {
 }
 
 /** Flatten nested category tree into a single ordered list (parents first, then children indented). */
-function flattenCategories(cats: Category[], depth = 0): Array<Category & { depth: number }> {
+function flattenCategories(
+  cats: Category[],
+  depth = 0,
+): Array<Category & { depth: number }> {
   const result: Array<Category & { depth: number }> = [];
   for (const cat of cats) {
     result.push({ ...cat, depth });
@@ -177,9 +137,15 @@ function CategoryStrip({ currentId, categories, loading }: CategoryStripProps) {
   // Auto-scroll active pill into view
   useEffect(() => {
     if (!scrollRef.current || !flatCats.length) return;
-    const activeEl = scrollRef.current.querySelector("[data-active='true']") as HTMLElement;
+    const activeEl = scrollRef.current.querySelector(
+      "[data-active='true']",
+    ) as HTMLElement;
     if (activeEl) {
-      activeEl.scrollIntoView({ inline: "center", behavior: "smooth", block: "nearest" });
+      activeEl.scrollIntoView({
+        inline: "center",
+        behavior: "smooth",
+        block: "nearest",
+      });
     }
   }, [currentIdNum, flatCats.length]);
 
@@ -193,7 +159,10 @@ function CategoryStrip({ currentId, categories, loading }: CategoryStripProps) {
     return (
       <div className="flex gap-3 overflow-hidden mb-6">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="shrink-0 h-10 w-28 rounded-full bg-gray-200 animate-pulse" />
+          <div
+            key={i}
+            className="shrink-0 h-10 w-28 rounded-full bg-gray-200 animate-pulse"
+          />
         ))}
       </div>
     );
@@ -242,20 +211,24 @@ function CategoryStrip({ currentId, categories, loading }: CategoryStripProps) {
               data-active={isActive}
               onClick={() => router.push(`/category/${cat.id}/${cat.slug}`)}
               className={`shrink-0 flex items-center gap-1.5 border text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                isChild ? "px-3 py-1.5 rounded-full text-xs" : "px-3.5 py-2 rounded-full"
+                isChild
+                  ? "px-3 py-1.5 rounded-full text-xs"
+                  : "px-3.5 py-2 rounded-full"
               } ${
                 isActive
                   ? "bg-primary text-white border-primary shadow-md shadow-primary/20 scale-[1.03]"
                   : isParentOfActive
-                  ? "bg-primary/10 text-primary border-primary/30"
-                  : isChild
-                  ? "bg-white text-gray-500 border-gray-200 hover:border-primary/50 hover:text-primary hover:bg-primary/4"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary hover:bg-primary/4"
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : isChild
+                      ? "bg-white text-gray-500 border-gray-200 hover:border-primary/50 hover:text-primary hover:bg-primary/4"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-primary hover:text-primary hover:bg-primary/4"
               }`}
             >
               {/* Indent indicator for children */}
               {isChild && (
-                <span className={`w-1 h-1 rounded-full shrink-0 ${isActive ? "bg-white" : "bg-gray-300"}`} />
+                <span
+                  className={`w-1 h-1 rounded-full shrink-0 ${isActive ? "bg-white" : "bg-gray-300"}`}
+                />
               )}
               {cat.name}
             </button>
@@ -327,7 +300,7 @@ export default function CategoryPage() {
   const PRICE_MAX = sectionConfig.price_ranges[0]?.max ?? 50000;
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductCardProps[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -337,14 +310,22 @@ export default function CategoryPage() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
-  const [priceInputs, setPriceInputs] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([
+    PRICE_MIN,
+    PRICE_MAX,
+  ]);
+  const [priceInputs, setPriceInputs] = useState<[number, number]>([
+    PRICE_MIN,
+    PRICE_MAX,
+  ]);
   const [sortBy, setSortBy] = useState(activeSortOptions[0]?.value ?? "newest");
   const [availability, setAvailability] = useState<string>("all");
   const [minRating, setMinRating] = useState<number>(0);
 
   const activeFilterCount =
-    (showPriceFilter && (priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX) ? 1 : 0) +
+    (showPriceFilter && (priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX)
+      ? 1
+      : 0) +
     (showAvailability && availability !== "all" ? 1 : 0) +
     (showRatingFilter && minRating > 0 ? 1 : 0);
 
@@ -384,10 +365,14 @@ export default function CategoryPage() {
           if (priceRange[0] > PRICE_MIN) requestBody.price_min = priceRange[0];
           if (priceRange[1] < PRICE_MAX) requestBody.price_max = priceRange[1];
         }
-        if (showRatingFilter && minRating > 0) requestBody.min_rating = minRating;
+        if (showRatingFilter && minRating > 0)
+          requestBody.min_rating = minRating;
         requestBody.sort = sortBy;
 
-        const response = await api.post<ApiResponse>(`/product/get-all-products`, requestBody);
+        const response = await api.post<ApiResponse>(
+          `/product/get-all-products`,
+          requestBody,
+        );
 
         if (response.data.success) {
           const fetched = response.data.data.data || [];
@@ -396,9 +381,13 @@ export default function CategoryPage() {
           let filtered = fetched;
           if (showAvailability) {
             if (availability === "in-stock") {
-              filtered = fetched.filter((p) => parseFloat(String(p.total_stock)) > 0);
+              filtered = fetched.filter(
+                (p) => parseFloat(String(p.total_stock)) > 0,
+              );
             } else if (availability === "out-of-stock") {
-              filtered = fetched.filter((p) => parseFloat(String(p.total_stock)) <= 0);
+              filtered = fetched.filter(
+                (p) => parseFloat(String(p.total_stock)) <= 0,
+              );
             }
           }
 
@@ -407,7 +396,10 @@ export default function CategoryPage() {
           } else {
             setProducts((prev) => {
               const existingIds = new Set(prev.map((p) => p.id));
-              return [...prev, ...filtered.filter((p) => !existingIds.has(p.id))];
+              return [
+                ...prev,
+                ...filtered.filter((p) => !existingIds.has(p.id)),
+              ];
             });
           }
 
@@ -419,7 +411,12 @@ export default function CategoryPage() {
         }
       } catch (err: unknown) {
         const msg =
-          (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ??
+          (
+            err as {
+              response?: { data?: { message?: string } };
+              message?: string;
+            }
+          )?.response?.data?.message ??
           (err as { message?: string })?.message ??
           "Failed to load products";
         setError(msg);
@@ -432,7 +429,17 @@ export default function CategoryPage() {
         setInitialLoading(false);
       }
     },
-    [loading, id, priceRange, sortBy, availability, minRating, showPriceFilter, showRatingFilter, showAvailability],
+    [
+      loading,
+      id,
+      priceRange,
+      sortBy,
+      availability,
+      minRating,
+      showPriceFilter,
+      showRatingFilter,
+      showAvailability,
+    ],
   );
 
   useEffect(() => {
@@ -504,10 +511,16 @@ export default function CategoryPage() {
   // ── Formatters ─────────────────────────────────────────────────────────────
 
   const formatPrice = (price: number) =>
-    new Intl.NumberFormat("en-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price);
+    new Intl.NumberFormat("en-BD", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price);
 
   const formatCategoryName = (s: string) =>
-    String(s).split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    String(s)
+      .split("-")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
 
   const categoryName = formatCategoryName(String(slug));
 
@@ -535,7 +548,10 @@ export default function CategoryPage() {
           </h4>
           <div className="space-y-2">
             {AVAILABILITY_OPTIONS.map((opt) => (
-              <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+              <label
+                key={opt.value}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
                 <input
                   type="radio"
                   name={`availability-${mobile ? "mobile" : "desktop"}`}
@@ -568,7 +584,9 @@ export default function CategoryPage() {
             <div className="flex-1">
               <label className="text-xs text-gray-500 mb-1 block">Min</label>
               <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">৳</span>
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                  ৳
+                </span>
                 <input
                   type="number"
                   min={PRICE_MIN}
@@ -576,7 +594,13 @@ export default function CategoryPage() {
                   step="100"
                   value={priceInputs[0]}
                   onChange={(e) => {
-                    const v = Math.max(PRICE_MIN, Math.min(parseInt(e.target.value) || PRICE_MIN, PRICE_MAX));
+                    const v = Math.max(
+                      PRICE_MIN,
+                      Math.min(
+                        parseInt(e.target.value) || PRICE_MIN,
+                        PRICE_MAX,
+                      ),
+                    );
                     setPriceInputs([v, priceInputs[1]]);
                   }}
                   onBlur={applyFilters}
@@ -589,7 +613,9 @@ export default function CategoryPage() {
             <div className="flex-1">
               <label className="text-xs text-gray-500 mb-1 block">Max</label>
               <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">৳</span>
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                  ৳
+                </span>
                 <input
                   type="number"
                   min={PRICE_MIN}
@@ -597,7 +623,13 @@ export default function CategoryPage() {
                   step="100"
                   value={priceInputs[1]}
                   onChange={(e) => {
-                    const v = Math.min(PRICE_MAX, Math.max(parseInt(e.target.value) || PRICE_MAX, PRICE_MIN));
+                    const v = Math.min(
+                      PRICE_MAX,
+                      Math.max(
+                        parseInt(e.target.value) || PRICE_MAX,
+                        PRICE_MIN,
+                      ),
+                    );
                     setPriceInputs([priceInputs[0], v]);
                   }}
                   onBlur={applyFilters}
@@ -627,10 +659,15 @@ export default function CategoryPage() {
 
       {showRatingFilter && (
         <div className="mb-7">
-          <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">Min Rating</h4>
+          <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">
+            Min Rating
+          </h4>
           <div className="space-y-2">
             {[0, 1, 2, 3, 4].map((r) => (
-              <label key={r} className="flex items-center gap-3 cursor-pointer group">
+              <label
+                key={r}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
                 <input
                   type="radio"
                   name={`rating-${mobile ? "mobile" : "desktop"}`}
@@ -644,7 +681,8 @@ export default function CategoryPage() {
                     "All Ratings"
                   ) : (
                     <>
-                      {"★".repeat(r)}{"☆".repeat(5 - r)}
+                      {"★".repeat(r)}
+                      {"☆".repeat(5 - r)}
                       <span className="text-gray-500 ml-1">& up</span>
                     </>
                   )}
@@ -676,7 +714,6 @@ export default function CategoryPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-6">
-
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-sm text-gray-500 mb-4">
           <span
@@ -688,7 +725,9 @@ export default function CategoryPage() {
           <span className="text-gray-300">/</span>
           <span>Categories</span>
           <span className="text-gray-300">/</span>
-          <span className="text-gray-900 font-medium capitalize">{categoryName}</span>
+          <span className="text-gray-900 font-medium capitalize">
+            {categoryName}
+          </span>
         </nav>
 
         {/* Page header */}
@@ -730,17 +769,25 @@ export default function CategoryPage() {
                 disabled={loading}
               >
                 <span className="hidden sm:inline text-gray-500">Sort:</span>
-                <span>{activeSortOptions.find((s) => s.value === sortBy)?.label ?? "Sort"}</span>
+                <span>
+                  {activeSortOptions.find((s) => s.value === sortBy)?.label ??
+                    "Sort"}
+                </span>
                 <ChevronDown
                   className="w-4 h-4 text-gray-400 transition-transform"
-                  style={{ transform: showSort ? "rotate(180deg)" : "rotate(0deg)" }}
+                  style={{
+                    transform: showSort ? "rotate(180deg)" : "rotate(0deg)",
+                  }}
                 />
               </button>
 
               <AnimatePresence>
                 {showSort && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowSort(false)} />
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowSort(false)}
+                    />
                     <motion.div
                       initial={{ opacity: 0, y: -8, scale: 0.97 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -782,7 +829,10 @@ export default function CategoryPage() {
           <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
             <X className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
             <p className="text-red-600 text-sm">{error}</p>
-            <button className="ml-auto text-red-400 hover:text-red-600" onClick={() => setError(null)}>
+            <button
+              className="ml-auto text-red-400 hover:text-red-600"
+              onClick={() => setError(null)}
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -846,7 +896,10 @@ export default function CategoryPage() {
                   {renderFilterPanel(true)}
                   <div className="p-4 border-t sticky bottom-0 bg-white flex gap-3">
                     <button
-                      onClick={() => { resetFilters(); setShowFilters(false); }}
+                      onClick={() => {
+                        resetFilters();
+                        setShowFilters(false);
+                      }}
                       className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
                       disabled={loading}
                     >
@@ -861,7 +914,9 @@ export default function CategoryPage() {
                         <span className="flex items-center justify-center gap-2">
                           <Loader2 className="w-4 h-4 animate-spin" />
                         </span>
-                      ) : "Apply"}
+                      ) : (
+                        "Apply"
+                      )}
                     </button>
                   </div>
                 </motion.aside>
@@ -875,23 +930,28 @@ export default function CategoryPage() {
             {activeFilterCount > 0 && (
               <div className="hidden md:flex flex-wrap items-center gap-2 mb-4 text-sm">
                 <span className="text-gray-500">Active filters:</span>
-                {showPriceFilter && (priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX) && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full font-medium">
-                    ৳{formatPrice(priceRange[0])} – ৳{formatPrice(priceRange[1])}
-                    <button
-                      onClick={() => {
-                        setPriceRange([PRICE_MIN, PRICE_MAX]);
-                        setPriceInputs([PRICE_MIN, PRICE_MAX]);
-                        fetchProducts(1, true);
-                      }}
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                )}
+                {showPriceFilter &&
+                  (priceRange[0] > PRICE_MIN || priceRange[1] < PRICE_MAX) && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full font-medium">
+                      ৳{formatPrice(priceRange[0])} – ৳
+                      {formatPrice(priceRange[1])}
+                      <button
+                        onClick={() => {
+                          setPriceRange([PRICE_MIN, PRICE_MAX]);
+                          setPriceInputs([PRICE_MIN, PRICE_MAX]);
+                          fetchProducts(1, true);
+                        }}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
                 {showAvailability && availability !== "all" && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full font-medium">
-                    {AVAILABILITY_OPTIONS.find((a) => a.value === availability)?.label}
+                    {
+                      AVAILABILITY_OPTIONS.find((a) => a.value === availability)
+                        ?.label
+                    }
                     <button onClick={() => handleAvailabilityChange("all")}>
                       <X className="w-3 h-3" />
                     </button>
@@ -918,11 +978,25 @@ export default function CategoryPage() {
               renderSkeleton()
             ) : error && products.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                <svg className="w-14 h-14 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                <svg
+                  className="w-14 h-14 mx-auto text-gray-300 mb-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+                  />
                 </svg>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h3>
-                <p className="text-gray-500 text-sm mb-5 max-w-sm mx-auto">{error}</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Something went wrong
+                </h3>
+                <p className="text-gray-500 text-sm mb-5 max-w-sm mx-auto">
+                  {error}
+                </p>
                 <button
                   onClick={() => fetchProducts(1, true)}
                   className="px-5 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
@@ -932,12 +1006,25 @@ export default function CategoryPage() {
               </div>
             ) : products.length === 0 ? (
               <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-                <svg className="w-14 h-14 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                <svg
+                  className="w-14 h-14 mx-auto text-gray-300 mb-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
                 </svg>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No products found</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No products found
+                </h3>
                 <p className="text-gray-500 text-sm mb-5 max-w-sm mx-auto">
-                  No products match your current filters. Try adjusting or clearing them.
+                  No products match your current filters. Try adjusting or
+                  clearing them.
                 </p>
                 {activeFilterCount > 0 && (
                   <button
@@ -952,12 +1039,15 @@ export default function CategoryPage() {
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
                   {products.map((p) => (
-                    <ProductCard key={p.id} {...p}  />
+                    <ProductCard key={p.id} {...p} />
                   ))}
                 </div>
 
                 {hasMore && (
-                  <div ref={ref} className="py-10 flex flex-col items-center gap-3 text-gray-500">
+                  <div
+                    ref={ref}
+                    className="py-10 flex flex-col items-center gap-3 text-gray-500"
+                  >
                     {loading && (
                       <>
                         <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -969,7 +1059,9 @@ export default function CategoryPage() {
 
                 {!hasMore && products.length > 0 && (
                   <div className="text-center py-10 border-t mt-8">
-                    <p className="text-gray-700 font-semibold mb-1">You've seen it all! 🎉</p>
+                    <p className="text-gray-700 font-semibold mb-1">
+                      You've seen it all! 🎉
+                    </p>
                     <p className="text-sm text-gray-400">
                       All {totalProducts} {categoryName} products loaded
                     </p>

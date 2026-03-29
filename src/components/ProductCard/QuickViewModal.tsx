@@ -4,9 +4,24 @@ import { formatPrice, getCategoryName, getImageUrl } from "../helper";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Barcode, Check, ChevronLeft, ChevronRight, GitCompare, Heart,
-  ImageOff, Minus, Package, Plus, Share2, ShoppingCart, Star,
-  X, Zap, ZoomIn, Copy, CheckCheck,
+  Barcode,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  GitCompare,
+  Heart,
+  ImageOff,
+  Minus,
+  Package,
+  Plus,
+  Share2,
+  ShoppingCart,
+  Star,
+  X,
+  Zap,
+  ZoomIn,
+  Copy,
+  CheckCheck,
 } from "lucide-react";
 import { buildWhatsAppUrl } from "./Shared";
 import { FaWhatsapp } from "react-icons/fa";
@@ -99,30 +114,43 @@ function ShareSheet({
   ];
 
   return (
-    <div className="absolute inset-0 z-10 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-[1px] rounded-b-2xl sm:rounded-2xl"
-      onClick={onClose}>
+    <div
+      className="absolute inset-0 z-10 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-[1px] rounded-b-2xl sm:rounded-2xl"
+      onClick={onClose}
+    >
       <div
         className="bg-white w-full sm:w-auto sm:min-w-[320px] sm:mx-4 rounded-t-2xl sm:rounded-2xl p-5 shadow-xl"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-gray-900">Share product</h3>
-          <button onClick={onClose}
-            className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors">
+          <button
+            onClick={onClose}
+            className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
+          >
             <X className="w-3 h-3 text-gray-500" />
           </button>
         </div>
 
         {/* Social buttons */}
         <div className="grid grid-cols-4 gap-3 mb-4">
-          {shareTargets.map(t => (
-            <a key={t.label} href={t.href} target="_blank" rel="noopener noreferrer"
-              className="flex flex-col items-center gap-1.5 group">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-transform group-hover:scale-105"
-                style={{ background: t.color }}>
+          {shareTargets.map((t) => (
+            <a
+              key={t.label}
+              href={t.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col items-center gap-1.5 group"
+            >
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-transform group-hover:scale-105"
+                style={{ background: t.color }}
+              >
                 {t.icon}
               </div>
-              <span className="text-[9px] text-gray-500 font-medium">{t.label}</span>
+              <span className="text-[9px] text-gray-500 font-medium">
+                {t.label}
+              </span>
             </a>
           ))}
         </div>
@@ -130,15 +158,25 @@ function ShareSheet({
         {/* Copy link row */}
         <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5">
           <span className="flex-1 text-xs text-gray-500 truncate">{url}</span>
-          <button onClick={handleCopy}
+          <button
+            onClick={handleCopy}
             className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-all shrink-0 ${
               copied
                 ? "bg-green-100 text-green-700"
                 : "bg-white border border-gray-200 text-gray-600 hover:border-gray-300"
-            }`}>
-            {copied
-              ? <><CheckCheck className="w-3 h-3" />Copied!</>
-              : <><Copy className="w-3 h-3" />Copy</>}
+            }`}
+          >
+            {copied ? (
+              <>
+                <CheckCheck className="w-3 h-3" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="w-3 h-3" />
+                Copy
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -164,6 +202,7 @@ export function QuickViewModal({
   const [quantity, setQuantity] = useState(1);
   const [imageError, setImageError] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+
   const modalRef = useRef<HTMLDivElement>(null);
 
   const sellingPrice = Number(product.selling_price) || 0;
@@ -223,7 +262,10 @@ export function QuickViewModal({
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (shareOpen) { setShareOpen(false); return; }
+        if (shareOpen) {
+          setShareOpen(false);
+          return;
+        }
         onClose();
       }
       if (e.key === "ArrowLeft")
@@ -334,7 +376,9 @@ export function QuickViewModal({
               {imageList.length > 1 && (
                 <>
                   <button
-                    onClick={() => setCurrentImageIndex((i) => Math.max(0, i - 1))}
+                    onClick={() =>
+                      setCurrentImageIndex((i) => Math.max(0, i - 1))
+                    }
                     disabled={currentImageIndex === 0}
                     className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 disabled:opacity-25 transition-all shadow-sm"
                     aria-label="Previous image"
@@ -342,7 +386,11 @@ export function QuickViewModal({
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => setCurrentImageIndex((i) => Math.min(imageList.length - 1, i + 1))}
+                    onClick={() =>
+                      setCurrentImageIndex((i) =>
+                        Math.min(imageList.length - 1, i + 1),
+                      )
+                    }
                     disabled={currentImageIndex === imageList.length - 1}
                     className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:border-gray-400 disabled:opacity-25 transition-all shadow-sm"
                     aria-label="Next image"
@@ -358,7 +406,10 @@ export function QuickViewModal({
                 {imageList.map((img, idx) => (
                   <button
                     key={idx}
-                    onClick={() => { setCurrentImageIndex(idx); setImageError(false); }}
+                    onClick={() => {
+                      setCurrentImageIndex(idx);
+                      setImageError(false);
+                    }}
                     className={`shrink-0 w-11 h-11 rounded-lg overflow-hidden border-[1.5px] transition-all bg-white ${
                       idx === currentImageIndex
                         ? "border-primary shadow-sm"
@@ -366,7 +417,13 @@ export function QuickViewModal({
                     }`}
                     aria-label={`Image ${idx + 1}`}
                   >
-                    <Image src={img} alt="" width={44} height={44} className="object-cover w-full h-full" />
+                    <Image
+                      src={img}
+                      alt=""
+                      width={44}
+                      height={44}
+                      className="object-cover w-full h-full"
+                    />
                   </button>
                 ))}
               </div>
@@ -399,15 +456,20 @@ export function QuickViewModal({
                 <div className="flex items-center gap-2">
                   <div className="flex gap-0.5">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className={`w-3.5 h-3.5 ${
-                        safeRating > 0 && i < Math.floor(safeRating)
-                          ? "fill-amber-400 text-amber-400"
-                          : "text-gray-200"
-                      }`} />
+                      <Star
+                        key={i}
+                        className={`w-3.5 h-3.5 ${
+                          safeRating > 0 && i < Math.floor(safeRating)
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-gray-200"
+                        }`}
+                      />
                     ))}
                   </div>
                   <span className="text-xs text-gray-400">
-                    {safeRating > 0 ? `${safeRating.toFixed(1)} rating` : "No reviews yet"}
+                    {safeRating > 0
+                      ? `${safeRating.toFixed(1)} rating`
+                      : "No reviews yet"}
                   </span>
                 </div>
               )}
@@ -438,20 +500,32 @@ export function QuickViewModal({
                     Quantity
                   </span>
                   <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden">
-                    <button onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    <button
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                       className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors border-r border-gray-200"
-                      aria-label="Decrease">
+                      aria-label="Decrease"
+                    >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <span className="w-9 text-center text-sm font-semibold text-gray-900">{quantity}</span>
-                    <button onClick={() => setQuantity((q) => safeStock > 0 ? Math.min(safeStock, q + 1) : q + 1)}
+                    <span className="w-9 text-center text-sm font-semibold text-gray-900">
+                      {quantity}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setQuantity((q) =>
+                          safeStock > 0 ? Math.min(safeStock, q + 1) : q + 1,
+                        )
+                      }
                       className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors border-l border-gray-200"
-                      aria-label="Increase">
+                      aria-label="Increase"
+                    >
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
                   {safeStock > 0 && safeStock <= 10 && (
-                    <span className="text-xs text-amber-600">{safeStock} available</span>
+                    <span className="text-xs text-amber-600">
+                      {safeStock} available
+                    </span>
                   )}
                 </div>
               )}
@@ -466,20 +540,35 @@ export function QuickViewModal({
                   )
                 ) : (
                   <>
-                    {(cfg.primary_button === "add_to_cart" || cfg.show_add_to_cart) && (
-                      <button onClick={onAddToCart} disabled={cartLoading || isAddedToCart}
+                    {(cfg.primary_button === "add_to_cart" ||
+                      cfg.show_add_to_cart) && (
+                      <button
+                        onClick={onAddToCart}
+                        disabled={cartLoading || isAddedToCart}
                         className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-60 ${
-                          isAddedToCart ? "bg-green-600 text-white" : "bg-primary text-white hover:bg-primary/90"
-                        }`}>
-                        {cartLoading
-                          ? <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
-                          : isAddedToCart ? <Check className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
-                        {isAddedToCart ? "Added to cart!" : cfg.add_to_cart_text}
+                          isAddedToCart
+                            ? "bg-green-600 text-white"
+                            : "bg-primary text-white hover:bg-primary/90"
+                        }`}
+                      >
+                        {cartLoading ? (
+                          <span className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                        ) : isAddedToCart ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <ShoppingCart className="w-4 h-4" />
+                        )}
+                        {isAddedToCart
+                          ? "Added to cart!"
+                          : cfg.add_to_cart_text}
                       </button>
                     )}
                     {cfg.show_buy_now && (
-                      <button onClick={onBuyNow} disabled={cartLoading}
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:border-primary hover:text-primary hover:bg-primary/3 transition-all duration-200 active:scale-[0.98] disabled:opacity-60">
+                      <button
+                        onClick={onBuyNow}
+                        disabled={cartLoading}
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:border-primary hover:text-primary hover:bg-primary/3 transition-all duration-200 active:scale-[0.98] disabled:opacity-60"
+                      >
                         <Zap className="w-4 h-4" />
                         {cfg.buy_now_text}
                       </button>
@@ -487,12 +576,18 @@ export function QuickViewModal({
                     {cfg.show_contact_whatsapp && (
                       <button
                         onClick={() => {
-                          const url = buildWhatsAppUrl(cfg.whatsapp, product.name, String(product.code ?? product.id));
-                          if (cfg.whatsapp.open_in_new_tab) window.open(url, "_blank");
+                          const url = buildWhatsAppUrl(
+                            cfg.whatsapp,
+                            product.name,
+                            String(product.code ?? product.id),
+                          );
+                          if (cfg.whatsapp.open_in_new_tab)
+                            window.open(url, "_blank");
                           else window.location.href = url;
                         }}
                         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold text-white transition-all duration-200 active:scale-[0.98] hover:opacity-90"
-                        style={{ background: cfg.whatsapp.button_color }}>
+                        style={{ background: cfg.whatsapp.button_color }}
+                      >
                         <FaWhatsapp className="w-4 h-4" />
                         {cfg.whatsapp_text}
                       </button>
@@ -504,13 +599,18 @@ export function QuickViewModal({
               {/* Secondary row */}
               <div className="flex items-center gap-2">
                 {cfg.show_wishlist && (
-                  <button onClick={onToggleWishlist} disabled={wishlistLoading}
+                  <button
+                    onClick={onToggleWishlist}
+                    disabled={wishlistLoading}
                     className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
                       isWishlisted
                         ? "border-red-200 bg-red-50 text-red-500"
                         : "border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-500 hover:bg-red-50"
-                    } disabled:opacity-50`}>
-                    <Heart className={`w-3.5 h-3.5 shrink-0 ${isWishlisted ? "fill-red-500" : ""}`} />
+                    } disabled:opacity-50`}
+                  >
+                    <Heart
+                      className={`w-3.5 h-3.5 shrink-0 ${isWishlisted ? "fill-red-500" : ""}`}
+                    />
                     {isWishlisted ? "Saved" : "Save"}
                   </button>
                 )}
@@ -536,10 +636,15 @@ export function QuickViewModal({
             {/* Footer */}
             <div className="px-5 py-3 border-t border-gray-100 shrink-0 flex items-center justify-between bg-gray-50/60">
               <p className="text-[11px] text-gray-400">
-                {cfg.show_stock && !isOutOfStock && safeStock > 10 ? "In stock · ready to ship" : " "}
+                {cfg.show_stock && !isOutOfStock && safeStock > 10
+                  ? "In stock · ready to ship"
+                  : " "}
               </p>
-              <Link href={`/product/${product.slug}`} onClick={onClose}
-                className="text-[11px] font-medium text-primary hover:underline flex items-center gap-1">
+              <Link
+                href={`/product/${product.slug}`}
+                onClick={onClose}
+                className="text-[11px] font-medium text-primary hover:underline flex items-center gap-1"
+              >
                 View full details
                 <ChevronRight className="w-3 h-3" />
               </Link>

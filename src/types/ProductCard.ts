@@ -72,3 +72,18 @@ export interface CardConfig {
   whatsapp: WhatsAppConfig;
   show_contact_whatsapp: boolean;
 }
+export interface ApiResponse {
+  success: boolean;
+  message: string;
+  data: {
+    data: ProductCardProps[];
+    pagination: {
+      currentPage: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
+}

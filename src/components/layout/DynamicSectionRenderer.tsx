@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import { useCategoryStore } from "@/app/store/useCatrgoryStore";
+import { ProductCardProps } from "@/types/ProductCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -92,29 +93,7 @@ export interface Section {
   days?: number;
 }
 
-interface Product {
-  id: number;
-  primary_variant_id: number;
-  name: string;
-  slug: string;
-  categories?: {
-    id: number;
-    name: string;
-    slug?: string;
-    code: string;
-    image: string | null;
-    is_primary: boolean;
-  }[];
-  selling_price: string | number;
-  regular_price: string | number;
-  cost_price?: string | number;
-  badge?: string | null;
-  total_stock?: string | number;
-  rating?: number | null;
-  images?:
-    | { id: number; url: string; alt_text: string; is_primary: boolean }[]
-    | null;
-}
+
 
 interface Category {
   id: number;
@@ -274,7 +253,7 @@ const ProductSlider = memo(
     badgeColor,
     columns = 4,
   }: {
-    products: Product[];
+    products: ProductCardProps[];
     badge?: string;
     badgeIcon?: string;
     badgeColor?: string;
@@ -590,7 +569,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
       const cols = section.columns || 4;
       const limit = section.products_count || 8;
 
-      let products: Product[] = [];
+      let products: ProductCardProps[] = [];
       let isLoading = false;
 
       if (section.type === "recent_products") {

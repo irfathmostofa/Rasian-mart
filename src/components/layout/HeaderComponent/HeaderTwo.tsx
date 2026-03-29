@@ -645,7 +645,7 @@ export default function HeaderTwo() {
                         return (
                           <Link
                             key={key}
-                            href="/wishlist"
+                            href="/profile?tab=wishlist"
                             className="relative p-2 hover:opacity-80 transition-opacity"
                             style={{ color: primaryColor }}
                           >

@@ -106,7 +106,7 @@ export function ImageMagnifier({
   return (
     <div
       ref={containerRef}
-      className={`relative select-none ${className}`}
+      className={`relative select-none w-full h-full ${className}`}
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
       onMouseMove={handleMouseMove}
@@ -115,16 +115,15 @@ export function ImageMagnifier({
       onTouchMove={handleTouchMove}
       style={{ cursor: show ? "crosshair" : "default" }}
     >
-      {/* Base image — object-contain keeps full image visible, no cropping */}
+      {/* Base image — uses fill + object-contain to properly scale and center */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <Image
         ref={imgRef}
-        height={300}
-        width={300}
+        fill
         src={src}
         alt={alt}
         draggable={false}
-        className={`w-full h-full object-contain block ${imgClassName}`}
+        className={`object-contain ${imgClassName}`}
       />
 
       {/* Magnifier lens */}
