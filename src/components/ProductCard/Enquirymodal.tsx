@@ -1,7 +1,7 @@
 // components/ProductCard/EnquiryModal.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import api from "@/lib/api";
+import { useToastStore } from "@/app/store/useToastStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,13 +54,13 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
   const [errors, setErrors] = useState<Partial<FormState>>({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-
+  const { showToast } = useToastStore();
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setForm({
         ...EMPTY_FORM,
-        message: `Hello, I'm interested in "${product.name}" and would like more information.`,
+        message: `Hello, I'm interested in ${product.name} and would like more information.`,
       });
       setErrors({});
       setSubmitted(false);
@@ -112,20 +113,20 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
 
     setLoading(true);
     try {
-      await api.post("/product/enquiry", {
+      const res = await api.post("/product/product-enquiries", {
         product_id: product.id,
-        product_name: product.name,
-        product_sku: product.code ?? "",
         name: form.name.trim(),
         phone: form.phone.trim(),
         email: form.email.trim() || undefined,
         quantity: parseInt(form.quantity) || 1,
         message: form.message.trim(),
       });
+
+      if (res.data.success) {
+        showToast(res.data.message || "Enquiry sent successfully", "success");
+      }
       setSubmitted(true);
     } catch (err) {
-      console.error("[EnquiryModal]", err);
-      // Still show success — don't expose API errors to end users
       setSubmitted(true);
     } finally {
       setLoading(false);
