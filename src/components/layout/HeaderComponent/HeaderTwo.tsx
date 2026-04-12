@@ -288,7 +288,7 @@ export default function HeaderTwo() {
         >
           <div className="container mx-auto px-3 sm:px-4">
             {/* ── Mobile top bar ── */}
-            <div className="flex items-center min-h-[36px] gap-2 sm:hidden py-1">
+            <div className="flex items-center min-h-9 gap-2 sm:hidden py-1">
               {/* Left: ticker or text */}
               <div className="flex-1 min-w-0 overflow-hidden">
                 {header_top.content?.left?.status !== false &&
@@ -322,7 +322,7 @@ export default function HeaderTwo() {
                     style={{ color: footerText }}
                   >
                     <User size={11} />
-                    <span className="max-w-[72px] truncate">
+                    <span className="max-w-18 truncate">
                       {userName?.split(" ")[0]}
                     </span>
                   </Link>
@@ -354,7 +354,7 @@ export default function HeaderTwo() {
             </div>
 
             {/* ── Desktop top bar: 3-column grid ── */}
-            <div className="hidden sm:grid sm:grid-cols-3 items-center min-h-[40px] text-sm">
+            <div className="hidden sm:grid sm:grid-cols-3 items-center min-h-10 text-sm">
               {/* Left */}
               <div className="flex items-center min-w-0">
                 {header_top.content?.left?.status !== false &&
@@ -404,7 +404,7 @@ export default function HeaderTwo() {
                       style={{ color: footerText }}
                     >
                       <User size={14} />
-                      <span className="max-w-[120px] truncate">{userName}</span>
+                      <span className="max-w-30 truncate">{userName}</span>
                     </Link>
                   ) : (
                     <>
@@ -631,7 +631,7 @@ export default function HeaderTwo() {
                               </span>
                             ) : totalItems > 0 ? (
                               <span
-                                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] sm:min-w-[20px] sm:h-5 rounded-full text-[10px] sm:text-xs flex items-center justify-center text-white px-0.5"
+                                className="absolute -top-1 -right-1 min-w-4.5 h-4.5 sm:min-w-5 sm:h-5 rounded-full text-[10px] sm:text-xs flex items-center justify-center text-white px-0.5"
                                 style={{ backgroundColor: secondaryColor }}
                               >
                                 {totalItems > 99 ? "99+" : totalItems}
@@ -652,7 +652,7 @@ export default function HeaderTwo() {
                             <Icon size={22} />
                             {!wishlistLoading && items.length > 0 && (
                               <span
-                                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] sm:min-w-[20px] sm:h-5 rounded-full text-[10px] sm:text-xs flex items-center justify-center text-white px-0.5"
+                                className="absolute -top-1 -right-1 min-w-4.5 h-4.5 sm:min-w-5 sm:h-5 rounded-full text-[10px] sm:text-xs flex items-center justify-center text-white px-0.5"
                                 style={{ backgroundColor: secondaryColor }}
                               >
                                 {items.length > 99 ? "99+" : items.length}
@@ -686,7 +686,7 @@ export default function HeaderTwo() {
                       <Heart size={22} />
                       {!wishlistLoading && items.length > 0 && (
                         <span
-                          className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[10px] flex items-center justify-center text-white px-0.5"
+                          className="absolute -top-1 -right-1 min-w-4.5 h-4.5 rounded-full text-[10px] flex items-center justify-center text-white px-0.5"
                           style={{ backgroundColor: secondaryColor }}
                         >
                           {items.length}
@@ -701,7 +701,7 @@ export default function HeaderTwo() {
                       <ShoppingCart size={22} />
                       {!cartLoading && totalItems > 0 && (
                         <span
-                          className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full text-[10px] flex items-center justify-center text-white px-0.5"
+                          className="absolute -top-1 -right-1 min-w-4.5 h-4.5 rounded-full text-[10px] flex items-center justify-center text-white px-0.5"
                           style={{ backgroundColor: secondaryColor }}
                         >
                           {totalItems}
