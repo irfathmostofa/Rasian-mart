@@ -235,6 +235,7 @@ export function QuickViewModal({
         // user cancelled or not supported — fall through to sheet
       }
     }
+
     setShareOpen(true);
   };
 
@@ -621,7 +622,7 @@ export function QuickViewModal({
                   </button>
                 )}
 
-                {/* ── Functional Share button ── */}
+                {/* Functional Share button */}
                 <button
                   onClick={handleShare}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-gray-500 text-xs font-medium hover:border-gray-300 hover:text-gray-700 transition-all ml-auto"

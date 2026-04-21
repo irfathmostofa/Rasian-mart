@@ -1,7 +1,7 @@
 // components/sections/DynamicSectionRenderer.tsx
 "use client";
 
-import React, { useCallback, useMemo, memo, type JSX } from "react";
+import  { useCallback, useMemo, memo, type JSX } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";

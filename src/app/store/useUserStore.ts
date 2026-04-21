@@ -14,8 +14,13 @@ interface User {
   creation_date: string;
   last_update?: string | null;
   last_update_date?: string | null;
+  address_line?: string | null;
+  area?: string | null;
+  city?: string | null;
+  is_default?: string | null;
+  label?: string | null;
+  postal_code?: string | null;
 }
-
 interface UserStore {
   user: User | null;
   token: string | null;

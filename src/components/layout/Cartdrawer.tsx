@@ -25,8 +25,8 @@ interface CartDrawerProps {
 
 const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
   const { user } = useUserStore();
-  const logistic = (useThemeData("logistics") || {}) as any;
-  console.log(logistic);
+  // const logistic = (useThemeData("logistics") || {}) as any;
+
   const {
     cart,
     removeFromCart,
@@ -273,11 +273,6 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                               target.src = "https://placehold.co/100";
                             }}
                           />
-                          {item.quantity > 1 && (
-                            <div className="absolute -top-2 -right-2 bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">
-                              {item.quantity}
-                            </div>
-                          )}
                         </div>
 
                         {/* Content */}
