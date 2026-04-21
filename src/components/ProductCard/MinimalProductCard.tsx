@@ -795,6 +795,7 @@ export function MinimalProductCard({
           name,
           price: sellingPrice,
           image: imageUrl || "",
+          slug,
           stock: safeStock,
         },
         user!.id,

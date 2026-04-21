@@ -7,6 +7,7 @@ import api from "@/lib/api";
 
 async function fetchThemeData(): Promise<Record<string, any>> {
   const response = await api.get("/setup/get-setup-data");
+
   const items: any[] = Array.isArray(response.data)
     ? response.data
     : response.data?.data || [];

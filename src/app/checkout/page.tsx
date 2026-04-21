@@ -113,6 +113,7 @@ export default function CheckoutPage() {
 
   const paymentConfig = (useThemeData("payment") || {}) as PaymentConfig;
   const logistic = (useThemeData("logistics") || {}) as any;
+  console.log(logistic);
   const redxConfig = logistic?.providers?.redx || {};
   const pickupAreaId = redxConfig.store_id; // This is the pickup area ID
   const baseUrl = redxConfig.base_url;

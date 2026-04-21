@@ -8,6 +8,7 @@ interface WishlistItem {
   primary_variant_id: number;
   name: string;
   price: number;
+  slug: string;
   image: string;
   stock: number;
   dbId?: number;
@@ -78,8 +79,9 @@ export const useWishlist = create<WishlistState>((set, get) => ({
             primary_variant_id: item.product_variant_id,
             name: item.product_name || `Product ${item.product_variant_id}`,
             price: parseFloat(item.unit_price) || 0,
-            image: item.product_image || "",
-            stock: item.product_stock || 0,
+            slug: item.product_slug || "",
+            image: item.image || "",
+            stock: item.stock || 0,
             dbId: item.id,
           }));
 

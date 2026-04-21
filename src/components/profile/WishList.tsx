@@ -9,11 +9,11 @@ import { useWishlist } from "@/app/store/useWishlist";
 import { useUserStore } from "@/app/store/useUserStore"; // Import user store
 
 export default function Wishlist() {
-  const { items, removeFromWishlist, clearWishlist } = useWishlist();
+  const { items, removeFromWishlist } = useWishlist();
   const { addToCart } = useCart();
   const { showToast } = useToastStore();
   const { user } = useUserStore(); // Get user
-
+  console.log(items);
   const handleAddToCart = (item: any) => {
     if (!user) {
       showToast("Please login to add items to cart", "error");
@@ -40,13 +40,6 @@ export default function Wishlist() {
     removeFromWishlist(itemId, user.id);
   };
 
-  const handleClearWishlist = () => {
-    if (!user) return;
-    if (confirm("Clear all items from wishlist?")) {
-      clearWishlist(user.id);
-    }
-  };
-
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
@@ -67,20 +60,7 @@ export default function Wishlist() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-2">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-gray-800">My Wishlist 💖</h1>
-        </div>
-        <button
-          onClick={handleClearWishlist}
-          className="text-sm text-gray-500 hover:text-red-500 flex items-center gap-1"
-        >
-          <Trash2 className="w-4 h-4" /> Clear All
-        </button>
-      </div>
-
+    <div className="max-w-full mx-auto px-4 py-2">
       {/* Wishlist Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {items.map((item) => (
@@ -115,7 +95,7 @@ export default function Wishlist() {
               </button>
             </div>
             <div className="p-4 space-y-2">
-              <Link href={`/product/${item.id}`}>
+              <Link href={`/product/${item.slug}`}>
                 <h3 className="font-semibold text-lg line-clamp-1">
                   {item.name}
                 </h3>
@@ -132,7 +112,7 @@ export default function Wishlist() {
                 </button>
               ) : (
                 <Link
-                  href={`/product/${item.id}`}
+                  href={`/product/${item.slug}`}
                   className="w-full block text-center bg-gray-700 text-white py-2 rounded font-medium text-sm hover:bg-gray-600 transition"
                 >
                   View Details

@@ -93,8 +93,6 @@ export interface Section {
   days?: number;
 }
 
-
-
 interface Category {
   id: number;
   name: string;
@@ -534,7 +532,7 @@ function DynamicSectionRenderer({ sections }: { sections: Section[] }) {
     (section: Section) => {
       const cats = sectionCategories[section.id] || [];
       const cols = section.grid_columns || section.columns || 4;
-
+     
       if (categoriesLoading)
         return <LoadingSkeleton count={cols} type="category" />;
       if (!cats.length)
