@@ -12,7 +12,16 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, MapPin, Home, Loader2 } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  MapPin,
+  Home,
+  Loader2,
+  Edit2,
+  Check,
+  Star,
+} from "lucide-react";
 import api from "@/lib/api";
 import { useUserStore } from "@/app/store/useUserStore";
 
@@ -23,6 +32,7 @@ interface Address {
   postal_code: string;
   city?: string;
   area?: string;
+  is_default?: boolean;
 }
 
 export default function AddressManager() {
@@ -33,20 +43,25 @@ export default function AddressManager() {
     postal_code: "",
     city: "",
     area: "",
+    is_default: false,
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
-  const [update, setUpdate] = useState(0);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { user } = useUserStore();
+
+  // Fetch Addresses
   const fetchAddresses = async () => {
-    if (!user?.id) {
-      setAddresses([]);
-      return;
-    }
     try {
       setLoading(true);
-      const res = await api.get(`/users/get-customer-address/${user.id}`);
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await api.get("/users/get-customer-address", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setAddresses(res?.data.data || []);
     } catch (err) {
       console.error("Failed to fetch addresses:", err);
@@ -54,50 +69,222 @@ export default function AddressManager() {
       setLoading(false);
     }
   };
-  // 🔹 Fetch Addresses
-  useEffect(() => {
-    fetchAddresses();
-  }, [user, update]);
 
-  // 🔹 Add New Address
-  const handleAddAddress = async () => {
-    if (!newAddress.label || !newAddress.address_line) return;
-    setSaving(true);
+  useEffect(() => {
+    if (user?.id) {
+      fetchAddresses();
+    }
+  }, [user?.id, refreshKey]);
+
+  // Set as default address and update all others
+  const setAsDefault = async (id: number) => {
+    if (saving) return;
+
     try {
-      await api.post("/users/create-customer-address", {
-        ...newAddress,
-        customer_id: user?.id,
+      setSaving(true);
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      // First, update all addresses to is_default = false
+      const updatePromises = addresses.map(async (addr) => {
+        if (addr.id !== id && addr.is_default) {
+          return api.post(
+            `/users/update-customer-address/${addr.id}`,
+            { is_default: false },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+        }
+        return null;
       });
-      setUpdate(update + 1);
-      setNewAddress({
-        label: "",
-        address_line: "",
-        postal_code: "",
-        city: "",
-        area: "",
-      });
-      setOpen(false);
+
+      await Promise.all(updatePromises.filter((p) => p !== null));
+
+      // Then set the selected address as default
+      await api.post(
+        `/users/update-customer-address/${id}`,
+        { is_default: true },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      // Refresh the list to show updated default status
+      setRefreshKey((prev) => prev + 1);
     } catch (err) {
-      console.error("Failed to add address:", err);
+      console.error("Failed to set default address:", err);
+      alert("Failed to set default address. Please try again.");
     } finally {
       setSaving(false);
     }
   };
 
-  // 🔹 Delete Address
-  const handleDelete = async (id?: number) => {
-    if (!id) return;
+  // Add or Update Address
+  const handleSaveAddress = async () => {
+    if (!newAddress.label || !newAddress.address_line) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    setSaving(true);
     try {
-      await api.post(`/users/delete-customer-address`, {
-        data: { id: id },
-      });
-      setUpdate(update + 1);
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const payload = {
+        ...newAddress,
+        customer_id: user?.id,
+      };
+
+      if (editingId) {
+        // Update existing address
+        await api.post(`/users/update-customer-address/${editingId}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // If setting this address as default, update all other addresses
+        if (newAddress.is_default) {
+          const updatePromises = addresses
+            .filter((addr) => addr.id !== editingId && addr.is_default)
+            .map((addr) =>
+              api.post(
+                `/users/update-customer-address/${addr.id}`,
+                { is_default: false },
+                { headers: { Authorization: `Bearer ${token}` } },
+              ),
+            );
+
+          await Promise.all(updatePromises);
+        }
+      } else {
+        // Create new address
+        const response = await api.post(
+          "/users/create-customer-address",
+          payload,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+
+        const newAddressId = response.data?.data?.id;
+
+        // If setting this address as default, update all existing addresses
+        if (newAddress.is_default && addresses.length > 0) {
+          const updatePromises = addresses
+            .filter((addr) => addr.is_default)
+            .map((addr) =>
+              api.post(
+                `/users/update-customer-address/${addr.id}`,
+                { is_default: false },
+                { headers: { Authorization: `Bearer ${token}` } },
+              ),
+            );
+
+          await Promise.all(updatePromises);
+        }
+
+        // If this is the first address, automatically set as default
+        if (addresses.length === 0) {
+          if (newAddressId) {
+            await api.post(
+              `/users/update-customer-address/${newAddressId}`,
+              { is_default: true },
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+          }
+        }
+      }
+
+      // Reset form and refresh
+      resetForm();
+      setRefreshKey((prev) => prev + 1);
+      setOpen(false);
     } catch (err) {
-      console.error("Failed to delete address:", err);
+      console.error("Failed to save address:", err);
+      alert("Failed to save address. Please try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  // 🔹 Loader
+  // Edit Address
+  const handleEdit = (address: Address) => {
+    setNewAddress({
+      label: address.label,
+      address_line: address.address_line,
+      postal_code: address.postal_code || "",
+      city: address.city || "",
+      area: address.area || "",
+      is_default: address.is_default || false,
+    });
+    setEditingId(address.id || null);
+    setOpen(true);
+  };
+
+  // Delete Address
+  const handleDelete = async (id?: number) => {
+    if (!id) return;
+
+    if (!confirm("Are you sure you want to delete this address?")) return;
+
+    try {
+      setSaving(true);
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      // Check if deleting the default address
+      const isDeletingDefault = addresses.find(
+        (addr) => addr.id === id,
+      )?.is_default;
+
+      await api.post(
+        `/users/delete-customer-address`,
+        { id: id },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      // If deleted address was default and there are other addresses, set the first one as default
+      if (isDeletingDefault && addresses.length > 1) {
+        const remainingAddress = addresses.find((addr) => addr.id !== id);
+        if (remainingAddress?.id) {
+          await api.post(
+            `/users/update-customer-address/${remainingAddress.id}`,
+            { is_default: true },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+        }
+      }
+
+      setRefreshKey((prev) => prev + 1);
+    } catch (err) {
+      console.error("Failed to delete address:", err);
+      alert("Failed to delete address. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setNewAddress({
+      label: "",
+      address_line: "",
+      postal_code: "",
+      city: "",
+      area: "",
+      is_default: false,
+    });
+    setEditingId(null);
+  };
+
+  // Close Dialog and Reset Form
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      resetForm();
+    }
+  };
+
+  // Loader
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[60vh]">
@@ -114,31 +301,33 @@ export default function AddressManager() {
       transition={{ duration: 0.5 }}
     >
       <Card className="border-none shadow-md">
-        <CardHeader className="flex justify-between items-center">
+        <CardHeader className="flex flex-row justify-between items-center">
           <CardTitle className="flex items-center gap-2 text-lg font-semibold">
             <MapPin className="w-5 h-5 text-primary" /> Manage Addresses
           </CardTitle>
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button className="flex items-center gap-2 bg-primary hover:bg-primary/90">
-                <Plus className="w-4 h-4" /> Add
+                <Plus className="w-4 h-4" /> Add Address
               </Button>
             </DialogTrigger>
 
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Add New Address</DialogTitle>
+                <DialogTitle>
+                  {editingId ? "Edit Address" : "Add New Address"}
+                </DialogTitle>
               </DialogHeader>
               <div className="flex flex-col gap-3">
                 <Input
-                  placeholder="Label (Home, Work, etc.)"
+                  placeholder="Label (Home, Work, etc.) *"
                   value={newAddress.label}
                   onChange={(e) =>
                     setNewAddress({ ...newAddress, label: e.target.value })
                   }
                 />
                 <Input
-                  placeholder="Address Line"
+                  placeholder="Address Line *"
                   value={newAddress.address_line}
                   onChange={(e) =>
                     setNewAddress({
@@ -174,14 +363,48 @@ export default function AddressManager() {
                   }
                 />
 
+                {/* Set as Default Checkbox */}
+                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <input
+                    type="checkbox"
+                    id="is_default"
+                    checked={newAddress.is_default || false}
+                    onChange={(e) =>
+                      setNewAddress({
+                        ...newAddress,
+                        is_default: e.target.checked,
+                      })
+                    }
+                    disabled={addresses.length === 0 && !editingId}
+                  />
+                  <label
+                    htmlFor="is_default"
+                    className={`flex items-center gap-2 cursor-pointer flex-1 ${
+                      addresses.length === 0 && !editingId ? "opacity-50" : ""
+                    }`}
+                  >
+                    <Star className="w-4 h-4 text-yellow-500" />
+                    <span className="text-sm font-medium">
+                      Set as default address
+                      {addresses.length === 0 &&
+                        !editingId &&
+                        " (First address will be auto-set as default)"}
+                    </span>
+                  </label>
+                </div>
+
                 <Button
-                  onClick={handleAddAddress}
+                  onClick={handleSaveAddress}
                   disabled={saving}
                   className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90"
                 >
                   {saving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                    </>
+                  ) : editingId ? (
+                    <>
+                      <Check className="w-4 h-4" /> Update Address
                     </>
                   ) : (
                     <>
@@ -196,21 +419,30 @@ export default function AddressManager() {
 
         <CardContent className="flex flex-col gap-4">
           {addresses.length === 0 ? (
-            <p className="text-sm text-gray-500 italic text-center">
-              No addresses added yet.
+            <p className="text-sm text-gray-500 italic text-center py-8">
+              No addresses added yet. Click "Add Address" to add one.
             </p>
           ) : (
             <div className="space-y-3">
               {addresses.map((addr, index) => (
                 <motion.div
-                  key={index}
+                  key={addr.id || index}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex justify-between items-start p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition"
+                  className={`flex justify-between items-start p-3 border rounded-lg transition ${
+                    addr.is_default
+                      ? "bg-blue-50 border-blue-300 shadow-sm"
+                      : "bg-gray-50 hover:bg-gray-100"
+                  }`}
                 >
-                  <div>
-                    <p className="font-semibold flex items-center gap-1">
+                  <div className="flex-1">
+                    <p className="font-semibold flex items-center gap-2">
                       <Home className="w-4 h-4 text-primary" /> {addr.label}
+                      {addr.is_default && (
+                        <span className="flex items-center gap-1 text-xs bg-blue-200 text-blue-700 px-2 py-1 rounded-full">
+                          <Star className="w-3 h-3" /> Default
+                        </span>
+                      )}
                     </p>
                     <p className="text-sm text-gray-600">{addr.address_line}</p>
                     <p className="text-xs text-gray-500">
@@ -219,14 +451,37 @@ export default function AddressManager() {
                       {addr.postal_code}
                     </p>
                   </div>
-                  <Button
-                    onClick={() => handleDelete(addr.id)}
-                    size="icon"
-                    variant="ghost"
-                    className="text-red-500 hover:text-red-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex gap-2 ml-4">
+                    {!addr.is_default && (
+                      <Button
+                        onClick={() => setAsDefault(addr.id!)}
+                        size="sm"
+                        variant="outline"
+                        className="text-yellow-600 hover:text-yellow-700"
+                        disabled={saving}
+                      >
+                        <Star className="w-3 h-3 mr-1" /> Set Default
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => handleEdit(addr)}
+                      size="icon"
+                      variant="ghost"
+                      className="text-blue-500 hover:text-blue-600"
+                      disabled={saving}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      onClick={() => handleDelete(addr.id)}
+                      size="icon"
+                      variant="ghost"
+                      className="text-red-500 hover:text-red-600"
+                      disabled={saving}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </motion.div>
               ))}
             </div>

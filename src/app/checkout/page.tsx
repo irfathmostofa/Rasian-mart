@@ -93,6 +93,44 @@ interface ShippingCalculation {
   codCharge: number;
 }
 
+// Function to calculate shipping charge based on customer address and logistics config
+const calculateCityBasedShipping = (
+  customerCity: string,
+  logisticsConfig: any,
+) => {
+  // Check if logistics config and cod_charges exist
+  if (!logisticsConfig?.cod_charges?.enable_cod) {
+    return {
+      charge: 0,
+      type: "cod_disabled",
+      message: "COD is disabled",
+      incity_rate: 0,
+      outcity_rate: 0,
+    };
+  }
+
+  const codCharges = logisticsConfig.cod_charges;
+  const configCity = codCharges.city?.trim();
+  const customerCityTrimmed = customerCity?.trim();
+
+  // Case-insensitive comparison
+  const isInCity =
+    customerCityTrimmed?.toLowerCase() === configCity?.toLowerCase();
+
+  const charge = isInCity
+    ? codCharges.incity_charge
+    : codCharges.outcity_charge;
+
+  return {
+    charge: charge,
+    type: isInCity ? "incity" : "outcity",
+    city: customerCity,
+    matched_with: configCity,
+    incity_rate: codCharges.incity_charge,
+    outcity_rate: codCharges.outcity_charge,
+  };
+};
+
 export default function CheckoutPage() {
   const { user: authUser } = useUserStore();
   const { cart, clearCart, initializeCart, isLoading: cartLoading } = useCart();
@@ -113,7 +151,6 @@ export default function CheckoutPage() {
 
   const paymentConfig = (useThemeData("payment") || {}) as PaymentConfig;
   const logistic = (useThemeData("logistics") || {}) as any;
-  console.log(logistic);
   const redxConfig = logistic?.providers?.redx || {};
   const pickupAreaId = redxConfig.store_id; // This is the pickup area ID
   const baseUrl = redxConfig.base_url;
@@ -137,6 +174,10 @@ export default function CheckoutPage() {
   const [deliveryAreaId, setDeliveryAreaId] = useState<number | null>(null);
   const [redxAreas, setRedxAreas] = useState<RedxArea[]>([]);
   const [selectedRedxArea, setSelectedRedxArea] = useState<number | null>(null);
+
+  // City-based shipping state
+  const [cityBasedShipping, setCityBasedShipping] = useState<any>(null);
+  const [useRedxShipping, setUseRedxShipping] = useState(false);
 
   // Get the current user
   const currentUser = authUser;
@@ -164,7 +205,23 @@ export default function CheckoutPage() {
 
   // Use coupon discount from store
   const discount = couponDiscount;
-  const total = subtotal - discount + shippingCost;
+
+  // Get city-based shipping info
+  const getCityBasedShippingInfo = () => {
+    if (!selectedAddress) return null;
+    const selectedAddr = addressList.find(
+      (addr) => addr.id === selectedAddress,
+    );
+    if (!selectedAddr?.city) return null;
+    return calculateCityBasedShipping(selectedAddr.city, logistic);
+  };
+
+  const cityShippingInfo = getCityBasedShippingInfo();
+  const cityShippingCharge = cityShippingInfo?.charge || 0;
+
+  // Final shipping cost (prioritize Redx if available and configured, else use city-based)
+  const finalShippingCost = useRedxShipping ? shippingCost : cityShippingCharge;
+  const total = subtotal - discount + finalShippingCost;
 
   // Load available coupons
   const loadAvailableCoupons = async () => {
@@ -177,11 +234,10 @@ export default function CheckoutPage() {
 
   // Fetch Addresses
   const fetchAddresses = async () => {
-    if (!currentUser?.id) return;
     try {
-      const resAddress = await api.get(
-        `/users/get-customer-address/${currentUser.id}`,
-      );
+      const resAddress = await api.get(`/users/get-customer-address`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
       setAddressList(resAddress?.data?.data || []);
 
       // Select first address by default
@@ -212,27 +268,45 @@ export default function CheckoutPage() {
         setRedxAreas(data.areas);
         setSelectedRedxArea(data.areas[0].id);
         setDeliveryAreaId(data.areas[0].id);
+        setUseRedxShipping(true);
       } else if (Array.isArray(data) && data.length > 0) {
         // If response is directly an array
         setRedxAreas(data);
         setSelectedRedxArea(data[0].id);
         setDeliveryAreaId(data[0].id);
+        setUseRedxShipping(true);
       } else {
         setRedxAreas([]);
+        setUseRedxShipping(false);
       }
     } catch (error) {
       console.error("Failed to fetch Redx areas:", error);
       setRedxAreas([]);
+      setUseRedxShipping(false);
     }
   };
 
   // Calculate shipping cost when address or cart changes
   useEffect(() => {
     const calculateShipping = async () => {
-      // Reset shipping cost if no address or weight
+      // First, check if we have city-based shipping
+      if (selectedAddress) {
+        const selectedAddr = addressList.find(
+          (addr) => addr.id === selectedAddress,
+        );
+
+        // Update city-based shipping info
+        if (selectedAddr?.city) {
+          const cityShipping = calculateCityBasedShipping(
+            selectedAddr.city,
+            logistic,
+          );
+          setCityBasedShipping(cityShipping);
+        }
+      }
+
+      // Try to calculate Redx shipping if available
       if (!selectedAddress || !pickupAreaId || totalWeight <= 0) {
-        setShippingCost(0);
-        setShippingCalculation(null);
         return;
       }
 
@@ -241,8 +315,6 @@ export default function CheckoutPage() {
       );
 
       if (!selectedAddr?.postal_code) {
-        setShippingCost(0);
-        setShippingCalculation(null);
         return;
       }
 
@@ -253,7 +325,7 @@ export default function CheckoutPage() {
         await fetchRedxAreas(selectedAddr.postal_code);
 
         // If we have both pickup and delivery areas, calculate shipping
-        if (deliveryAreaId && pickupAreaId) {
+        if (deliveryAreaId && pickupAreaId && useRedxShipping) {
           const params = new URLSearchParams({
             delivery_area_id: deliveryAreaId.toString(),
             pickup_area_id: pickupAreaId.toString(),
@@ -285,13 +357,29 @@ export default function CheckoutPage() {
             });
 
             setShippingCost(totalCharge);
+            setUseRedxShipping(true);
           } else {
-            setShippingCost(subtotal > 1000 ? 0 : 50);
+            // Fallback to city-based shipping
+            setUseRedxShipping(false);
+            if (cityBasedShipping) {
+              setShippingCost(cityBasedShipping.charge);
+            }
             setShippingCalculation(null);
+          }
+        } else {
+          // Use city-based shipping
+          setUseRedxShipping(false);
+          if (cityBasedShipping) {
+            setShippingCost(cityBasedShipping.charge);
           }
         }
       } catch (error) {
-        setShippingCost(subtotal > 1000 ? 0 : 50);
+        console.error("Failed to calculate Redx shipping:", error);
+        // Fallback to city-based shipping
+        setUseRedxShipping(false);
+        if (cityBasedShipping) {
+          setShippingCost(cityBasedShipping.charge);
+        }
         setShippingCalculation(null);
       } finally {
         setIsCalculatingShipping(false);
@@ -308,6 +396,8 @@ export default function CheckoutPage() {
     addressList,
     baseUrl,
     accessToken,
+    logistic,
+    cityBasedShipping,
   ]);
 
   // Update delivery area ID when Redx area is selected
@@ -414,7 +504,7 @@ export default function CheckoutPage() {
         delivery_method_id: 4,
         payment_method_id: paymentMethod.id,
         discount_amount: discount,
-        shipping_cost: shippingCost,
+        shipping_cost: finalShippingCost,
         is_cod: false,
         items: cart.map((item) => ({
           product_variant_id: item.primary_variant_id,
@@ -475,7 +565,7 @@ export default function CheckoutPage() {
         delivery_method_id: 4,
         payment_method_id: paymentMethod.id,
         discount_amount: discount,
-        shipping_cost: shippingCost,
+        shipping_cost: finalShippingCost,
         is_cod: true,
         items: cart.map((item) => ({
           product_variant_id: item.primary_variant_id,
@@ -643,6 +733,11 @@ export default function CheckoutPage() {
     );
   }
 
+  // Get selected address details for display
+  const selectedAddressDetails = addressList.find(
+    (addr) => addr.id === selectedAddress,
+  );
+
   return (
     <div className="mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Left Section */}
@@ -726,12 +821,59 @@ export default function CheckoutPage() {
             </div>
           )}
 
+          {/* City-based Shipping Info */}
+          {selectedAddressDetails?.city &&
+            logistic?.cod_charges?.enable_cod && (
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <h3 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                  <Truck className="w-4 h-4" />
+                  Shipping Information
+                </h3>
+                <div className="space-y-1 text-sm">
+                  <p className="text-blue-700">
+                    📍 Delivery City:{" "}
+                    <span className="font-semibold">
+                      {selectedAddressDetails.city}
+                    </span>
+                  </p>
+                  {cityBasedShipping && (
+                    <>
+                      <p className="text-blue-700">
+                        🚚 Shipping Type:{" "}
+                        <span className="font-semibold">
+                          {cityBasedShipping.type === "incity"
+                            ? "Inside City"
+                            : "Outside City"}
+                        </span>
+                      </p>
+                      <p className="text-blue-700">
+                        💰 Shipping Rate:{" "}
+                        <span className="font-semibold">
+                          ৳{cityBasedShipping.charge}
+                        </span>
+                        {cityBasedShipping.type === "incity" ? (
+                          <span className="text-xs ml-1">(In-city rate)</span>
+                        ) : (
+                          <span className="text-xs ml-1">(Out-city rate)</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-blue-600 mt-2">
+                        {cityBasedShipping.type === "incity"
+                          ? `✓ Your delivery address is within ${cityBasedShipping.matched_with} city area`
+                          : `ℹ️ Standard shipping rate applied for ${selectedAddressDetails.city}`}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
           {/* Redx Area Selection (if multiple areas for same postcode) */}
           {redxAreas.length > 1 && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-              <h3 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+            <div className="mt-4 p-4 bg-green-50 rounded-lg">
+              <h3 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
                 <Package className="w-4 h-4" />
-                Select Delivery Area
+                Select Delivery Area (Redx)
               </h3>
               <select
                 value={selectedRedxArea || ""}
@@ -1007,18 +1149,62 @@ export default function CheckoutPage() {
           )}
 
           <div className="flex justify-between items-center">
-            <span className="text-gray-600 flex items-center gap-1">
-              Delivery Charge
-              {isCalculatingShipping && (
-                <Loader2 className="w-3 h-3 animate-spin ml-1" />
-              )}
-            </span>
+            <div className="text-gray-600 flex flex-col items-start">
+              <span className="flex items-center gap-1">
+                Delivery Charge
+                {isCalculatingShipping && (
+                  <Loader2 className="w-3 h-3 animate-spin ml-1" />
+                )}
+              </span>
+              {selectedAddressDetails?.city &&
+                !useRedxShipping &&
+                cityBasedShipping && (
+                  <span className="text-xs text-gray-400">
+                    (
+                    {cityBasedShipping.type === "incity"
+                      ? "Inside City"
+                      : "Outside City"}{" "}
+                    - {selectedAddressDetails.city})
+                  </span>
+                )}
+            </div>
             <span className="font-medium">
               {isCalculatingShipping
                 ? "Calculating..."
-                : `৳ ${shippingCost.toFixed(2)}`}
+                : finalShippingCost === 0 && !useRedxShipping
+                  ? "Free"
+                  : `৳ ${finalShippingCost.toFixed(2)}`}
             </span>
           </div>
+
+          {/* Shipping rate breakdown */}
+          {!useRedxShipping &&
+            cityBasedShipping &&
+            cityBasedShipping.charge > 0 && (
+              <div className="mt-2 p-2 bg-blue-50 rounded-lg">
+                <p className="text-xs text-blue-800">
+                  📍 Shipping to{" "}
+                  <span className="font-semibold">
+                    {selectedAddressDetails?.city}
+                  </span>
+                  {cityBasedShipping.type === "incity" ? (
+                    <> - Inside city rate: ৳{cityBasedShipping.incity_rate}</>
+                  ) : (
+                    <> - Outside city rate: ৳{cityBasedShipping.outcity_rate}</>
+                  )}
+                </p>
+              </div>
+            )}
+
+          {useRedxShipping && shippingCalculation && (
+            <div className="mt-2 p-2 bg-green-50 rounded-lg">
+              <p className="text-xs text-green-800">
+                🚚 Redx Delivery: ৳{shippingCalculation.deliveryCharge}
+                {shippingCalculation.codCharge > 0 &&
+                  ` + COD Fee: ৳${shippingCalculation.codCharge}`}
+              </p>
+            </div>
+          )}
 
           <div className="border-t pt-3">
             <div className="flex justify-between text-lg font-bold">
@@ -1037,8 +1223,7 @@ export default function CheckoutPage() {
             isCalculatingShipping ||
             cart.length === 0 ||
             !selectedPayment ||
-            !selectedAddress ||
-            !deliveryAreaId
+            !selectedAddress
           }
           className="w-full mt-6 bg-primary text-white py-3 rounded-lg hover:bg-primary/90 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
         >

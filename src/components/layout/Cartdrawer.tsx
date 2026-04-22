@@ -23,9 +23,45 @@ interface CartDrawerProps {
   onClose: () => void;
 }
 
+// Function to calculate shipping charge based on customer address and logistics config
+const calculateShippingCharge = (
+  customerCity: string,
+  logisticsConfig: any,
+) => {
+  // Check if logistics config and cod_charges exist
+  if (!logisticsConfig?.cod_charges?.enable_cod) {
+    return {
+      charge: 0,
+      type: "cod_disabled",
+      message: "COD is disabled",
+    };
+  }
+
+  const codCharges = logisticsConfig.cod_charges;
+  const configCity = codCharges.city?.trim();
+  const customerCityTrimmed = customerCity?.trim();
+
+  // Case-insensitive comparison
+  const isInCity =
+    customerCityTrimmed?.toLowerCase() === configCity?.toLowerCase();
+
+  const charge = isInCity
+    ? codCharges.incity_charge
+    : codCharges.outcity_charge;
+
+  return {
+    charge: charge,
+    type: isInCity ? "incity" : "outcity",
+    city: customerCity,
+    matched_with: configCity,
+    incity_rate: codCharges.incity_charge,
+    outcity_rate: codCharges.outcity_charge,
+  };
+};
+
 const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
   const { user } = useUserStore();
-  // const logistic = (useThemeData("logistics") || {}) as any;
+  const logistic = (useThemeData("logistics") || {}) as any;
 
   const {
     cart,
@@ -39,6 +75,7 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
   const [isClient, setIsClient] = useState(false);
   const colors = (useThemeData("colors") || {}) as any;
   const primaryColor = colors?.primary || "#006747";
+
   useEffect(() => {
     setIsClient(true);
     if (user?.id) {
@@ -47,8 +84,16 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
   }, [user?.id, initializeCart]);
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingCost = total > 1000 ? 0 : 50;
-  const finalTotal = total + shippingCost;
+
+  // Get dynamic shipping charge based on user's address city
+  const customerCity = user?.city || "";
+  const shippingInfo = calculateShippingCharge(customerCity, logistic);
+  const shippingCost = shippingInfo.charge;
+
+  // Free shipping threshold check (only if total > 1000, but still need to show correct shipping info)
+  const isFreeShippingEligible = total > 1000;
+  const finalShippingCost = isFreeShippingEligible ? 0 : shippingCost;
+  const finalTotal = total + finalShippingCost;
 
   const handleRemoveItem = async (id: number) => {
     if (!user?.id) return;
@@ -336,27 +381,52 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                         ৳ {total.toFixed(2)}
                       </span>
                     </div>
+
+                    {/* Shipping Cost Display with City Info */}
                     <div className="flex justify-between text-gray-600">
-                      <span>Shipping</span>
+                      <div className="flex flex-col items-start">
+                        <span>Shipping</span>
+                        {customerCity && !isFreeShippingEligible && (
+                          <span className="text-xs text-gray-400">
+                            (
+                            {shippingInfo.type === "incity"
+                              ? "Inside City"
+                              : "Outside City"}{" "}
+                            - {customerCity})
+                          </span>
+                        )}
+                      </div>
                       <span className="font-medium">
-                        {shippingCost === 0 ? (
+                        {isFreeShippingEligible ? (
                           <span className="text-green-600 font-semibold">
                             Free
                           </span>
+                        ) : shippingInfo.type === "cod_disabled" ? (
+                          <span className="text-gray-500">N/A</span>
                         ) : (
                           <span className="text-gray-900">
-                            ৳ {shippingCost.toFixed(2)}
+                            ৳ {finalShippingCost.toFixed(2)}
                           </span>
                         )}
                       </span>
                     </div>
 
-                    {/* Shipping promo */}
-                    {total < 1000 && total > 0 && (
+                    {/* Free shipping promo */}
+                    {!isFreeShippingEligible && total > 0 && (
                       <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                         <p className="text-xs text-amber-900 font-medium">
                           🎉 Add ৳{(1001 - total).toFixed(2)} more for free
                           shipping
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Address warning */}
+                    {!customerCity && (
+                      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-xs text-yellow-800">
+                          ⚠️ Please add your address with city to get accurate
+                          shipping charges
                         </p>
                       </div>
                     )}
@@ -375,7 +445,7 @@ const CartDrawer = ({ isOpen, onClose }: CartDrawerProps) => {
                     <Link
                       href="/checkout"
                       onClick={onClose}
-                      className={`block w-full  bg-[#222524] text-white px-4 py-3 rounded-lg  font-semibold transition-colors text-center flex items-center justify-center gap-2`}
+                      className={`block w-full bg-[#222524] text-white px-4 py-3 rounded-lg font-semibold transition-colors text-center flex items-center justify-center gap-2`}
                     >
                       Proceed to Checkout
                       <ArrowRight size={18} />

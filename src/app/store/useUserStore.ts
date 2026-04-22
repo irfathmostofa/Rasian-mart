@@ -63,7 +63,7 @@ export const useUserStore = create<UserStore>((set, get) => ({
       const res = await api.get("/auth/customer-profile", {
         headers: { Authorization: `Bearer ${token}` },
       });
-
+      console.log(res);
       if (res.data?.success && res.data.user) {
         set({ user: res.data.user, loading: false });
       } else {
