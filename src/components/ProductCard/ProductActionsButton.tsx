@@ -35,7 +35,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
   setShowInquiryModal,
 }) => {
   const btnBase =
-    "flex items-center justify-center gap-2 rounded-xl font-semibold transition-all duration-200 active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed";
+    "flex items-center max-w-full justify-center gap-2 rounded-xl font-semibold transition-all duration-200 active:scale-[0.95] disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <div className="space-y-4 mt-8">
