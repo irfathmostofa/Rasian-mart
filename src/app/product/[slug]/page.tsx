@@ -5,22 +5,25 @@ import { useCart } from "@/app/store/useCart";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import {
-  Heart,
   ShoppingCart,
   Star,
   X,
   ChevronDown,
   ChevronUp,
+  MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "@/lib/api";
 import { useProductStore } from "@/app/store/useProductStore";
 import { useToastStore } from "@/app/store/useToastStore";
-import { useWishlist } from "@/app/store/useWishlist";
 import { ProductCard } from "@/components/ProductCard";
 import { useUserStore } from "@/app/store/useUserStore";
 import { formatDate } from "@/components/helper";
 import { ImageMagnifier } from "@/components/ui/ImageMagnifier";
+import { useThemeData } from "@/app/store/useThemeData";
+import { CardConfig } from "@/types/ProductCard";
+import { EnquiryModal } from "@/components/ProductCard/Enquirymodal";
+import ProductActions from "@/components/ProductCard/ProductActionsButton";
 
 // Review interface based on your response
 interface Review {
@@ -67,11 +70,61 @@ export default function ProductDetailsPage() {
   const router = useRouter();
   const { user } = useUserStore();
   const { addToCart, isLoading: cartLoading } = useCart();
-  const {
-    toggleWishlist,
-    isInWishlist,
-    isLoading: wishlistLoading,
-  } = useWishlist();
+  const raw = (useThemeData("product_card") ?? {}) as Partial<CardConfig>;
+  const requireAuth = (action: string): boolean => {
+    if (!user) {
+      showToast(`Please login to ${action}`, "error");
+      router.push("/account/login");
+      return false;
+    }
+    return true;
+  };
+  const cfg: CardConfig = {
+    layout: raw.layout ?? "minimal",
+    show_title: raw.show_title ?? true,
+    show_price: raw.show_price ?? true,
+    show_rating: raw.show_rating ?? true,
+    show_add_to_cart: raw.show_add_to_cart ?? true,
+    show_wishlist: raw.show_wishlist ?? true,
+    show_compare: raw.show_compare ?? false,
+    show_sale_badge: raw.show_sale_badge ?? true,
+    show_new_badge: raw.show_new_badge ?? true,
+    quick_view: raw.quick_view ?? true,
+    show_buy_now: raw.show_buy_now ?? false,
+    show_sku: raw.show_sku ?? false,
+    show_stock: raw.show_stock ?? true,
+    show_category: raw.show_category ?? true,
+    image_aspect_ratio:
+      (raw.image_aspect_ratio as CardConfig["image_aspect_ratio"]) ??
+      "portrait",
+    show_out_of_stock_badge: raw.show_out_of_stock_badge ?? true,
+    show_discount_badge: raw.show_discount_badge ?? true,
+    show_bestseller_badge: raw.show_bestseller_badge ?? true,
+    show_featured_badge: raw.show_featured_badge ?? true,
+    show_inquiry: raw.show_inquiry ?? true,
+    primary_button:
+      (raw.primary_button as CardConfig["primary_button"]) ?? "add_to_cart",
+    button_position:
+      (raw.button_position as CardConfig["button_position"]) ?? "bottom",
+    button_size: (raw.button_size as CardConfig["button_size"]) ?? "md",
+    button_style: (raw.button_style as CardConfig["button_style"]) ?? "icon",
+    add_to_cart_text: raw.add_to_cart_text ?? "Add to Cart",
+    buy_now_text: raw.buy_now_text ?? "Buy Now",
+    inquiry_text: raw.inquiry_text ?? "Inquiry",
+    whatsapp_text: raw.whatsapp_text ?? "Contact to Buy",
+    show_contact_whatsapp: raw.show_contact_whatsapp ?? false,
+    whatsapp: {
+      number: raw.whatsapp?.number ?? "",
+      button_color: raw.whatsapp?.button_color ?? "#25D366",
+      button_text: raw.whatsapp?.button_text ?? "Contact on WhatsApp",
+      message:
+        raw.whatsapp?.message ??
+        "Hello, I'm interested in {product_name} (SKU: {sku})",
+      message_bn: raw.whatsapp?.message_bn ?? "",
+      show_seller_number: raw.whatsapp?.show_seller_number ?? false,
+      open_in_new_tab: raw.whatsapp?.open_in_new_tab ?? false,
+    },
+  };
   const { showToast } = useToastStore();
   const { products: allProducts } = useProductStore();
   const [product, setProduct] = useState<any>(null);
@@ -81,11 +134,50 @@ export default function ProductDetailsPage() {
   const [relatedProducts, setRelatedProducts] = useState<typeof allProducts>(
     [],
   );
+
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showBottomCart, setShowBottomCart] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [helpfulLoading, setHelpfulLoading] = useState<number | null>(null);
+  // Add this state near other useState declarations
+  const [showInquiryModal, setShowInquiryModal] = useState(false);
+
+  // Add WhatsApp handler function
+  // Add WhatsApp handler function
+  const handleWhatsAppClick = () => {
+    if (!cfg.whatsapp.number) {
+      showToast("WhatsApp number not configured", "error");
+      return;
+    }
+
+    if (!product) {
+      showToast("Product information not available", "error");
+      return;
+    }
+
+    let message = cfg.whatsapp.message;
+    // Replace placeholders with actual values
+    message = message.replace(/{product_name}/g, product.name);
+    message = message.replace(
+      /{sku}/g,
+      selectedVariant?.sku || product.sku || product.code || "",
+    );
+
+    // Encode message for URL
+    const encodedMessage = encodeURIComponent(message);
+
+    // Format phone number (remove any non-digit characters)
+    const phoneNumber = cfg.whatsapp.number.replace(/\D/g, "");
+
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+
+    if (cfg.whatsapp.open_in_new_tab) {
+      window.open(whatsappUrl, "_blank");
+    } else {
+      window.location.href = whatsappUrl;
+    }
+  };
 
   // Get product ID based on variant or product itself
   const getProductId = () => {
@@ -109,7 +201,6 @@ export default function ProductDetailsPage() {
     try {
       setLoading(true);
       const response = await api.get(`/product/product/${slug}`);
-      console.log(response, "response");
       if (response.data.success) {
         const data = response.data.data;
         setProduct(data);
@@ -176,42 +267,6 @@ export default function ProductDetailsPage() {
     }
   };
 
-  const handleToggleWishlist = async () => {
-    if (!user) {
-      showToast("Please login to manage wishlist", "error");
-      router.push("/account/login");
-      return;
-    }
-
-    // Calculate price based on variant or base product
-    const price = selectedVariant
-      ? parseFloat(product.selling_price) +
-        parseFloat(selectedVariant.additional_price || 0)
-      : parseFloat(product.selling_price);
-
-    try {
-      const added = await toggleWishlist(
-        {
-          id: getProductId(),
-          primary_variant_id: getPrimaryVariantId(),
-          name:
-            product.name +
-            (selectedVariant ? ` - ${selectedVariant.name}` : ""),
-          price: price || 0,
-          image: getImageUrl(),
-          stock: getSafeStock(),
-        },
-        user.id,
-      );
-      showToast(
-        `${added ? "Added to" : "Removed from"} wishlist ❤️`,
-        "success",
-      );
-    } catch (error) {
-      showToast("Failed to update wishlist", "error");
-    }
-  };
-
   const handleMarkHelpful = async (reviewId: number) => {
     if (!user) {
       showToast("Please login to mark reviews as helpful", "error");
@@ -245,7 +300,33 @@ export default function ProductDetailsPage() {
       setHelpfulLoading(null);
     }
   };
-
+  const handleBuyNow = async (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (!cfg.show_buy_now) return;
+    if (!requireAuth("buy now")) return;
+    const price = selectedVariant
+      ? parseFloat(product.selling_price) +
+        parseFloat(selectedVariant.additional_price || 0)
+      : parseFloat(product.selling_price);
+    try {
+      await addToCart(
+        {
+          id: getProductId(),
+          primary_variant_id: getPrimaryVariantId(),
+          name: product.name,
+          price: price,
+          image: getImageUrl() || "",
+          quantity: quantity,
+          weight: "0",
+        },
+        user!.id,
+      );
+      router.push("/checkout");
+    } catch {
+      showToast("Failed to proceed to checkout", "error");
+    }
+  };
   // Load related products
   useEffect(() => {
     if (!product || allProducts.length === 0) return;
@@ -304,7 +385,6 @@ export default function ProductDetailsPage() {
 
   // Check if product is in wishlist
   const productVariantId = getProductId();
-  const isWishlisted = isInWishlist(productVariantId);
 
   // Sort and limit reviews
   const sortedReviews = product.reviews
@@ -326,6 +406,19 @@ export default function ProductDetailsPage() {
 
   return (
     <div className="container mx-auto py-10 space-y-16 pb-24">
+      {/* Enquiry Modal */}
+      <EnquiryModal
+        isOpen={showInquiryModal}
+        onClose={() => setShowInquiryModal(false)}
+        product={{
+          id: getProductId(),
+          name: product.name,
+          code: selectedVariant?.sku || product.sku || product.code,
+          images: product.variants.images,
+          selling_price: currentPrice,
+          regular_price: product.regular_price,
+        }}
+      />
       {/* ================= Main Product ================= */}
       <div className="grid md:grid-cols-2 gap-10">
         {/* Product Image Gallery */}
@@ -459,37 +552,15 @@ export default function ProductDetailsPage() {
               +
             </button>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3 mt-4 flex-wrap">
-            {variantStock > 0 && (
-              <button
-                onClick={handleAddToCart}
-                disabled={cartLoading || variantStock <= 0}
-                className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                {cartLoading ? "Adding..." : "Add to Cart"}
-              </button>
-            )}
-
-            <button
-              onClick={handleToggleWishlist}
-              disabled={wishlistLoading}
-              className="border px-6 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Heart
-                className={`w-5 h-5 ${
-                  isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"
-                }`}
-              />
-              {wishlistLoading
-                ? "Updating..."
-                : isWishlisted
-                  ? "Wishlisted"
-                  : "Add to Wishlist"}
-            </button>
-          </div>
+          <ProductActions
+            cfg={cfg}
+            variantStock={variantStock}
+            cartLoading={cartLoading}
+            handleAddToCart={handleAddToCart}
+            handleBuyNow={handleBuyNow}
+            handleWhatsAppClick={handleWhatsAppClick}
+            setShowInquiryModal={setShowInquiryModal}
+          />
         </div>
       </div>
 
@@ -679,7 +750,7 @@ export default function ProductDetailsPage() {
           <h2 className="text-xl font-bold mb-6">Related Products</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
             {relatedProducts.map((p: any) => (
-              <ProductCard key={p.id} {...p}  />
+              <ProductCard key={p.id} {...p} />
             ))}
           </div>
         </div>

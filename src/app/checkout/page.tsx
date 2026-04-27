@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useCart } from "../store/useCart";
 import { useUserStore } from "../store/useUserStore";
 import { useCoupon } from "../store/useCouponStore";
@@ -98,7 +98,6 @@ const calculateCityBasedShipping = (
   customerCity: string,
   logisticsConfig: any,
 ) => {
-  // Check if logistics config and cod_charges exist
   if (!logisticsConfig?.cod_charges?.enable_cod) {
     return {
       charge: 0,
@@ -113,7 +112,6 @@ const calculateCityBasedShipping = (
   const configCity = codCharges.city?.trim();
   const customerCityTrimmed = customerCity?.trim();
 
-  // Case-insensitive comparison
   const isInCity =
     customerCityTrimmed?.toLowerCase() === configCity?.toLowerCase();
 
@@ -135,7 +133,6 @@ export default function CheckoutPage() {
   const { user: authUser } = useUserStore();
   const { cart, clearCart, initializeCart, isLoading: cartLoading } = useCart();
 
-  // Use coupon store
   const {
     appliedCoupon,
     discountAmount: couponDiscount,
@@ -152,7 +149,7 @@ export default function CheckoutPage() {
   const paymentConfig = (useThemeData("payment") || {}) as PaymentConfig;
   const logistic = (useThemeData("logistics") || {}) as any;
   const redxConfig = logistic?.providers?.redx || {};
-  const pickupAreaId = redxConfig.store_id; // This is the pickup area ID
+  const pickupAreaId = redxConfig.store_id;
   const baseUrl = redxConfig.base_url;
   const accessToken = redxConfig.access_token;
 
@@ -166,7 +163,6 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [showAvailableCoupons, setShowAvailableCoupons] = useState(false);
 
-  // Shipping related states
   const [shippingCost, setShippingCost] = useState<number>(0);
   const [shippingCalculation, setShippingCalculation] =
     useState<ShippingCalculation | null>(null);
@@ -175,145 +171,134 @@ export default function CheckoutPage() {
   const [redxAreas, setRedxAreas] = useState<RedxArea[]>([]);
   const [selectedRedxArea, setSelectedRedxArea] = useState<number | null>(null);
 
-  // City-based shipping state
   const [cityBasedShipping, setCityBasedShipping] = useState<any>(null);
   const [useRedxShipping, setUseRedxShipping] = useState(false);
 
-  // Get the current user
+  // Track if we've already fetched data to prevent re-fetching
+  const [hasInitialized, setHasInitialized] = useState(false);
+
   const currentUser = authUser;
 
+  // Initial load - only run once
   useEffect(() => {
-    if (currentUser?.id) {
+    if (currentUser?.id && !hasInitialized) {
       initializeCart(currentUser.id);
       fetchAddresses();
       fetchPaymentMethods();
       loadAvailableCoupons();
+      setHasInitialized(true);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, hasInitialized]);
 
-  // Calculate total weight from cart (convert to grams)
-  const totalWeight = cart.reduce((sum, item) => {
-    const weight = parseFloat(item.weight?.toString() || "0");
-    return sum + weight * item.quantity;
-  }, 0);
+  // Calculate total weight using useMemo to prevent recalculation
+  const totalWeight = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      const weight = parseFloat(item.weight?.toString() || "0");
+      return sum + weight * item.quantity;
+    }, 0);
+  }, [cart]);
 
-  // Calculate subtotal
-  const subtotal = cart.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0,
-  );
+  // Calculate subtotal using useMemo
+  const subtotal = useMemo(() => {
+    return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  }, [cart]);
 
-  // Use coupon discount from store
   const discount = couponDiscount;
 
-  // Get city-based shipping info
-  const getCityBasedShippingInfo = () => {
-    if (!selectedAddress) return null;
-    const selectedAddr = addressList.find(
-      (addr) => addr.id === selectedAddress,
-    );
-    if (!selectedAddr?.city) return null;
-    return calculateCityBasedShipping(selectedAddr.city, logistic);
-  };
+  // Get selected address details using useMemo
+  const selectedAddressDetails = useMemo(() => {
+    return addressList.find((addr) => addr.id === selectedAddress);
+  }, [addressList, selectedAddress]);
 
-  const cityShippingInfo = getCityBasedShippingInfo();
-  const cityShippingCharge = cityShippingInfo?.charge || 0;
+  // Get city-based shipping info using useCallback
+  const getCityBasedShippingInfo = useCallback(() => {
+    if (!selectedAddressDetails?.city) return null;
+    return calculateCityBasedShipping(selectedAddressDetails.city, logistic);
+  }, [selectedAddressDetails, logistic]);
 
-  // Final shipping cost (prioritize Redx if available and configured, else use city-based)
+  // Update city-based shipping when dependencies change
+  useEffect(() => {
+    const cityShipping = getCityBasedShippingInfo();
+    if (cityShipping) {
+      setCityBasedShipping(cityShipping);
+    }
+  }, [getCityBasedShippingInfo]);
+
+  const cityShippingCharge = cityBasedShipping?.charge || 0;
   const finalShippingCost = useRedxShipping ? shippingCost : cityShippingCharge;
   const total = subtotal - discount + finalShippingCost;
 
-  // Load available coupons
-  const loadAvailableCoupons = async () => {
+  const loadAvailableCoupons = useCallback(async () => {
     try {
       await fetchCoupons();
     } catch (err) {
       console.error("Failed to load coupons:", err);
     }
-  };
+  }, [fetchCoupons]);
 
   // Fetch Addresses
-  const fetchAddresses = async () => {
+  const fetchAddresses = useCallback(async () => {
     try {
       const resAddress = await api.get(`/users/get-customer-address`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
-      setAddressList(resAddress?.data?.data || []);
+      const addresses = resAddress?.data?.data || [];
+      setAddressList(addresses);
 
-      // Select first address by default
-      if (resAddress?.data?.data?.length > 0) {
-        setSelectedAddress(resAddress.data.data[0].id);
+      if (addresses.length > 0 && !selectedAddress) {
+        setSelectedAddress(addresses[0].id);
       }
     } catch (err) {
       console.error("Failed to fetch addresses:", err);
     }
-  };
+  }, [selectedAddress]);
 
-  // Fetch Redx areas by postcode
-  const fetchRedxAreas = async (postCode: string) => {
-    if (!postCode || !baseUrl || !accessToken) return;
+  // Fetch Redx areas - memoized to prevent recreation
+  const fetchRedxAreas = useCallback(
+    async (postCode: string) => {
+      if (!postCode || !baseUrl || !accessToken) return;
 
-    try {
-      const response = await fetch(`${baseUrl}/areas?post_code=${postCode}`, {
-        headers: {
-          "API-ACCESS-TOKEN": `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      });
+      try {
+        const response = await fetch(`${baseUrl}/areas?post_code=${postCode}`, {
+          headers: {
+            "API-ACCESS-TOKEN": `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      // Handle different response structures
-      if (data.areas && Array.isArray(data.areas) && data.areas.length > 0) {
-        setRedxAreas(data.areas);
-        setSelectedRedxArea(data.areas[0].id);
-        setDeliveryAreaId(data.areas[0].id);
-        setUseRedxShipping(true);
-      } else if (Array.isArray(data) && data.length > 0) {
-        // If response is directly an array
-        setRedxAreas(data);
-        setSelectedRedxArea(data[0].id);
-        setDeliveryAreaId(data[0].id);
-        setUseRedxShipping(true);
-      } else {
+        if (data.areas && Array.isArray(data.areas) && data.areas.length > 0) {
+          setRedxAreas(data.areas);
+          setSelectedRedxArea(data.areas[0].id);
+          setDeliveryAreaId(data.areas[0].id);
+          setUseRedxShipping(true);
+        } else if (Array.isArray(data) && data.length > 0) {
+          setRedxAreas(data);
+          setSelectedRedxArea(data[0].id);
+          setDeliveryAreaId(data[0].id);
+          setUseRedxShipping(true);
+        } else {
+          setRedxAreas([]);
+          setUseRedxShipping(false);
+        }
+      } catch (error) {
+        console.error("Failed to fetch Redx areas:", error);
         setRedxAreas([]);
         setUseRedxShipping(false);
       }
-    } catch (error) {
-      console.error("Failed to fetch Redx areas:", error);
-      setRedxAreas([]);
-      setUseRedxShipping(false);
-    }
-  };
+    },
+    [baseUrl, accessToken],
+  );
 
-  // Calculate shipping cost when address or cart changes
+  // Calculate shipping - optimized with proper dependencies
   useEffect(() => {
     const calculateShipping = async () => {
-      // First, check if we have city-based shipping
-      if (selectedAddress) {
-        const selectedAddr = addressList.find(
-          (addr) => addr.id === selectedAddress,
-        );
-
-        // Update city-based shipping info
-        if (selectedAddr?.city) {
-          const cityShipping = calculateCityBasedShipping(
-            selectedAddr.city,
-            logistic,
-          );
-          setCityBasedShipping(cityShipping);
-        }
-      }
-
-      // Try to calculate Redx shipping if available
-      if (!selectedAddress || !pickupAreaId || totalWeight <= 0) {
+      if (!selectedAddress || totalWeight <= 0) {
         return;
       }
 
-      const selectedAddr = addressList.find(
-        (addr) => addr.id === selectedAddress,
-      );
-
+      const selectedAddr = selectedAddressDetails;
       if (!selectedAddr?.postal_code) {
         return;
       }
@@ -321,16 +306,24 @@ export default function CheckoutPage() {
       setIsCalculatingShipping(true);
 
       try {
-        // First get the delivery area ID from postcode
-        await fetchRedxAreas(selectedAddr.postal_code);
+        // Fetch Redx areas
+        if (baseUrl && accessToken) {
+          await fetchRedxAreas(selectedAddr.postal_code);
+        }
 
-        // If we have both pickup and delivery areas, calculate shipping
-        if (deliveryAreaId && pickupAreaId && useRedxShipping) {
+        // Only calculate Redx shipping if we have all required data
+        if (
+          deliveryAreaId &&
+          pickupAreaId &&
+          baseUrl &&
+          accessToken &&
+          useRedxShipping
+        ) {
           const params = new URLSearchParams({
             delivery_area_id: deliveryAreaId.toString(),
             pickup_area_id: pickupAreaId.toString(),
-            cash_collection_amount: Math.ceil(subtotal).toString(), // Round up to nearest integer
-            weight: Math.ceil(totalWeight).toString(), // Round up to nearest gram
+            cash_collection_amount: Math.ceil(subtotal).toString(),
+            weight: Math.ceil(totalWeight).toString(),
           });
 
           const response = await fetch(
@@ -345,7 +338,6 @@ export default function CheckoutPage() {
 
           const data = await response.json();
 
-          // According to the documentation, response has deliveryCharge and codCharge
           if (data.deliveryCharge !== undefined) {
             const deliveryCharge = data.deliveryCharge;
             const codCharge = data.codCharge || 0;
@@ -357,9 +349,7 @@ export default function CheckoutPage() {
             });
 
             setShippingCost(totalCharge);
-            setUseRedxShipping(true);
           } else {
-            // Fallback to city-based shipping
             setUseRedxShipping(false);
             if (cityBasedShipping) {
               setShippingCost(cityBasedShipping.charge);
@@ -367,15 +357,13 @@ export default function CheckoutPage() {
             setShippingCalculation(null);
           }
         } else {
-          // Use city-based shipping
           setUseRedxShipping(false);
           if (cityBasedShipping) {
             setShippingCost(cityBasedShipping.charge);
           }
         }
       } catch (error) {
-        console.error("Failed to calculate Redx shipping:", error);
-        // Fallback to city-based shipping
+        console.error("Failed to calculate shipping:", error);
         setUseRedxShipping(false);
         if (cityBasedShipping) {
           setShippingCost(cityBasedShipping.charge);
@@ -387,20 +375,9 @@ export default function CheckoutPage() {
     };
 
     calculateShipping();
-  }, [
-    selectedAddress,
-    totalWeight,
-    subtotal,
-    deliveryAreaId,
-    pickupAreaId,
-    addressList,
-    baseUrl,
-    accessToken,
-    logistic,
-    cityBasedShipping,
-  ]);
+  }, [selectedAddress, selectedAddressDetails, totalWeight, subtotal]);
 
-  // Update delivery area ID when Redx area is selected
+  // Update delivery area ID when selected area changes
   useEffect(() => {
     if (selectedRedxArea) {
       setDeliveryAreaId(selectedRedxArea);
@@ -408,14 +385,13 @@ export default function CheckoutPage() {
   }, [selectedRedxArea]);
 
   // Fetch Payment Methods
-  const fetchPaymentMethods = async () => {
+  const fetchPaymentMethods = useCallback(async () => {
     try {
       setLoading(true);
       const resPayment = await api.get(`/setup/get-payment-methods`);
 
       let methods = resPayment?.data?.data || [];
 
-      // Filter based on payment config
       if (paymentConfig) {
         methods = methods.filter((method: PaymentMethod) => {
           if (method.type === "COD") {
@@ -428,8 +404,7 @@ export default function CheckoutPage() {
 
       setPaymentMethods(methods);
 
-      // Select first payment method by default
-      if (methods.length > 0) {
+      if (methods.length > 0 && !selectedPayment) {
         setSelectedPayment(methods[0].id);
       }
     } catch (err) {
@@ -437,10 +412,10 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [paymentConfig, selectedPayment]);
 
   // Get payment method icon
-  const getPaymentIcon = (method: PaymentMethod) => {
+  const getPaymentIcon = useCallback((method: PaymentMethod) => {
     if (method.type === "COD") {
       return <Truck className="w-5 h-5" />;
     }
@@ -455,10 +430,10 @@ export default function CheckoutPage() {
     };
     const Icon = icons[method.name] || CreditCard;
     return <Icon className="w-5 h-5" />;
-  };
+  }, []);
 
   // Handle coupon application
-  const handleApplyCoupon = async () => {
+  const handleApplyCoupon = useCallback(async () => {
     if (!couponCode.trim()) {
       alert("Please enter a coupon code");
       return;
@@ -484,128 +459,160 @@ export default function CheckoutPage() {
     if (isValid) {
       setCouponCode("");
     }
-  };
+  }, [couponCode, currentUser?.id, cart, subtotal, validateCoupon]);
 
   // Handle remove coupon
-  const handleRemoveCoupon = () => {
+  const handleRemoveCoupon = useCallback(() => {
     removeCoupon();
-  };
+  }, [removeCoupon]);
 
-  // Handle online payment
-  const handleOnlinePayment = async (paymentMethod: PaymentMethod) => {
-    const token = localStorage.getItem("token");
+  // Handle online payment with optimistic update
+  const handleOnlinePayment = useCallback(
+    async (paymentMethod: PaymentMethod) => {
+      const token = localStorage.getItem("token");
 
-    try {
-      setLoading(true);
+      try {
+        setLoading(true);
 
-      const orderData = {
-        customer_id: currentUser!.id,
-        delivery_address_id: selectedAddress,
-        delivery_method_id: 4,
-        payment_method_id: paymentMethod.id,
-        discount_amount: discount,
-        shipping_cost: finalShippingCost,
-        is_cod: false,
-        items: cart.map((item) => ({
-          product_variant_id: item.primary_variant_id,
-          quantity: item.quantity,
-          unit_price: item.price,
-          discount: 0,
-        })),
-      };
-
-      const orderRes = await api.post("/order/create-order", orderData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!orderRes.data.success) {
-        throw new Error(orderRes.data.message || "Failed to create order");
-      }
-
-      if (appliedCoupon) {
-        await applyCoupon({
-          coupon_id: appliedCoupon.id,
-          order_id: orderRes.data.data.order.id,
-          user_id: currentUser!.id,
+        const orderData = {
+          customer_id: currentUser!.id,
+          delivery_address_id: selectedAddress,
+          delivery_method_id: 4,
+          payment_method_id: paymentMethod.id,
           discount_amount: discount,
-        });
-      }
+          shipping_cost: finalShippingCost,
+          is_cod: false,
+          items: cart.map((item) => ({
+            product_variant_id: item.primary_variant_id,
+            quantity: item.quantity,
+            unit_price: item.price,
+            discount: 0,
+          })),
+        };
 
-      if (
-        orderRes.data.data?.requiresPayment &&
-        orderRes.data.data?.paymentUrl
-      ) {
-        window.location.href = orderRes.data.data.paymentUrl;
-      } else {
-        setOrderId(
-          orderRes.data.data.order?.code || orderRes.data.data.order?.id,
-        );
-        setOrderPlaced(true);
+        const orderRes = await api.post("/order/create-order", orderData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!orderRes.data.success) {
+          throw new Error(orderRes.data.message || "Failed to create order");
+        }
+
+        // Optimistically clear cart and coupon
         clearCart(currentUser!.id);
         removeCoupon();
-      }
-    } catch (err: any) {
-      console.error("Payment failed:", err);
-      alert(`❌ ${err.response?.data?.message || "Failed to process payment"}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  // Handle COD order with coupon
-  const handleCODOrder = async (paymentMethod: PaymentMethod) => {
-    const token = localStorage.getItem("token");
-
-    try {
-      setLoading(true);
-
-      const orderData = {
-        customer_id: currentUser!.id,
-        delivery_address_id: selectedAddress,
-        delivery_method_id: 4,
-        payment_method_id: paymentMethod.id,
-        discount_amount: discount,
-        shipping_cost: finalShippingCost,
-        is_cod: true,
-        items: cart.map((item) => ({
-          product_variant_id: item.primary_variant_id,
-          quantity: item.quantity,
-          unit_price: item.price,
-          discount: 0,
-        })),
-      };
-
-      const res = await api.post("/order/create-order", orderData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.data.success) {
         if (appliedCoupon) {
           await applyCoupon({
             coupon_id: appliedCoupon.id,
-            order_id: res.data.data.order.id,
+            order_id: orderRes.data.data.order.id,
             user_id: currentUser!.id,
             discount_amount: discount,
           });
         }
 
-        setOrderId(res.data.data.order?.code || res.data.data.order?.id);
-        setOrderPlaced(true);
-        clearCart(currentUser!.id);
-        removeCoupon();
-      } else {
-        throw new Error(res.data.message || "Failed to place order");
+        if (
+          orderRes.data.data?.requiresPayment &&
+          orderRes.data.data?.paymentUrl
+        ) {
+          window.location.href = orderRes.data.data.paymentUrl;
+        } else {
+          setOrderId(
+            orderRes.data.data.order?.code || orderRes.data.data.order?.id,
+          );
+          setOrderPlaced(true);
+        }
+      } catch (err: any) {
+        console.error("Payment failed:", err);
+        alert(
+          `❌ ${err.response?.data?.message || "Failed to process payment"}`,
+        );
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      console.error("Order failed:", err);
-      alert(`❌ ${err.response?.data?.message || "Failed to place order"}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [
+      currentUser,
+      selectedAddress,
+      discount,
+      finalShippingCost,
+      cart,
+      appliedCoupon,
+      clearCart,
+      removeCoupon,
+      applyCoupon,
+    ],
+  );
+
+  // Handle COD order with optimistic update
+  const handleCODOrder = useCallback(
+    async (paymentMethod: PaymentMethod) => {
+      const token = localStorage.getItem("token");
+
+      try {
+        setLoading(true);
+
+        const orderData = {
+          customer_id: currentUser!.id,
+          delivery_address_id: selectedAddress,
+          delivery_method_id: 4,
+          payment_method_id: paymentMethod.id,
+          discount_amount: discount,
+          shipping_cost: finalShippingCost,
+          is_cod: true,
+          items: cart.map((item) => ({
+            product_variant_id: item.primary_variant_id,
+            quantity: item.quantity,
+            unit_price: item.price,
+            discount: 0,
+          })),
+        };
+
+        const res = await api.post("/order/create-order", orderData, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.data.success) {
+          // Optimistically clear cart and coupon
+          clearCart(currentUser!.id);
+          removeCoupon();
+
+          if (appliedCoupon) {
+            await applyCoupon({
+              coupon_id: appliedCoupon.id,
+              order_id: res.data.data.order.id,
+              user_id: currentUser!.id,
+              discount_amount: discount,
+            });
+          }
+
+          setOrderId(res.data.data.order?.code || res.data.data.order?.id);
+          setOrderPlaced(true);
+        } else {
+          throw new Error(res.data.message || "Failed to place order");
+        }
+      } catch (err: any) {
+        console.error("Order failed:", err);
+        alert(`❌ ${err.response?.data?.message || "Failed to place order"}`);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      currentUser,
+      selectedAddress,
+      discount,
+      finalShippingCost,
+      cart,
+      appliedCoupon,
+      clearCart,
+      removeCoupon,
+      applyCoupon,
+    ],
+  );
 
   // Handle place order
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = useCallback(async () => {
     if (!currentUser?.id) {
       alert("⚠️ You must be logged in to place an order!");
       return;
@@ -633,9 +640,15 @@ export default function CheckoutPage() {
     } else {
       await handleOnlinePayment(selectedPaymentMethod);
     }
-  };
+  }, [
+    currentUser?.id,
+    selectedAddress,
+    selectedPayment,
+    paymentMethods,
+    handleCODOrder,
+    handleOnlinePayment,
+  ]);
 
-  // Show login message if not authenticated
   if (!currentUser) {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
@@ -733,11 +746,6 @@ export default function CheckoutPage() {
     );
   }
 
-  // Get selected address details for display
-  const selectedAddressDetails = addressList.find(
-    (addr) => addr.id === selectedAddress,
-  );
-
   return (
     <div className="mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Left Section */}
@@ -821,54 +829,7 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* City-based Shipping Info */}
-          {selectedAddressDetails?.city &&
-            logistic?.cod_charges?.enable_cod && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                <h3 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
-                  <Truck className="w-4 h-4" />
-                  Shipping Information
-                </h3>
-                <div className="space-y-1 text-sm">
-                  <p className="text-blue-700">
-                    📍 Delivery City:{" "}
-                    <span className="font-semibold">
-                      {selectedAddressDetails.city}
-                    </span>
-                  </p>
-                  {cityBasedShipping && (
-                    <>
-                      <p className="text-blue-700">
-                        🚚 Shipping Type:{" "}
-                        <span className="font-semibold">
-                          {cityBasedShipping.type === "incity"
-                            ? "Inside City"
-                            : "Outside City"}
-                        </span>
-                      </p>
-                      <p className="text-blue-700">
-                        💰 Shipping Rate:{" "}
-                        <span className="font-semibold">
-                          ৳{cityBasedShipping.charge}
-                        </span>
-                        {cityBasedShipping.type === "incity" ? (
-                          <span className="text-xs ml-1">(In-city rate)</span>
-                        ) : (
-                          <span className="text-xs ml-1">(Out-city rate)</span>
-                        )}
-                      </p>
-                      <p className="text-xs text-blue-600 mt-2">
-                        {cityBasedShipping.type === "incity"
-                          ? `✓ Your delivery address is within ${cityBasedShipping.matched_with} city area`
-                          : `ℹ️ Standard shipping rate applied for ${selectedAddressDetails.city}`}
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-          {/* Redx Area Selection (if multiple areas for same postcode) */}
+          {/* Redx Area Selection */}
           {redxAreas.length > 1 && (
             <div className="mt-4 p-4 bg-green-50 rounded-lg">
               <h3 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">

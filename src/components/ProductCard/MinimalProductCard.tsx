@@ -121,22 +121,6 @@ function buildWhatsAppUrl(
   return `https://wa.me/${cfg.number}?text=${encodeURIComponent(msg)}`;
 }
 
-// ─── Quick View Modal ─────────────────────────────────────────────────────────
-
-interface QuickViewModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  product: ProductCardProps;
-  cfg: CardConfig;
-  onAddToCart: () => void;
-  onBuyNow: () => void;
-  onToggleWishlist: () => void;
-  isWishlisted: boolean;
-  cartLoading: boolean;
-  wishlistLoading: boolean;
-  isAddedToCart: boolean;
-}
-
 // ─── Main Card Component ───────────────────────────────────────────────────────
 
 export function MinimalProductCard({
@@ -783,71 +767,56 @@ export function MinimalProductCard({
           {/* ── Button position: bottom ── */}
           {cfg.button_position === "bottom" && (
             <div
-              className="flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5"
+              className="flex items-center gap-1 sm:gap-1.5 mt-1 sm:mt-1.5 flex-wrap"
               onClick={(e) => e.stopPropagation()}
             >
-              {(cfg.show_add_to_cart ||
-                cfg.primary_button === "buy_now" ||
-                cfg.primary_button === "whatsapp" ||
-                cfg.primary_button === "inquiry") && (
-                <div className="flex-1 min-w-0">
-                  <PrimaryButton stretch />
-                </div>
-              )}
-
-              {cfg.show_buy_now &&
-                cfg.primary_button === "add_to_cart" &&
-                !isOutOfStock && (
-                  <button
-                    onClick={handleBuyNow}
-                    disabled={cartLoading}
-                    title={cfg.buy_now_text}
-                    className={`flex-shrink-0 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all ${iconPad} disabled:opacity-50`}
-                  >
-                    <Zap className={buttonSizes.icon} />
-                  </button>
-                )}
-
-              {cfg.show_wishlist && (
+              {/* Add to Cart Button with text */}
+              {cfg.show_add_to_cart && !isOutOfStock && (
                 <button
-                  onClick={handleToggleWishlist}
-                  disabled={wishlistLoading}
-                  title={
-                    isWishlisted ? "Remove from wishlist" : "Add to wishlist"
-                  }
-                  className={`flex-shrink-0 flex items-center justify-center rounded-lg border transition-all ${iconPad} ${
-                    isWishlisted
-                      ? "border-red-200 bg-red-50 text-red-500"
-                      : "border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-500 hover:bg-red-50"
-                  } disabled:opacity-50`}
+                  onClick={handleAddToCart}
+                  disabled={cartLoading}
+                  className={`flex-1 min-w-[120px] inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${btnPad} ${isAddedToCart ? "bg-green-600 text-white" : "bg-primary text-white hover:bg-primary/90"} shadow-sm hover:shadow`}
                 >
-                  <Heart
-                    className={`${buttonSizes.icon} ${isWishlisted ? "fill-red-500" : ""}`}
-                  />
+                  {cartLoading ? (
+                    <span
+                      className={`${buttonSizes.icon} border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0`}
+                    />
+                  ) : (
+                    <>
+                      {isAddedToCart ? (
+                        <Check
+                          className={`${buttonSizes.icon} flex-shrink-0`}
+                        />
+                      ) : (
+                        <ShoppingCart
+                          className={`${buttonSizes.icon} flex-shrink-0`}
+                        />
+                      )}
+                      <span>
+                        {isAddedToCart ? "Added!" : cfg.add_to_cart_text}
+                      </span>
+                    </>
+                  )}
                 </button>
               )}
 
-              {/* Inquiry icon button — shown when show_inquiry is true and primary_button is NOT already inquiry */}
-              {cfg.show_inquiry &&
-                cfg.primary_button !== "inquiry" &&
-                !isOutOfStock && (
-                  <button
-                    onClick={handleInquiry}
-                    title={cfg.inquiry_text}
-                    className={`flex-shrink-0 flex items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:border-gray-800 hover:text-gray-800 hover:bg-gray-50 transition-all ${iconPad}`}
-                  >
-                    <MessageCircle className={buttonSizes.icon} />
-                  </button>
-                )}
-
-              {cfg.show_contact_whatsapp && !isOutOfStock && (
+              {/* Buy Now Button with text */}
+              {cfg.show_buy_now && !isOutOfStock && (
                 <button
-                  onClick={handleWhatsApp}
-                  title={cfg.whatsapp.button_text}
-                  className={`flex-shrink-0 flex items-center justify-center rounded-lg text-white transition-opacity hover:opacity-85 ${iconPad}`}
-                  style={{ background: cfg.whatsapp.button_color }}
+                  onClick={handleBuyNow}
+                  disabled={cartLoading}
+                  className={`flex-1 min-w-[120px] inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${btnPad} bg-primary text-white hover:bg-primary/90 shadow-sm hover:shadow`}
                 >
-                  <FaWhatsapp className={buttonSizes.icon} />
+                  {cartLoading ? (
+                    <span
+                      className={`${buttonSizes.icon} border-2 border-white border-t-transparent rounded-full animate-spin flex-shrink-0`}
+                    />
+                  ) : (
+                    <>
+                      <Zap className={`${buttonSizes.icon} flex-shrink-0`} />
+                      <span>{cfg.buy_now_text}</span>
+                    </>
+                  )}
                 </button>
               )}
             </div>

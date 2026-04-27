@@ -157,6 +157,7 @@ export function SimpleProductCard(
           name,
           price: sellingPrice,
           image: imageUrl || "",
+          slug,
           stock: safeStock,
         },
         user!.id,
@@ -310,28 +311,12 @@ export function SimpleProductCard(
                 onClick={handleBuyNow}
                 disabled={cartLoading}
                 title={cfg.buy_now_text}
-                className="shrink-0 p-2 rounded-md border border-gray-200 text-gray-500 hover:border-primary hover:text-primary transition-all"
+                className="flex-1 flex items-center justify-center gap-1 py-2 rounded-md border border-gray-200 text-gray-500 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all text-xs font-semibold"
               >
                 <Zap className="w-3 h-3" />
+                <span className="hidden sm:inline">{cfg.buy_now_text}</span>
               </button>
             )}
-          {cfg.show_contact_whatsapp && !isOutOfStock && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const url = buildWhatsAppUrl(cfg.whatsapp, name, sku);
-                cfg.whatsapp.open_in_new_tab
-                  ? window.open(url, "_blank")
-                  : (window.location.href = url);
-              }}
-              title="WhatsApp"
-              className="shrink-0 p-2 rounded-md text-white transition-opacity hover:opacity-85"
-              style={{ background: cfg.whatsapp.button_color }}
-            >
-              <FaWhatsapp className="w-3 h-3" />
-            </button>
-          )}
           {cfg.show_wishlist && (
             <button
               onClick={handleWishlist}

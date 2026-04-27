@@ -161,13 +161,14 @@ export function HoverEffectProductCard(
     e?.stopPropagation();
     if (!requireAuth("manage wishlist")) return;
     try {
-      const added = await toggleWishlist(
+       const added = await toggleWishlist(
         {
           id,
           primary_variant_id,
           name,
           price: sellingPrice,
           image: imageUrl || "",
+          slug,
           stock: safeStock,
         },
         user!.id,
@@ -179,22 +180,6 @@ export function HoverEffectProductCard(
     } catch {
       showToast("Failed to update wishlist", "error");
     }
-  };
-
-  const handleWhatsApp = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    const url = buildWhatsAppUrl(cfg.whatsapp, name, sku);
-    cfg.whatsapp.open_in_new_tab
-      ? window.open(url, "_blank")
-      : (window.location.href = url);
-  };
-
-  const handleInquiry = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    if (!cfg.show_inquiry) return;
-    setIsEnquiryOpen(true);
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -267,7 +252,7 @@ export function HoverEffectProductCard(
           </span>
         )}
 
-        {/* Top-right icon buttons — wishlist, quick view, inquiry */}
+        {/* Top-right icon buttons — wishlist, quick view */}
         <div
           className="absolute top-2.5 right-2.5 flex flex-col gap-1.5 z-30 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0"
           onClick={(e) => e.stopPropagation()}
@@ -396,32 +381,10 @@ export function HoverEffectProductCard(
                 <button
                   onClick={handleBuyNow}
                   disabled={cartLoading}
-                  title={cfg.buy_now_text}
-                  className="shrink-0 px-3 py-2 rounded-lg bg-primary text-white text-[11px] font-semibold transition-all active:scale-95 hover:bg-primary/90 disabled:opacity-60"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-primary text-white text-[11px] font-semibold transition-all active:scale-95 hover:bg-primary/90 disabled:opacity-60 backdrop-blur-sm"
                 >
                   <Zap className="w-3 h-3" />
-                </button>
-              )}
-
-              {cfg.show_contact_whatsapp && (
-                <button
-                  onClick={handleWhatsApp}
-                  title={cfg.whatsapp.button_text}
-                  className="shrink-0 px-3 py-2 rounded-lg text-white text-[11px] font-semibold transition-all active:scale-95 hover:opacity-90"
-                  style={{ background: cfg.whatsapp.button_color }}
-                >
-                  <FaWhatsapp className="w-3 h-3" />
-                </button>
-              )}
-
-              {/* Inquiry — only when not already the primary button */}
-              {cfg.show_inquiry && cfg.primary_button !== "inquiry" && (
-                <button
-                  onClick={handleInquiry}
-                  title={cfg.inquiry_text}
-                  className="shrink-0 px-3 py-2 rounded-lg bg-white/90 backdrop-blur-sm text-gray-800 text-[11px] font-semibold transition-all active:scale-95 hover:bg-white"
-                >
-                  <MessageCircle className="w-3 h-3" />
+                  <span className="hidden sm:inline">{cfg.buy_now_text}</span>
                 </button>
               )}
             </div>

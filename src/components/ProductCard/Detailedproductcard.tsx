@@ -158,6 +158,7 @@ export function DetailedProductCard(
           name,
           price: sellingPrice,
           image: imageUrl || "",
+          slug,
           stock: safeStock,
         },
         user!.id,
@@ -369,23 +370,6 @@ export function DetailedProductCard(
                 >
                   <Zap className="w-3.5 h-3.5" />
                   {cfg.buy_now_text}
-                </button>
-              )}
-              {cfg.show_contact_whatsapp && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const url = buildWhatsAppUrl(cfg.whatsapp, name, sku);
-                    cfg.whatsapp.open_in_new_tab
-                      ? window.open(url, "_blank")
-                      : (window.location.href = url);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold text-white transition-all active:scale-[0.98] hover:opacity-90"
-                  style={{ background: cfg.whatsapp.button_color }}
-                >
-                  <FaWhatsapp className="w-3.5 h-3.5" />
-                  {cfg.whatsapp_text}
                 </button>
               )}
             </>

@@ -154,13 +154,14 @@ export function ModernProductCard(
     e?.stopPropagation();
     if (!requireAuth("manage wishlist")) return;
     try {
-      const added = await toggleWishlist(
+       const added = await toggleWishlist(
         {
           id,
           primary_variant_id,
           name,
           price: sellingPrice,
           image: imageUrl || "",
+          slug,
           stock: safeStock,
         },
         user!.id,
@@ -367,27 +368,10 @@ export function ModernProductCard(
                 <button
                   onClick={handleBuyNow}
                   disabled={cartLoading}
-                  title={cfg.buy_now_text}
-                  className="shrink-0 p-2.5 rounded-xl border-2 border-gray-100 text-gray-500 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-gray-100 text-gray-500 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all disabled:opacity-50 font-bold text-xs"
                 >
                   <Zap className="w-3.5 h-3.5" />
-                </button>
-              )}
-              {cfg.show_contact_whatsapp && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const url = buildWhatsAppUrl(cfg.whatsapp, name, sku);
-                    cfg.whatsapp.open_in_new_tab
-                      ? window.open(url, "_blank")
-                      : (window.location.href = url);
-                  }}
-                  title="WhatsApp"
-                  className="shrink-0 p-2.5 rounded-xl text-white transition-opacity hover:opacity-85"
-                  style={{ background: cfg.whatsapp.button_color }}
-                >
-                  <FaWhatsapp className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{cfg.buy_now_text}</span>
                 </button>
               )}
             </>
