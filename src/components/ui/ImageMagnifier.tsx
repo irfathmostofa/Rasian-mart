@@ -26,6 +26,7 @@ export function ImageMagnifier({
   const [lensPos, setLensPos] = useState({ x: 0, y: 0 });
   const [bgOffset, setBgOffset] = useState({ x: 0, y: 0 });
   const [bgSize, setBgSize] = useState({ w: 0, h: 0 });
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,7 +44,6 @@ export function ImageMagnifier({
       const containerW = containerRect.width;
       const containerH = containerRect.height;
 
-      // Replicate object-contain: scale to fit inside container keeping aspect ratio
       const naturalW = img.naturalWidth || containerW;
       const naturalH = img.naturalHeight || containerH;
 
@@ -52,38 +52,30 @@ export function ImageMagnifier({
 
       let renderedW: number, renderedH: number;
       if (imageRatio > containerRatio) {
-        // Wider than container — constrained by width, letterboxed top/bottom
         renderedW = containerW;
         renderedH = containerW / imageRatio;
       } else {
-        // Taller than container — constrained by height, pillarboxed left/right
         renderedH = containerH;
         renderedW = containerH * imageRatio;
       }
 
-      // Where the rendered image starts inside the container (centred by object-contain)
       const imgOffsetX = (containerW - renderedW) / 2;
       const imgOffsetY = (containerH - renderedH) / 2;
 
-      // Cursor position relative to container
       const x = clientX - containerRect.left;
       const y = clientY - containerRect.top;
 
-      // Clamp lens so it stays fully inside container
       const clampedX = Math.max(halfW, Math.min(x, containerW - halfW));
       const clampedY = Math.max(halfH, Math.min(y, containerH - halfH));
       setLensPos({ x: clampedX, y: clampedY });
 
-      // Where the cursor falls inside the rendered image, as 0→1
       const relX = Math.max(0, Math.min((x - imgOffsetX) / renderedW, 1));
       const relY = Math.max(0, Math.min((y - imgOffsetY) / renderedH, 1));
 
-      // The CSS background must cover exactly the rendered image area, then scale by zoomLevel
       const zoomedW = renderedW * zoomLevel;
       const zoomedH = renderedH * zoomLevel;
       setBgSize({ w: zoomedW, h: zoomedH });
 
-      // Shift background so the hovered pixel appears at the centre of the lens
       setBgOffset({
         x: relX * zoomedW - halfW,
         y: relY * zoomedH - halfH,
@@ -93,44 +85,58 @@ export function ImageMagnifier({
   );
 
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => compute(e.clientX, e.clientY),
-    [compute],
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (imageLoaded) {
+        compute(e.clientX, e.clientY);
+      }
+    },
+    [compute, imageLoaded],
   );
 
   const handleTouchMove = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>) =>
-      compute(e.touches[0].clientX, e.touches[0].clientY),
-    [compute],
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      if (imageLoaded && e.touches.length > 0) {
+        compute(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    },
+    [compute, imageLoaded],
   );
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
 
   return (
     <div
       ref={containerRef}
-      className={`relative select-none w-full h-full ${className}`}
+      className={`relative select-none w-full h-full overflow-hidden ${className}`}
       onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
+      onMouseLeave={() => {
+        setShow(false);
+      }}
       onMouseMove={handleMouseMove}
       onTouchStart={() => setShow(true)}
-      onTouchEnd={() => setShow(false)}
+      onTouchEnd={() => {
+        setShow(false);
+      }}
       onTouchMove={handleTouchMove}
       style={{ cursor: show ? "crosshair" : "default" }}
     >
-      {/* Base image — uses fill + object-contain to properly scale and center */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <Image
+      {/* Base image */}
+      <img
         ref={imgRef}
-        fill
         src={src}
         alt={alt}
         draggable={false}
-        className={`object-contain ${imgClassName}`}
+        onLoad={handleImageLoad}
+        className={`w-full h-full object-contain block ${imgClassName}`}
       />
 
       {/* Magnifier lens */}
-      {show && bgSize.w > 0 && (
+      {show && imageLoaded && bgSize.w > 0 && (
         <div
-          aria-hidden
-          className="absolute pointer-events-none rounded-full border-2 border-white/80 ring-1 ring-black/10 shadow-xl overflow-hidden"
+          aria-hidden="true"
+          className="absolute pointer-events-none rounded-full border-2 border-white/80 ring-1 ring-black/10 shadow-2xl overflow-hidden transition-shadow duration-200"
           style={{
             width: magnifierWidth,
             height: magnifierHeight,
@@ -141,23 +147,24 @@ export function ImageMagnifier({
             backgroundRepeat: "no-repeat",
             backgroundSize: `${bgSize.w}px ${bgSize.h}px`,
             backgroundPosition: `-${bgOffset.x}px -${bgOffset.y}px`,
+            backgroundColor: "#f9fafb",
           }}
         />
       )}
 
-      {/* Zoom hint icon — visible at rest, gone while lens is active */}
-      {!show && (
+      {/* Zoom hint icon */}
+      {!show && imageLoaded && (
         <div
-          aria-hidden
-          className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center pointer-events-none"
+          aria-hidden="true"
+          className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center pointer-events-none animate-pulse"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="w-3.5 h-3.5 text-white"
+            className="w-4 h-4 text-white"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            strokeWidth={2}
+            strokeWidth={2.5}
           >
             <path
               strokeLinecap="round"
@@ -165,6 +172,13 @@ export function ImageMagnifier({
               d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0zM11 8v6M8 11h6"
             />
           </svg>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {!imageLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-300 dark:border-gray-600 border-t-gray-900 dark:border-t-white" />
         </div>
       )}
     </div>

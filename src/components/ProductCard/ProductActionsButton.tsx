@@ -85,7 +85,7 @@ const ProductActions: React.FC<ProductActionsProps> = ({
         )}
       </div>
       {/* --- Enhanced Mobile Sticky Bottom Bar --- */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 p-3 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] md:hidden">
+      <div className="fixed bottom-0 m-0 left-0 right-0 z-500 p-3 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] md:hidden">
         <div className="flex flex-row gap-2 max-w-lg mx-auto">
           {/* Row 1: Quick Actions (WhatsApp & Inquiry) */}
 

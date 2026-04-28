@@ -13,6 +13,7 @@ import {
   Loader2,
   CheckCircle2,
 } from "lucide-react";
+import Image from "next/image";
 import api from "@/lib/api";
 import { useToastStore } from "@/app/store/useToastStore";
 
@@ -25,7 +26,7 @@ export interface EnquiryModalProps {
     id: number;
     name: string;
     code?: string;
-    images?: { url: string; is_primary: boolean }[] | null;
+    images?: string | null; // Changed to accept string URL
     selling_price?: string | number;
     regular_price?: string | number;
   };
@@ -55,6 +56,7 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { showToast } = useToastStore();
+
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -86,10 +88,11 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
     };
   }, [isOpen]);
 
-  const primaryImage =
-    product.images?.find((i) => i.is_primary)?.url ??
-    product.images?.[0]?.url ??
-    null;
+  // Get the display image
+  const displayImage =
+    product.images && product.images !== "/no-image.png"
+      ? product.images
+      : null;
 
   const validate = (): boolean => {
     const e: Partial<FormState> = {};
@@ -124,9 +127,18 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
 
       if (res.data.success) {
         showToast(res.data.message || "Enquiry sent successfully", "success");
+        setSubmitted(true);
+      } else {
+        showToast(res.data.message || "Failed to send enquiry", "error");
+        setSubmitted(true);
       }
-      setSubmitted(true);
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Enquiry submission error:", err);
+      showToast(
+        err?.response?.data?.message ||
+          "Failed to send enquiry. Please try again.",
+        "error",
+      );
       setSubmitted(true);
     } finally {
       setLoading(false);
@@ -142,7 +154,7 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
     required = false,
   ) => (
     <div>
-      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
         {label}
         {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
@@ -158,8 +170,8 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
           placeholder={placeholder}
           className={`w-full pl-9 pr-3 py-2.5 text-sm border rounded-lg outline-none transition-all ${
             errors[key]
-              ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-              : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/15"
+              ? "border-red-400 bg-red-50 dark:bg-red-950/20 focus:ring-2 focus:ring-red-200"
+              : "border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:border-primary focus:ring-2 focus:ring-primary/15"
           }`}
         />
       </div>
@@ -190,7 +202,7 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl pointer-events-auto overflow-hidden"
+              className="bg-white dark:bg-gray-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl pointer-events-auto overflow-hidden"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
@@ -198,26 +210,26 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                     <MessageSquare className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-gray-900 leading-tight">
+                    <h2 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
                       Product Enquiry
                     </h2>
-                    <p className="text-[11px] text-gray-500 leading-tight">
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight">
                       We'll get back to you shortly
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={onClose}
-                  className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                  className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
                   aria-label="Close"
                 >
-                  <X className="w-3.5 h-3.5 text-gray-600" />
+                  <X className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
                 </button>
               </div>
 
@@ -228,16 +240,16 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", damping: 15 }}
-                    className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mb-4"
+                    className="w-14 h-14 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-4"
                   >
                     <CheckCircle2 className="w-8 h-8 text-green-500" />
                   </motion.div>
-                  <h3 className="text-base font-bold text-gray-900 mb-1.5">
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1.5">
                     Enquiry Sent!
                   </h3>
-                  <p className="text-sm text-gray-500 max-w-xs mb-6">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mb-6">
                     Thank you for your interest in{" "}
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-gray-700 dark:text-gray-300">
                       {product.name}
                     </span>
                     . We'll contact you soon.
@@ -252,22 +264,29 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
               ) : (
                 // ── Form ───────────────────────────────────────────────────
                 <form onSubmit={handleSubmit} noValidate>
-                  {/* Product snippet */}
-                  <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 border-b border-gray-100">
-                    {primaryImage && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={primaryImage}
-                        alt={product.name}
-                        className="w-12 h-12 rounded-lg object-cover border border-gray-200 shrink-0"
-                      />
+                  {/* Product snippet with image */}
+                  <div className="flex items-center gap-3 px-5 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                    {displayImage ? (
+                      <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
+                        <Image
+                          src={displayImage}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                          sizes="48px"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                        <MessageSquare className="w-5 h-5 text-gray-400" />
+                      </div>
                     )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 line-clamp-1">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-white line-clamp-1">
                         {product.name}
                       </p>
                       {product.code && (
-                        <p className="text-[11px] text-gray-400">
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500">
                           SKU: {product.code}
                         </p>
                       )}
@@ -307,7 +326,7 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
 
                     {/* Quantity */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
                         Quantity<span className="text-red-400 ml-0.5">*</span>
                       </label>
                       <div className="flex items-center gap-0">
@@ -321,7 +340,7 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
                               ),
                             }))
                           }
-                          className="w-9 h-10 border border-r-0 border-gray-200 rounded-l-lg flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors text-lg font-medium"
+                          className="w-9 h-10 border border-r-0 border-gray-200 dark:border-gray-700 rounded-l-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-lg font-medium"
                         >
                           −
                         </button>
@@ -336,10 +355,10 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
                             }));
                             setErrors((er) => ({ ...er, quantity: undefined }));
                           }}
-                          className={`w-16 h-10 border text-center text-sm outline-none transition-all ${
+                          className={`w-16 h-10 border text-center text-sm outline-none transition-all dark:bg-gray-800 dark:text-white ${
                             errors.quantity
-                              ? "border-red-400 bg-red-50"
-                              : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/15"
+                              ? "border-red-400 bg-red-50 dark:bg-red-950/20"
+                              : "border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/15"
                           }`}
                         />
                         <button
@@ -350,7 +369,7 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
                               quantity: String(parseInt(f.quantity || "1") + 1),
                             }))
                           }
-                          className="w-9 h-10 border border-l-0 border-gray-200 rounded-r-lg flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors text-lg font-medium"
+                          className="w-9 h-10 border border-l-0 border-gray-200 dark:border-gray-700 rounded-r-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-lg font-medium"
                         >
                           +
                         </button>
@@ -364,7 +383,7 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
 
                     {/* Message field separately for textarea */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">
+                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">
                         Message<span className="text-red-400 ml-0.5">*</span>
                       </label>
                       <textarea
@@ -375,10 +394,10 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
                         }}
                         rows={3}
                         placeholder="Tell us about your requirements…"
-                        className={`w-full px-3 py-2.5 text-sm border rounded-lg outline-none resize-none transition-all ${
+                        className={`w-full px-3 py-2.5 text-sm border rounded-lg outline-none resize-none transition-all dark:bg-gray-800 dark:text-white ${
                           errors.message
-                            ? "border-red-400 bg-red-50 focus:ring-2 focus:ring-red-200"
-                            : "border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/15"
+                            ? "border-red-400 bg-red-50 dark:bg-red-950/20 focus:ring-2 focus:ring-red-200"
+                            : "border-gray-200 dark:border-gray-700 focus:border-primary focus:ring-2 focus:ring-primary/15"
                         }`}
                       />
                       {errors.message && (
@@ -390,11 +409,11 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
                   </div>
 
                   {/* Footer */}
-                  <div className="px-5 py-4 border-t border-gray-100 flex gap-3">
+                  <div className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 flex gap-3">
                     <button
                       type="button"
                       onClick={onClose}
-                      className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                      className="flex-1 py-2.5 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                       Cancel
                     </button>

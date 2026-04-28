@@ -41,7 +41,7 @@ interface QuickViewModalProps {
 }
 
 // ─── Share Sheet ──────────────────────────────────────────────────────────────
-function ShareSheet({
+export function ShareSheet({
   url,
   title,
   onClose,

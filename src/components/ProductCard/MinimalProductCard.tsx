@@ -487,14 +487,6 @@ export function MinimalProductCard({
     <>
       {/* Quick View Modal */}
 
-      {cfg.show_inquiry && (
-        <EnquiryModal
-          isOpen={isEnquiryOpen}
-          onClose={() => setIsEnquiryOpen(false)}
-          product={{ id, name, code, images, selling_price }}
-        />
-      )}
-
       {cfg.quick_view && (
         <QuickViewModal
           isOpen={isQuickViewOpen}

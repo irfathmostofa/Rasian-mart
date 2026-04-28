@@ -389,7 +389,6 @@ export default function CheckoutPage() {
     try {
       setLoading(true);
       const resPayment = await api.get(`/setup/get-payment-methods`);
-
       let methods = resPayment?.data?.data || [];
 
       if (paymentConfig) {
