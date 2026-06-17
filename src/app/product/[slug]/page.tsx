@@ -705,9 +705,12 @@ export default function ProductDetailsPage() {
           {/* Description Tab */}
           {activeTab === "description" && (
             <div className="prose dark:prose-invert max-w-none">
-              <div className="whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed text-base">
-                {product.description || "No description available."}
-              </div>
+              <div
+                className="text-gray-700 dark:text-gray-300 leading-relaxed text-base"
+                dangerouslySetInnerHTML={{
+                  __html: product.description || "No description available.",
+                }}
+              />
             </div>
           )}
 

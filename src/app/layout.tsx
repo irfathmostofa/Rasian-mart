@@ -1,15 +1,14 @@
 // app/layout.tsx (Server Component)
 import { Inter } from "next/font/google";
-import "@/app/globals.css";
 import SiteLayoutClient from "./SiteLayoutClient";
 import ToastContainer from "@/components/ui/ToastContainer";
-
+import "@/app/globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Rasian Mart | All You Need in One Place",
+  title: "Inventory Mart | All You Need in One Place",
   description:
-    "Shop groceries, electronics, fashion, and more with fast delivery from Rasian Mart.",
+    "Shop groceries, electronics, fashion, and more with fast delivery from Inventory Mart.",
   keywords: [
     "ecommerce",
     "online shopping",
@@ -19,16 +18,17 @@ export const metadata = {
     "rasian mart",
   ],
   openGraph: {
-    title: "Rasian Mart",
-    description: "Shop smarter with Rasian Mart - your one-stop online store.",
-    url: "https://rasianmart.com",
-    siteName: "Rasian Mart",
+    title: "Inventory Mart",
+    description:
+      "Shop smarter with Inventory Mart - your one-stop online store.",
+    url: "https://Inventorymart.com",
+    siteName: "Inventory Mart",
     images: [
       {
         url: "/images/og-banner.png",
         width: 1200,
         height: 630,
-        alt: "Rasian Mart Online Store",
+        alt: "Inventory Mart Online Store",
       },
     ],
     locale: "en_US",

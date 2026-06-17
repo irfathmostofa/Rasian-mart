@@ -26,7 +26,16 @@ export interface EnquiryModalProps {
     id: number;
     name: string;
     code?: string;
-    images?: string | null; // Changed to accept string URL
+    images?:
+      | string
+      | null
+      | Array<{
+          url: string;
+          id?: number;
+          alt_text?: string;
+          is_primary?: boolean;
+        }>
+      | string[];
     selling_price?: string | number;
     regular_price?: string | number;
   };
@@ -56,7 +65,25 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { showToast } = useToastStore();
+  const getImageUrl = (images: any): string | null => {
+    if (!images) return null;
+    if (typeof images === "string") return images;
+    if (Array.isArray(images) && images.length > 0) {
+      const first = images[0];
+      if (typeof first === "string") return first;
+      if (first && typeof first === "object" && "url" in first) {
+        return first.url;
+      }
+      // Try to get any URL property
+      if (first && typeof first === "object") {
+        return (first as any).url || (first as any).image_url || null;
+      }
+    }
+    return null;
+  };
 
+  // Then use it when setting displayImage:
+  const displayImage = getImageUrl(product.images);
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -89,10 +116,6 @@ export function EnquiryModal({ isOpen, onClose, product }: EnquiryModalProps) {
   }, [isOpen]);
 
   // Get the display image
-  const displayImage =
-    product.images && product.images !== "/no-image.png"
-      ? product.images
-      : null;
 
   const validate = (): boolean => {
     const e: Partial<FormState> = {};
