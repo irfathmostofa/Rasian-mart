@@ -729,7 +729,7 @@ export default function CheckoutPage() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
-            href="/orders"
+            href="/profile?tab=orders"
             className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90"
           >
             View My Orders
